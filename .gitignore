@@ -1,0 +1,5 @@
+.env
+.env.*
+laneassist-module*.zip
+*.log
+.DS_Store
