@@ -1,6 +1,7 @@
 <?php
 
 $hasSelectedTour = !empty($_SESSION['TourId']);
+$isDebugMode = !empty($_SESSION['debug']);
 
 function laneAssistGetAdminMenuToggle($paramName) {
 	$query = "SELECT MpValue
@@ -66,8 +67,9 @@ if ($hasSelectedTour) {
 	$ret['MODS'][] = 'Manage Finals - Interactive' . '|' . $CFG->ROOT_DIR . 'Modules/Custom/LaneAssist/ManageFinals/index.php';
 }
 $ret['MODS'][] = 'LaneAssist Settings' . '|' . $CFG->ROOT_DIR . 'Modules/Custom/LaneAssist/Settings/index.php';
-$ret['MODS'][] = MENU_DIVIDER;
-if (!$hideTargetFacesEntry) {
+if ($isDebugMode) {
+	$ret['MODS'][] = MENU_DIVIDER;
 	$ret['MODS'][] = 'Target Faces' . '|' . $CFG->ROOT_DIR . 'Modules/Custom/LaneAssist/ManageTargets/target-faces-debug.php';
+	$ret['MODS'][] = 'Layout Playground' . '|' . $CFG->ROOT_DIR . 'Modules/Custom/LaneAssist/ManageTargets/layout-playground.php';
 }
 ?>

@@ -70,10 +70,10 @@ include('Common/Templates/head.php');
                 </label>
             </div>
             <div class="settings-field">
-                <label class="checkbox-inline">
+                <!--<label class="checkbox-inline">
                     <input id="admin-hide-target-faces-menu" type="checkbox">
                     Hide "Target Faces" menu entry
-                </label>
+                </label>-->
                 <small>Admin controls for menu visibility.</small>
             </div>
             <div class="settings-actions">

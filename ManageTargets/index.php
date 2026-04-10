@@ -172,9 +172,6 @@ include('Common/Templates/head.php');
         <div class="toolbar-top">
             <div class="toolbar-left">
                 <h2>Manage Targets - Interactive</h2>
-                <div style="margin-top: 6px;">
-                    <a href="<?php echo $CFG->ROOT_DIR; ?>Modules/Custom/LaneAssist/ManageTargets/layout-playground.php" class="btn btn-secondary" target="_blank" rel="noopener">Layout Playground</a>
-                </div>
             </div>
             <div class="toolbar-center">
                 <div class="filter-group inline">
