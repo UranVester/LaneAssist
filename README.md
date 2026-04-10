@@ -2,12 +2,28 @@
 
 LaneAssist is a custom IANSEO module focused on faster, easier tournament operations for field-side workflows.
 
+## Screenshots
+
+![Manage Targets](docs/screenshots/ManageTargets.png)
+
+![Manage Finals](docs/screenshots/ManageFinals.png)
+
+![Auto Assign](docs/screenshots/AutoAssign.png)
+
+![AutoFinals](docs/screenshots/AutoFinals.png)
+
+![Layouts](docs/screenshots/Layouts.png)
+
+![Layouts2](docs/screenshots/Layouts2.png)
+
+![Layouts3](docs/screenshots/Layouts3.png)
+
 ## What It Adds
 
 LaneAssist adds practical tools on top of IANSEO, including:
 
-- Interactive target management
-- Interactive finals management
+- Interactive target management (Drag & drop + auto)
+- Interactive finals management (Drag & drop + auto)
 - Tournament cloning helpers
 - Module settings and update controls
 - Shared UI assets used across LaneAssist pages
@@ -31,7 +47,7 @@ LaneAssist adds practical tools on top of IANSEO, including:
    - You do not need to create the `LaneAssist` folder manually.
    - The release zip already includes the `Modules/Custom/LaneAssist` folder path.
 6. Open IANSEO in your browser.
-7. Check that these entries are visible under Modules:
+7. Check that these entries are visible under Modules: (Some only when a tournament has been selected)
    - Clone Tournament
    - Manage Targets - Interactive
    - Manage Finals - Interactive

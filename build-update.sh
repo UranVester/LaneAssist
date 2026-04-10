@@ -171,6 +171,7 @@ find "$STAGE_ROOT/$REL_MODULE_PATH" -type f -name '*.sh' -exec chmod 775 {} +
     -x "*/.git/*" \
     "*/laneassist-module*.zip" \
     "*/.env" \
+    "*/docs/screenshots/*" \
     "build-update.sh" \
     ".gitignore" \
     "*/.env.*" \
