@@ -3,10 +3,12 @@
 
     const hasCompetition = parseInt((typeof LANEASSIST_HAS_COMPETITION !== 'undefined' ? LANEASSIST_HAS_COMPETITION : 0), 10) > 0;
     const isDebugMode = parseInt((typeof LANEASSIST_DEBUG_MODE !== 'undefined' ? LANEASSIST_DEBUG_MODE : 0), 10) > 0;
+    let updateInfo = null;
 
     function init() {
         bindEvents();
         loadSettings();
+        checkUpdates();
         if (isDebugMode) {
             loadFeedbackQueue();
         }
@@ -20,6 +22,130 @@
         $('#btn-donate').on('click', donateIntent);
         $('#btn-refresh-feedback-debug').on('click', loadFeedbackQueue);
         $('#btn-apply-update-file').on('click', applyUpdateFromFile);
+        $('#btn-check-updates').on('click', checkUpdates);
+        $('#btn-apply-update-github').on('click', applyUpdateFromGithub);
+    }
+
+    function checkUpdates() {
+        if ($('#update-github-summary').length) {
+            $('#update-github-summary').text('Checking for updates...');
+        }
+        if ($('#update-github-meta').length) {
+            $('#update-github-meta').text('');
+        }
+        if ($('#btn-apply-update-github').length) {
+            $('#btn-apply-update-github').prop('disabled', true);
+        }
+
+        $.ajax({
+            url: ROOT_DIR + 'Modules/Custom/LaneAssist/Settings/api.php',
+            method: 'POST',
+            dataType: 'json',
+            data: {
+                action: 'checkUpdates'
+            },
+            success: function(response) {
+                if (response.error) {
+                    updateInfo = null;
+                    if ($('#update-github-summary').length) {
+                        $('#update-github-summary').text(response.message || 'Update check failed');
+                    }
+                    showStatus(response.message || 'Update check failed', 'error');
+                    return;
+                }
+
+                updateInfo = response;
+                const hasUpdate = parseInt(response.hasUpdate, 10) > 0;
+                const currentVersion = (response.currentVersion || 'unknown').toString();
+                const latestVersion = (response.latestVersion || 'unknown').toString();
+                const published = (response.publishedAt || '').toString();
+                const signed = response.signature && parseInt(response.signature.ok, 10) > 0;
+
+                if ($('#update-github-summary').length) {
+                    $('#update-github-summary').text(hasUpdate
+                        ? ('Update available: ' + latestVersion + ' (installed: ' + currentVersion + ')')
+                        : ('Up to date: ' + currentVersion));
+                }
+
+                if ($('#update-github-meta').length) {
+                    const bits = [];
+                    if (response.releaseTag) {
+                        bits.push('Tag: ' + response.releaseTag);
+                    }
+                    if (published) {
+                        bits.push('Published: ' + published.replace('T', ' ').replace('Z', ' UTC'));
+                    }
+                    bits.push(signed ? 'Signature: verified' : 'Signature: not verified');
+                    $('#update-github-meta').text(bits.join(' | '));
+                }
+
+                if ($('#btn-apply-update-github').length) {
+                    $('#btn-apply-update-github').prop('disabled', !hasUpdate);
+                }
+            },
+            error: function() {
+                updateInfo = null;
+                if ($('#update-github-summary').length) {
+                    $('#update-github-summary').text('Update check failed');
+                }
+                showStatus('Update check failed', 'error');
+            }
+        });
+    }
+
+    function applyUpdateFromGithub() {
+        if (!$('#btn-apply-update-github').length) {
+            return;
+        }
+
+        if (!updateInfo || parseInt(updateInfo.hasUpdate, 10) <= 0) {
+            showStatus('No update is available right now', 'info');
+            return;
+        }
+
+        if (!window.confirm('Install update ' + (updateInfo.latestVersion || '') + ' now?')) {
+            return;
+        }
+
+        $('#btn-apply-update-github').prop('disabled', true);
+        $('#update-github-summary').text('Installing update...');
+
+        $.ajax({
+            url: ROOT_DIR + 'Modules/Custom/LaneAssist/Settings/api.php',
+            method: 'POST',
+            dataType: 'json',
+            data: {
+                action: 'applyUpdateFromGithub'
+            },
+            success: function(response) {
+                if (response.error) {
+                    $('#update-github-summary').text(response.message || 'Update install failed');
+                    showStatus(response.message || 'Update install failed', 'error');
+                    return;
+                }
+
+                const message = (response.message || 'Update installed') +
+                    ' (written=' + (response.writtenFiles || 0) +
+                    ', backup=' + (response.backedUpFiles || 0) + ')';
+
+                $('#update-github-summary').text(message);
+                if ($('#update-github-meta').length) {
+                    $('#update-github-meta').text(response.backupPath ? ('Backup: ' + response.backupPath) : '');
+                }
+                showStatus(message, 'success');
+                checkUpdates();
+            },
+            error: function() {
+                $('#update-github-summary').text('Update install failed');
+                showStatus('Update install failed', 'error');
+            },
+            complete: function() {
+                if ($('#btn-apply-update-github').length) {
+                    const hasUpdate = updateInfo && parseInt(updateInfo.hasUpdate, 10) > 0;
+                    $('#btn-apply-update-github').prop('disabled', !hasUpdate);
+                }
+            }
+        });
     }
 
     function loadSettings() {

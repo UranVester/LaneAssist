@@ -4,6 +4,7 @@
  */
 
 require_once(dirname(__FILE__, 3) . '/config.php');
+require_once(dirname(__FILE__, 2) . '/version.php');
 header('Content-Type: application/json');
 
 $hasCompetition = CheckTourSession();
@@ -38,6 +39,9 @@ switch ($action) {
         break;
     case 'checkUpdates':
         checkUpdates();
+        break;
+    case 'applyUpdateFromGithub':
+        applyUpdateFromGithub();
         break;
     case 'applyUpdateFromFile':
         applyUpdateFromFile();
@@ -255,103 +259,367 @@ function isLaneAssistAdmin() {
 }
 
 function checkUpdates() {
-    $isDebugMode = !empty($_SESSION['debug']);
-    $updateConfig = getUpdateConfigFromFile();
-
-    $localVersion = trim((string)($updateConfig['installedVersion'] ?? '0.0.0-dev'));
-    if ($localVersion === '') {
-        $localVersion = '0.0.0-dev';
-    }
-
-    $manifestUrl = trim((string)($updateConfig['manifestUrl'] ?? ''));
-    if ($manifestUrl === '') {
-        echo json_encode([
-            'error' => 0,
-            'hasUpdate' => 0,
-            'currentVersion' => $localVersion,
-            'message' => 'Update source is not configured. Set manifestUrl in Modules/Custom/LaneAssist/Settings/update-config.php.',
-        ]);
-        return;
-    }
-
-    if (!isTrustedGithubUrl($manifestUrl)) {
+    $update = getGithubReleaseUpdateDescriptor();
+    if (!empty($update['error'])) {
         echo json_encode([
             'error' => 1,
-            'message' => 'Manifest URL is not a trusted GitHub URL',
+            'message' => (string)$update['message'],
         ]);
         return;
     }
 
-    $fetch = fetchRemoteJson($manifestUrl);
-    if (!empty($fetch['error'])) {
-        echo json_encode([
-            'error' => 1,
-            'message' => 'Update check failed: ' . $fetch['error'],
-        ]);
-        return;
-    }
-
-    $manifest = $fetch['data'];
-    $validationError = validateUpdateManifest($manifest);
-    if ($validationError !== '') {
-        echo json_encode([
-            'error' => 1,
-            'message' => 'Invalid update manifest: ' . $validationError,
-        ]);
-        return;
-    }
-
-    if (!isTrustedGithubUrl($manifest['package']['url'])) {
-        echo json_encode([
-            'error' => 1,
-            'message' => 'Package URL is not a trusted GitHub URL',
-        ]);
-        return;
-    }
-
-    $signatureCheck = verifyManifestSignature($manifest);
-    if (!$signatureCheck['ok'] && !$isDebugMode) {
-        echo json_encode([
-            'error' => 1,
-            'message' => 'Manifest signature verification failed: ' . $signatureCheck['message'],
-        ]);
-        return;
-    }
-
-    $minIanseoVersion = trim((string)($manifest['minIanseoVersion'] ?? ''));
-    if ($minIanseoVersion !== '' && version_compare(ProgramVersion, $minIanseoVersion, '<')) {
-        echo json_encode([
-            'error' => 0,
-            'hasUpdate' => 0,
-            'currentVersion' => $localVersion,
-            'latestVersion' => $manifest['version'],
-            'message' => 'Update available but not compatible with this IANSEO version (requires >= ' . $minIanseoVersion . ').',
-            'signature' => $signatureCheck,
-        ]);
-        return;
-    }
-
-    $hasUpdate = version_compare($manifest['version'], $localVersion, '>') ? 1 : 0;
+    $hasUpdate = !empty($update['hasUpdate']) ? 1 : 0;
     $message = $hasUpdate
-        ? ('Update available: ' . $manifest['version'])
+        ? ('Update available: ' . $update['latestVersion'])
         : 'No updates available';
-
-    if (!$signatureCheck['ok']) {
-        $message .= ' (debug mode: unverified manifest accepted)';
-    }
 
     echo json_encode([
         'error' => 0,
         'hasUpdate' => $hasUpdate,
-        'currentVersion' => $localVersion,
-        'latestVersion' => $manifest['version'],
-        'channel' => $manifest['channel'],
-        'publishedAt' => $manifest['publishedAt'],
-        'packageUrl' => $manifest['package']['url'],
-        'packageSha256' => $manifest['package']['sha256'],
+        'currentVersion' => (string)$update['currentVersion'],
+        'latestVersion' => (string)$update['latestVersion'],
+        'releaseTag' => (string)($update['releaseTag'] ?? ''),
+        'publishedAt' => (string)($update['publishedAt'] ?? ''),
+        'zipAssetName' => (string)($update['zipAssetName'] ?? ''),
         'message' => $message,
-        'signature' => $signatureCheck,
+        'signature' => $update['signatureCheck'] ?? ['ok' => false, 'message' => ''],
     ]);
+}
+
+function applyUpdateFromGithub() {
+    checkFullACL(AclRoot, '', AclReadWrite, false);
+
+    $update = getGithubReleaseUpdateDescriptor();
+    if (!empty($update['error'])) {
+        echo json_encode(['error' => 1, 'message' => (string)$update['message']]);
+        return;
+    }
+
+    if (empty($update['hasUpdate'])) {
+        echo json_encode([
+            'error' => 1,
+            'message' => 'No newer update is available',
+            'currentVersion' => (string)$update['currentVersion'],
+            'latestVersion' => (string)$update['latestVersion'],
+        ]);
+        return;
+    }
+
+    $download = downloadRemoteToTempFile((string)$update['zipDownloadUrl'], 'laneassist-update-', '.zip');
+    if (!empty($download['error'])) {
+        echo json_encode(['error' => 1, 'message' => 'Failed to download update ZIP: ' . $download['error']]);
+        return;
+    }
+
+    $tmpZipFile = (string)$download['path'];
+    $actualSha = strtolower((string)@hash_file('sha256', $tmpZipFile));
+    if ($actualSha === '' || $actualSha !== strtolower((string)$update['zipSha256'])) {
+        @unlink($tmpZipFile);
+        echo json_encode(['error' => 1, 'message' => 'Downloaded ZIP checksum does not match signed checksum']);
+        return;
+    }
+
+    $apply = applyUpdateArchiveFile($tmpZipFile);
+    @unlink($tmpZipFile);
+
+    if (empty($apply['ok'])) {
+        echo json_encode(['error' => 1, 'message' => (string)($apply['message'] ?? 'Failed to apply update archive')]);
+        return;
+    }
+
+    echo json_encode([
+        'error' => 0,
+        'message' => 'Update installed: ' . (string)$update['latestVersion'],
+        'currentVersion' => (string)$update['latestVersion'],
+        'previousVersion' => (string)$update['currentVersion'],
+        'releaseTag' => (string)($update['releaseTag'] ?? ''),
+        'writtenFiles' => intval($apply['writtenFiles'] ?? 0),
+        'backedUpFiles' => intval($apply['backedUpFiles'] ?? 0),
+        'backupPath' => (string)($apply['backupPath'] ?? ''),
+    ]);
+}
+
+function getGithubReleaseUpdateDescriptor() {
+    $response = [
+        'error' => 1,
+        'message' => 'Unknown updater error',
+    ];
+
+    $repo = getGithubUpdateRepoConfig();
+    if (empty($repo['ok'])) {
+        $response['message'] = (string)($repo['message'] ?? 'Invalid updater configuration');
+        return $response;
+    }
+
+    $releaseFetch = fetchRemoteJson((string)$repo['releaseApiUrl'], 'application/vnd.github+json');
+    if (!empty($releaseFetch['error'])) {
+        $response['message'] = 'GitHub release query failed: ' . $releaseFetch['error'];
+        return $response;
+    }
+
+    $release = $releaseFetch['data'];
+    if (!is_array($release)) {
+        $response['message'] = 'GitHub release payload is invalid';
+        return $response;
+    }
+
+    $assets = is_array($release['assets'] ?? null) ? $release['assets'] : [];
+    if (!count($assets)) {
+        $response['message'] = 'Latest release has no assets';
+        return $response;
+    }
+
+    $assetByName = [];
+    foreach ($assets as $asset) {
+        $assetName = trim((string)($asset['name'] ?? ''));
+        if ($assetName !== '') {
+            $assetByName[$assetName] = $asset;
+        }
+    }
+
+    $zipAsset = findReleaseZipAsset($assets, (string)$repo['zipAssetPattern']);
+    if (!$zipAsset) {
+        $response['message'] = 'No release ZIP asset matched expected naming pattern';
+        return $response;
+    }
+
+    $zipAssetName = trim((string)($zipAsset['name'] ?? ''));
+    $zipDownloadUrl = trim((string)($zipAsset['browser_download_url'] ?? ''));
+    if ($zipAssetName === '' || $zipDownloadUrl === '') {
+        $response['message'] = 'ZIP asset metadata is incomplete';
+        return $response;
+    }
+
+    if (!isTrustedGithubRepoAssetUrl($zipDownloadUrl, (string)$repo['owner'], (string)$repo['repo'])) {
+        $response['message'] = 'ZIP asset URL is not trusted for configured repository';
+        return $response;
+    }
+
+    $shaAssetName = $zipAssetName . '.sha256';
+    $sigAssetName = $zipAssetName . '.sig';
+    if (empty($assetByName[$shaAssetName]) || empty($assetByName[$sigAssetName])) {
+        $response['message'] = 'Release is missing required signature assets (.sha256 and .sig)';
+        return $response;
+    }
+
+    $shaUrl = trim((string)($assetByName[$shaAssetName]['browser_download_url'] ?? ''));
+    $sigUrl = trim((string)($assetByName[$sigAssetName]['browser_download_url'] ?? ''));
+    if (!isTrustedGithubRepoAssetUrl($shaUrl, (string)$repo['owner'], (string)$repo['repo']) ||
+        !isTrustedGithubRepoAssetUrl($sigUrl, (string)$repo['owner'], (string)$repo['repo'])) {
+        $response['message'] = 'Signature asset URL is not trusted for configured repository';
+        return $response;
+    }
+
+    $shaFetch = fetchRemoteText($shaUrl, 'text/plain');
+    if (!empty($shaFetch['error'])) {
+        $response['message'] = 'Failed to fetch SHA-256 asset: ' . $shaFetch['error'];
+        return $response;
+    }
+    $zipSha = parseSha256AssetContent((string)$shaFetch['body'], $zipAssetName);
+    if ($zipSha === '') {
+        $response['message'] = 'Invalid SHA-256 asset format';
+        return $response;
+    }
+
+    $sigFetch = fetchRemoteText($sigUrl, 'text/plain');
+    if (!empty($sigFetch['error'])) {
+        $response['message'] = 'Failed to fetch signature asset: ' . $sigFetch['error'];
+        return $response;
+    }
+    $sigB64 = trim((string)$sigFetch['body']);
+    if ($sigB64 === '') {
+        $response['message'] = 'Signature asset is empty';
+        return $response;
+    }
+
+    $signatureCheck = verifyHashSignatureWithConfiguredKey($zipSha, $sigB64);
+    if (empty($signatureCheck['ok'])) {
+        $response['message'] = 'Signature verification failed: ' . (string)($signatureCheck['message'] ?? 'Unknown error');
+        return $response;
+    }
+
+    $currentVersion = getInstalledLaneAssistVersion();
+    $latestVersion = resolveReleaseVersion($zipAssetName, (string)($release['tag_name'] ?? ''));
+    $hasUpdate = version_compare($latestVersion, $currentVersion, '>');
+
+    return [
+        'error' => 0,
+        'message' => '',
+        'hasUpdate' => $hasUpdate ? 1 : 0,
+        'currentVersion' => $currentVersion,
+        'latestVersion' => $latestVersion,
+        'releaseTag' => (string)($release['tag_name'] ?? ''),
+        'publishedAt' => (string)($release['published_at'] ?? ''),
+        'zipAssetName' => $zipAssetName,
+        'zipDownloadUrl' => $zipDownloadUrl,
+        'zipSha256' => $zipSha,
+        'signatureCheck' => $signatureCheck,
+    ];
+}
+
+function getInstalledLaneAssistVersion() {
+    if (function_exists('getLaneAssistModuleVersion')) {
+        $version = trim((string)getLaneAssistModuleVersion());
+        if ($version !== '') {
+            return $version;
+        }
+    }
+
+    $updateConfig = getUpdateConfigFromFile();
+    $fallback = trim((string)($updateConfig['installedVersion'] ?? '0.0.0-dev'));
+    return $fallback !== '' ? $fallback : '0.0.0-dev';
+}
+
+function resolveReleaseVersion($zipAssetName, $tagName) {
+    $zipAssetName = trim((string)$zipAssetName);
+    if (preg_match('/^laneassist-module-v([0-9A-Za-z._-]+)\\.zip$/i', $zipAssetName, $m)) {
+        return (string)$m[1];
+    }
+
+    $tagName = trim((string)$tagName);
+    if ($tagName !== '' && preg_match('/^v(.+)$/i', $tagName, $m)) {
+        return (string)$m[1];
+    }
+
+    return $tagName !== '' ? $tagName : '0.0.0-dev';
+}
+
+function findReleaseZipAsset($assets, $zipAssetPattern) {
+    foreach ($assets as $asset) {
+        $assetName = trim((string)($asset['name'] ?? ''));
+        if ($assetName === '') {
+            continue;
+        }
+
+        if (@preg_match($zipAssetPattern, $assetName)) {
+            return $asset;
+        }
+    }
+
+    return null;
+}
+
+function parseSha256AssetContent($body, $zipAssetName) {
+    $body = trim((string)$body);
+    if ($body === '') {
+        return '';
+    }
+
+    $lines = preg_split('/\r\n|\n|\r/', $body);
+    foreach ((array)$lines as $line) {
+        $line = trim((string)$line);
+        if ($line === '') {
+            continue;
+        }
+
+        if (preg_match('/^([a-f0-9]{64})(?:\s+\*?(.+))?$/i', $line, $m)) {
+            $hash = strtolower((string)$m[1]);
+            $fileInLine = trim((string)($m[2] ?? ''));
+            if ($fileInLine === '' || $fileInLine === $zipAssetName) {
+                return $hash;
+            }
+        }
+    }
+
+    return '';
+}
+
+function verifyHashSignatureWithConfiguredKey($hashHex, $sigB64Input) {
+    $result = [
+        'ok' => false,
+        'algorithm' => 'ed25519',
+        'message' => '',
+    ];
+
+    $hashHex = strtolower(trim((string)$hashHex));
+    if (!preg_match('/^[a-f0-9]{64}$/', $hashHex)) {
+        $result['message'] = 'Invalid SHA-256 hash format';
+        return $result;
+    }
+
+    if (!function_exists('sodium_crypto_sign_verify_detached')) {
+        $result['message'] = 'Libsodium extension is not available';
+        return $result;
+    }
+
+    if (!defined('SODIUM_CRYPTO_SIGN_PUBLICKEYBYTES') || !defined('SODIUM_CRYPTO_SIGN_BYTES')) {
+        $result['message'] = 'Libsodium constants are not available';
+        return $result;
+    }
+
+    $updateConfig = getUpdateConfigFromFile();
+    $publicKeyB64 = trim((string)($updateConfig['publicKeyEd25519'] ?? ''));
+    if ($publicKeyB64 === '') {
+        $result['message'] = 'No public key configured in update-config.php';
+        return $result;
+    }
+
+    $sigB64 = trim((string)$sigB64Input);
+    if ($sigB64 === '') {
+        $result['message'] = 'Signature value is empty';
+        return $result;
+    }
+
+    $publicKey = base64_decode($publicKeyB64, true);
+    $sig = base64_decode($sigB64, true);
+    if ($publicKey === false || $sig === false) {
+        $result['message'] = 'Invalid base64 in public key or signature';
+        return $result;
+    }
+
+    if (strlen($publicKey) !== SODIUM_CRYPTO_SIGN_PUBLICKEYBYTES || strlen($sig) !== SODIUM_CRYPTO_SIGN_BYTES) {
+        $result['message'] = 'Invalid key/signature length';
+        return $result;
+    }
+
+    $isValid = @sodium_crypto_sign_verify_detached($sig, $hashHex, $publicKey);
+    if (!$isValid) {
+        $result['message'] = 'Detached signature validation failed';
+        return $result;
+    }
+
+    $result['ok'] = true;
+    $result['sha256'] = $hashHex;
+    $result['message'] = 'Signature verified';
+    return $result;
+}
+
+function getGithubUpdateRepoConfig() {
+    $updateConfig = getUpdateConfigFromFile();
+    $github = is_array($updateConfig['github'] ?? null) ? $updateConfig['github'] : [];
+
+    $owner = trim((string)($github['owner'] ?? ''));
+    $repo = trim((string)($github['repo'] ?? ''));
+    $releaseApiUrl = trim((string)($github['releaseApiUrl'] ?? ''));
+    $zipAssetPattern = trim((string)($github['zipAssetPattern'] ?? ''));
+
+    if ($owner === '' || $repo === '') {
+        return ['ok' => false, 'message' => 'Updater repo owner/repo are not configured'];
+    }
+
+    if (!preg_match('/^[A-Za-z0-9_.-]+$/', $owner) || !preg_match('/^[A-Za-z0-9_.-]+$/', $repo)) {
+        return ['ok' => false, 'message' => 'Updater repo owner/repo format is invalid'];
+    }
+
+    if ($releaseApiUrl === '') {
+        $releaseApiUrl = 'https://api.github.com/repos/' . $owner . '/' . $repo . '/releases/latest';
+    }
+
+    if ($zipAssetPattern === '') {
+        $zipAssetPattern = '/^laneassist-module-v?[0-9A-Za-z._-]+\\.zip$/i';
+    }
+
+    if (!isTrustedGithubApiReleaseUrl($releaseApiUrl, $owner, $repo)) {
+        return ['ok' => false, 'message' => 'releaseApiUrl is not trusted for configured repository'];
+    }
+
+    return [
+        'ok' => true,
+        'owner' => $owner,
+        'repo' => $repo,
+        'releaseApiUrl' => $releaseApiUrl,
+        'zipAssetPattern' => $zipAssetPattern,
+    ];
 }
 
 function submitFeedback() {
@@ -593,41 +861,90 @@ function buildUserScopedParamName($param) {
     return 'user:' . strtolower($authUser) . ':' . $param;
 }
 
-function fetchRemoteJson($url) {
+function fetchRemoteJson($url, $accept = 'application/json') {
+    $fetch = fetchRemoteResource($url, $accept);
+    if (!empty($fetch['error'])) {
+        return ['error' => $fetch['error']];
+    }
+
+    $data = json_decode((string)$fetch['body'], true);
+    if (!is_array($data)) {
+        return ['error' => 'Response is not valid JSON'];
+    }
+
+    return ['error' => '', 'data' => $data];
+}
+
+function fetchRemoteText($url, $accept = 'text/plain') {
+    $fetch = fetchRemoteResource($url, $accept);
+    if (!empty($fetch['error'])) {
+        return ['error' => $fetch['error']];
+    }
+
+    return [
+        'error' => '',
+        'body' => (string)$fetch['body'],
+    ];
+}
+
+function fetchRemoteResource($url, $accept = '*/*') {
     $context = stream_context_create([
         'http' => [
             'method' => 'GET',
-            'timeout' => 10,
-            'header' => "User-Agent: LaneAssist-Update-Checker\r\nAccept: application/json\r\n",
+            'timeout' => 20,
+            'header' => "User-Agent: LaneAssist-Updater\r\nAccept: " . $accept . "\r\n",
             'ignore_errors' => true,
         ],
     ]);
 
     $body = @file_get_contents($url, false, $context);
     if ($body === false) {
-        return ['error' => 'Unable to download manifest'];
+        return ['error' => 'Unable to download remote resource'];
     }
 
     $statusCode = 0;
     if (!empty($http_response_header) && is_array($http_response_header)) {
+        // Keep the last HTTP status line to support redirect chains (e.g. GitHub 302 -> 200).
         foreach ($http_response_header as $headerLine) {
             if (preg_match('/^HTTP\/[0-9.]+\s+([0-9]{3})/i', $headerLine, $m)) {
                 $statusCode = intval($m[1]);
-                break;
             }
         }
     }
 
     if ($statusCode < 200 || $statusCode >= 300) {
-        return ['error' => 'Manifest request failed with HTTP ' . $statusCode];
+        return ['error' => 'Remote request failed with HTTP ' . $statusCode];
     }
 
-    $data = json_decode($body, true);
-    if (!is_array($data)) {
-        return ['error' => 'Manifest is not valid JSON'];
+    return ['error' => '', 'body' => $body, 'statusCode' => $statusCode];
+}
+
+function downloadRemoteToTempFile($url, $prefix = 'laneassist-', $suffix = '') {
+    $fetch = fetchRemoteResource($url, 'application/octet-stream');
+    if (!empty($fetch['error'])) {
+        return ['error' => $fetch['error']];
     }
 
-    return ['error' => '', 'data' => $data];
+    $tmpFile = tempnam(sys_get_temp_dir(), $prefix);
+    if ($tmpFile === false) {
+        return ['error' => 'Could not allocate temporary file'];
+    }
+
+    if ($suffix !== '') {
+        $target = $tmpFile . $suffix;
+        if (!@rename($tmpFile, $target)) {
+            @unlink($tmpFile);
+            return ['error' => 'Could not create temporary file for download'];
+        }
+        $tmpFile = $target;
+    }
+
+    if (@file_put_contents($tmpFile, (string)$fetch['body']) === false) {
+        @unlink($tmpFile);
+        return ['error' => 'Could not write downloaded content'];
+    }
+
+    return ['error' => '', 'path' => $tmpFile];
 }
 
 function validateUpdateManifest($manifest) {
@@ -688,6 +1005,43 @@ function isTrustedGithubUrl($url) {
     }
 
     return true;
+}
+
+function isTrustedGithubApiReleaseUrl($url, $owner, $repo) {
+    $u = @parse_url((string)$url);
+    if (!$u || empty($u['scheme']) || empty($u['host']) || empty($u['path'])) {
+        return false;
+    }
+
+    if (strtolower((string)$u['scheme']) !== 'https') {
+        return false;
+    }
+
+    if (strtolower((string)$u['host']) !== 'api.github.com') {
+        return false;
+    }
+
+    $expected = '/repos/' . $owner . '/' . $repo . '/releases/latest';
+    return trim((string)$u['path']) === $expected;
+}
+
+function isTrustedGithubRepoAssetUrl($url, $owner, $repo) {
+    $u = @parse_url((string)$url);
+    if (!$u || empty($u['scheme']) || empty($u['host']) || empty($u['path'])) {
+        return false;
+    }
+
+    if (strtolower((string)$u['scheme']) !== 'https') {
+        return false;
+    }
+
+    $host = strtolower((string)$u['host']);
+    if ($host !== 'github.com') {
+        return false;
+    }
+
+    $prefix = '/' . $owner . '/' . $repo . '/releases/download/';
+    return str_starts_with((string)$u['path'], $prefix);
 }
 
 function verifyManifestSignature($manifest) {
@@ -821,10 +1175,45 @@ function applyUpdateFromFile() {
         return;
     }
 
-    $zip = new ZipArchive();
-    if ($zip->open($tmpFile) !== true) {
-        echo json_encode(['error' => 1, 'message' => 'Cannot open ZIP archive']);
+    $apply = applyUpdateArchiveFile($tmpFile);
+    if (empty($apply['ok'])) {
+        echo json_encode(['error' => 1, 'message' => (string)($apply['message'] ?? 'Failed to apply update archive')]);
         return;
+    }
+
+    echo json_encode([
+        'error' => 0,
+        'message' => 'Update file applied successfully',
+        'writtenFiles' => intval($apply['writtenFiles'] ?? 0),
+        'backedUpFiles' => intval($apply['backedUpFiles'] ?? 0),
+        'backupPath' => (string)($apply['backupPath'] ?? ''),
+        'signature' => $zipSignatureCheck,
+    ]);
+}
+
+function verifyUploadedZipSignature($zipTmpFile, $sigB64Input) {
+    $actualSha = strtolower((string)@hash_file('sha256', $zipTmpFile));
+    if ($actualSha === '' || !preg_match('/^[a-f0-9]{64}$/', $actualSha)) {
+        return [
+            'ok' => false,
+            'algorithm' => 'ed25519',
+            'message' => 'Could not compute ZIP checksum',
+        ];
+    }
+
+    $result = verifyHashSignatureWithConfiguredKey($actualSha, $sigB64Input);
+    if (!empty($result['ok'])) {
+        $result['sha256'] = $actualSha;
+        $result['message'] = 'ZIP signature verified';
+    }
+
+    return $result;
+}
+
+function applyUpdateArchiveFile($zipFilePath) {
+    $zip = new ZipArchive();
+    if ($zip->open($zipFilePath) !== true) {
+        return ['ok' => false, 'message' => 'Cannot open ZIP archive'];
     }
 
     $allowedPrefix = 'Modules/Custom/LaneAssist/';
@@ -843,15 +1232,13 @@ function applyUpdateFromFile() {
 
         if (!str_starts_with($normalized, $allowedPrefix)) {
             $zip->close();
-            echo json_encode(['error' => 1, 'message' => 'Archive contains forbidden path: ' . $normalized]);
-            return;
+            return ['ok' => false, 'message' => 'Archive contains forbidden path: ' . $normalized];
         }
 
         $content = $zip->getFromIndex($i);
         if ($content === false) {
             $zip->close();
-            echo json_encode(['error' => 1, 'message' => 'Unable to read archive entry: ' . $normalized]);
-            return;
+            return ['ok' => false, 'message' => 'Unable to read archive entry: ' . $normalized];
         }
 
         $filesToApply[] = [
@@ -863,15 +1250,13 @@ function applyUpdateFromFile() {
     $zip->close();
 
     if (!count($filesToApply)) {
-        echo json_encode(['error' => 1, 'message' => 'Archive contains no updatable files']);
-        return;
+        return ['ok' => false, 'message' => 'Archive contains no updatable files'];
     }
 
     $projectRoot = dirname(__FILE__, 5);
-    $backupRoot = dirname(__FILE__) . '/backups/update-' . date('Ymd-His') . '-' . substr(md5(uniqid('', true)), 0, 6);
-    if (!is_dir($backupRoot) && !@mkdir($backupRoot, 0775, true)) {
-        echo json_encode(['error' => 1, 'message' => 'Cannot create backup directory']);
-        return;
+    $backupRootAbs = buildWritableBackupPath();
+    if ($backupRootAbs === '') {
+        return ['ok' => false, 'message' => 'Cannot create backup directory in module or system temp path'];
     }
 
     $written = 0;
@@ -883,100 +1268,95 @@ function applyUpdateFromFile() {
         $targetDir = dirname($target);
 
         if (!is_dir($targetDir) && !@mkdir($targetDir, 0775, true)) {
-            echo json_encode(['error' => 1, 'message' => 'Cannot create target folder: ' . $targetDir]);
-            return;
+            return ['ok' => false, 'message' => 'Cannot create target folder: ' . $targetDir];
         }
 
         if (file_exists($target)) {
-            $backupFile = $backupRoot . '/' . $relPath;
+            $existingContent = @file_get_contents($target);
+            if ($existingContent !== false && hash('sha256', $existingContent) === hash('sha256', (string)$entry['content'])) {
+                // Skip unchanged files to avoid unnecessary writes on restrictive file perms.
+                continue;
+            }
+
+            $backupFile = $backupRootAbs . '/' . $relPath;
             $backupDir = dirname($backupFile);
             if (!is_dir($backupDir) && !@mkdir($backupDir, 0775, true)) {
-                echo json_encode(['error' => 1, 'message' => 'Cannot create backup subfolder']);
-                return;
+                return ['ok' => false, 'message' => 'Cannot create backup subfolder'];
             }
             if (!@copy($target, $backupFile)) {
-                echo json_encode(['error' => 1, 'message' => 'Failed to backup file: ' . $relPath]);
-                return;
+                return ['ok' => false, 'message' => 'Failed to backup file: ' . $relPath];
             }
             $backedUp++;
         }
 
-        if (@file_put_contents($target, $entry['content']) === false) {
-            echo json_encode(['error' => 1, 'message' => 'Failed to write file: ' . $relPath]);
-            return;
+        if (!writeFileAtomic($target, (string)$entry['content'])) {
+            return ['ok' => false, 'message' => 'Failed to write file: ' . $relPath];
         }
         $written++;
     }
 
-    echo json_encode([
-        'error' => 0,
-        'message' => 'Update file applied successfully',
+    $backupPathRel = str_replace(dirname(__FILE__, 5) . '/', '', $backupRootAbs);
+    if ($backupPathRel === $backupRootAbs) {
+        $backupPathRel = $backupRootAbs;
+    }
+
+    return [
+        'ok' => true,
         'writtenFiles' => $written,
         'backedUpFiles' => $backedUp,
-        'backupPath' => str_replace(dirname(__FILE__, 5) . '/', '', $backupRoot),
-        'signature' => $zipSignatureCheck,
-    ]);
+        'backupPath' => $backupPathRel,
+    ];
 }
 
-function verifyUploadedZipSignature($zipTmpFile, $sigB64Input) {
-    $result = [
-        'ok' => false,
-        'algorithm' => 'ed25519',
-        'message' => '',
+function buildWritableBackupPath() {
+    $suffix = 'update-' . date('Ymd-His') . '-' . substr(md5(uniqid('', true)), 0, 6);
+    $candidates = [
+        dirname(__FILE__) . '/backups/' . $suffix,
+        rtrim((string)sys_get_temp_dir(), '/\\') . '/laneassist-backups/' . $suffix,
     ];
 
-    $sigB64 = trim((string)$sigB64Input);
-    if ($sigB64 === '') {
-        $result['message'] = 'Missing signature value';
-        return $result;
+    foreach ($candidates as $candidate) {
+        if (!is_dir($candidate) && !@mkdir($candidate, 0775, true)) {
+            continue;
+        }
+
+        if (is_dir($candidate) && is_writable($candidate)) {
+            return $candidate;
+        }
     }
 
-    $actualSha = strtolower((string)@hash_file('sha256', $zipTmpFile));
-    if ($actualSha === '' || !preg_match('/^[a-f0-9]{64}$/', $actualSha)) {
-        $result['message'] = 'Could not compute ZIP checksum';
-        return $result;
+    return '';
+}
+
+function writeFileAtomic($targetFile, $content) {
+    $targetDir = dirname($targetFile);
+    if (!is_dir($targetDir) || !is_writable($targetDir)) {
+        return false;
     }
 
-    if (!function_exists('sodium_crypto_sign_verify_detached')) {
-        $result['message'] = 'Libsodium extension is not available';
-        return $result;
+    $tmp = tempnam($targetDir, '.laneassist-upd-');
+    if ($tmp === false) {
+        return false;
     }
 
-    if (!defined('SODIUM_CRYPTO_SIGN_PUBLICKEYBYTES') || !defined('SODIUM_CRYPTO_SIGN_BYTES')) {
-        $result['message'] = 'Libsodium constants are not available';
-        return $result;
+    if (@file_put_contents($tmp, $content) === false) {
+        @unlink($tmp);
+        return false;
     }
 
-    $updateConfig = getUpdateConfigFromFile();
-    $publicKeyB64 = trim((string)($updateConfig['publicKeyEd25519'] ?? ''));
-    if ($publicKeyB64 === '') {
-        $result['message'] = 'No public key configured in update-config.php';
-        return $result;
+    if (file_exists($targetFile)) {
+        $perms = @fileperms($targetFile);
+        if ($perms !== false) {
+            @chmod($tmp, $perms & 0777);
+        }
     }
 
-    $publicKey = base64_decode($publicKeyB64, true);
-    $sig = base64_decode($sigB64, true);
-    if ($publicKey === false || $sig === false) {
-        $result['message'] = 'Invalid base64 in key/signature';
-        return $result;
+    if (!@rename($tmp, $targetFile)) {
+        @unlink($tmp);
+        return false;
     }
 
-    if (strlen($publicKey) !== SODIUM_CRYPTO_SIGN_PUBLICKEYBYTES || strlen($sig) !== SODIUM_CRYPTO_SIGN_BYTES) {
-        $result['message'] = 'Invalid key/signature length';
-        return $result;
-    }
-
-    $payload = $actualSha;
-    $isValid = @sodium_crypto_sign_verify_detached($sig, $payload, $publicKey);
-    if (!$isValid) {
-        $result['message'] = 'Detached signature validation failed';
-        return $result;
-    }
-
-    $result['ok'] = true;
-    $result['sha256'] = $actualSha;
-    $result['message'] = 'ZIP signature verified';
-    return $result;
+    return true;
 }
 
 function normalizeZipEntryPath($entryName) {
@@ -1006,6 +1386,12 @@ function normalizeZipEntryPath($entryName) {
 function getUpdateConfigFromFile() {
     $defaults = [
         'manifestUrl' => '',
+        'github' => [
+            'owner' => 'UranVester',
+            'repo' => 'LaneAssist',
+            'releaseApiUrl' => 'https://api.github.com/repos/UranVester/LaneAssist/releases/latest',
+            'zipAssetPattern' => '/^laneassist-module-v?[0-9A-Za-z._-]+\\.zip$/i',
+        ],
         'publicKeyEd25519' => '',
         'installedVersion' => '0.0.0-dev',
     ];

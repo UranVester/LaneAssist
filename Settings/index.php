@@ -13,10 +13,11 @@ if ($hasCompetition) {
 
 $isDebugMode = !empty($_SESSION['debug']);
 $moduleVersion = getLaneAssistModuleVersion();
-$isAdminSettings = $isDebugMode;
+$isAdminSettings = false;
 if (!empty($CFG->USERAUTH) && !empty($_SESSION['AUTH_ENABLE']) && function_exists('hasFullACL')) {
-    $isAdminSettings = $isAdminSettings || hasFullACL(AclRoot, '', AclReadWrite);
+    $isAdminSettings = hasFullACL(AclRoot, '', AclReadWrite);
 }
+$isAdminOrDebugSettings = $isDebugMode || $isAdminSettings;
 $competitionCode = $hasCompetition ? getCodeFromId($_SESSION['TourId']) : '';
 $activeSettingsOwner = 'Shared default';
 if (!empty($CFG->USERAUTH)) {
@@ -49,7 +50,7 @@ include('Common/Templates/head.php');
     <div id="settings-status" class="status-message hidden"></div>
 
     <div class="settings-grid">
-        <?php if ($isAdminSettings): ?>
+        <?php if ($isAdminOrDebugSettings): ?>
         <section class="settings-card">
             <h3><i class="fa fa-shield"></i> Admin settings</h3>
             <div class="settings-field">
@@ -134,6 +135,20 @@ include('Common/Templates/head.php');
         </section>
 
         <section class="settings-card">
+            <h3><i class="fa fa-cloud-download"></i> Updates</h3>
+            <p class="inline-note">Checks the latest signed release from <strong>GitHub</strong>.</p>
+            <div id="update-github-summary" class="inline-note">Checking for updates...</div>
+            <div id="update-github-meta" class="inline-note"></div>
+            <div class="settings-actions">
+                <button id="btn-check-updates" class="btn btn-info"><i class="fa fa-refresh"></i> Check Updates</button>
+                <?php if (empty($CFG->USERAUTH) || $isAdminSettings): ?>
+                    <button id="btn-apply-update-github" class="btn btn-warning" disabled><i class="fa fa-download"></i> Update Now</button>
+                <?php endif; ?>
+            </div>
+            <small>Only signed releases with your configured Ed25519 key are accepted.</small>
+        </section>
+
+        <section class="settings-card">
             <h3><i class="fa fa-info-circle"></i> About</h3>
             <p>
                 LaneAssist for IANSEO provides interactive workflows for finals and qualification operations.
@@ -184,7 +199,6 @@ include('Common/Templates/head.php');
                 <li>Bugfixing</li>
                 <li>Live view for qualifications</li>
                 <li>Live view for finals</li>
-                <li>AutoUpdate logic</li>
                 <li>Hiding of various unused menu items?</li>
                 <li>Translations</li>
             </ul>
