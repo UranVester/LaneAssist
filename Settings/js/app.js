@@ -9,18 +9,13 @@
         bindEvents();
         loadSettings();
         checkUpdates();
-        if (isDebugMode) {
-            loadFeedbackQueue();
-        }
     }
 
     function bindEvents() {
         $('#btn-save-admin-settings').on('click', saveAdminSettings);
         $('#btn-save-global-settings').on('click', saveGlobalSettings);
         $('#btn-save-competition-settings').on('click', saveCompetitionSettings);
-        $('#btn-send-feedback').on('click', sendFeedback);
         $('#btn-donate').on('click', donateIntent);
-        $('#btn-refresh-feedback-debug').on('click', loadFeedbackQueue);
         $('#btn-apply-update-file').on('click', applyUpdateFromFile);
         $('#btn-check-updates').on('click', checkUpdates);
         $('#btn-apply-update-github').on('click', applyUpdateFromGithub);
@@ -281,56 +276,6 @@
         });
     }
 
-    function sendFeedback() {
-        const type = ($('#feedback-type').val() || 'general').toString();
-        const message = ($('#feedback-text').val() || '').toString().trim();
-
-        if (!message) {
-            showStatus('Please write a feedback message first', 'error');
-            return;
-        }
-
-        $.ajax({
-            url: ROOT_DIR + 'Modules/Custom/LaneAssist/Settings/api.php',
-            method: 'POST',
-            dataType: 'json',
-            data: {
-                action: 'submitFeedback',
-                type: type,
-                message: message
-            },
-            success: function(response) {
-                if (response.error) {
-                    showStatus(response.message || 'Failed to send feedback', 'error');
-                    return;
-                }
-
-                $('#feedback-text').val('');
-                const stored = response.stored || {};
-                if (isDebugMode) {
-                    const g = parseInt(stored.globalCount, 10);
-                    const c = parseInt(stored.competitionCount, 10);
-                    const details = [];
-                    if (!Number.isNaN(g)) {
-                        details.push('global=' + g);
-                    }
-                    if (!Number.isNaN(c)) {
-                        details.push('competition=' + c);
-                    }
-                    const suffix = details.length ? ' (' + details.join(', ') + ')' : '';
-                    showStatus((response.message || 'Feedback sent') + suffix, 'success');
-                } else {
-                    showStatus(response.message || 'Feedback sent', 'success');
-                }
-                if (isDebugMode) {
-                    loadFeedbackQueue();
-                }
-            },
-            error: function() {
-                showStatus('Failed to send feedback', 'error');
-            }
-        });
-    }
 
     function donateIntent() {
         $.ajax({
@@ -407,60 +352,6 @@
         });
     }
 
-    function loadFeedbackQueue() {
-        if (!isDebugMode || !$('#feedback-debug-body').length) {
-            return;
-        }
-
-        $('#feedback-debug-body').html('<tr><td colspan="6">Loading…</td></tr>');
-        $.ajax({
-            url: ROOT_DIR + 'Modules/Custom/LaneAssist/Settings/api.php',
-            method: 'POST',
-            dataType: 'json',
-            data: {
-                action: 'getFeedbackQueue'
-            },
-            success: function(response) {
-                if (response.error) {
-                    $('#feedback-debug-body').html('<tr><td colspan="6">' + escapeHtml(response.message || 'Failed to load feedback queue') + '</td></tr>');
-                    return;
-                }
-
-                const items = Array.isArray(response.items) ? response.items : [];
-                renderFeedbackQueue(items);
-                $('#feedback-debug-summary').text((response.count || items.length) + ' feedback item(s) loaded');
-            },
-            error: function() {
-                $('#feedback-debug-body').html('<tr><td colspan="6">Failed to load feedback queue</td></tr>');
-            }
-        });
-    }
-
-    function renderFeedbackQueue(items) {
-        if (!items.length) {
-            $('#feedback-debug-body').html('<tr><td colspan="6">No feedback stored yet</td></tr>');
-            return;
-        }
-
-        const rows = items.map(function(item) {
-            const when = escapeHtml((item.createdAt || '').toString());
-            const author = escapeHtml((item.author || 'Unknown').toString());
-            const scope = escapeHtml((item.scope || '').toString());
-            const type = escapeHtml((item.type || '').toString());
-            const tournament = parseInt(item.tournament, 10) || 0;
-            const message = escapeHtml((item.message || '').toString());
-            return '<tr>' +
-                '<td>' + (when || '-') + '</td>' +
-                '<td>' + (author || 'Unknown') + '</td>' +
-                '<td>' + (scope || '-') + '</td>' +
-                '<td>' + (type || '-') + '</td>' +
-                '<td>' + (tournament > 0 ? tournament : '-') + '</td>' +
-                '<td>' + message + '</td>' +
-                '</tr>';
-        });
-
-        $('#feedback-debug-body').html(rows.join(''));
-    }
 
     function escapeHtml(text) {
         return text

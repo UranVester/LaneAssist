@@ -46,12 +46,6 @@ switch ($action) {
     case 'applyUpdateFromFile':
         applyUpdateFromFile();
         break;
-    case 'submitFeedback':
-        submitFeedback();
-        break;
-    case 'getFeedbackQueue':
-        getFeedbackQueue();
-        break;
     case 'donateIntent':
         donateIntent();
         break;
@@ -622,125 +616,6 @@ function getGithubUpdateRepoConfig() {
     ];
 }
 
-function submitFeedback() {
-    $type = trim((string)($_REQUEST['type'] ?? 'general'));
-    $message = trim((string)($_REQUEST['message'] ?? ''));
-
-    if (!in_array($type, ['feature', 'bug', 'general'], true)) {
-        $type = 'general';
-    }
-
-    if ($message === '') {
-        echo json_encode(['error' => 1, 'message' => 'Feedback message cannot be empty']);
-        return;
-    }
-
-    $entry = [
-        'id' => uniqid('fb_', true),
-        'author' => resolveFeedbackAuthor(),
-        'type' => $type,
-        'message' => $message,
-        'createdAt' => date('Y-m-d H:i:s'),
-        'tournament' => intval($_SESSION['TourId'] ?? 0),
-        'scope' => 'global',
-    ];
-
-    $globalQueue = getGlobalModuleParameter('LaneAssist', 'FeedbackQueue', []);
-    if (!is_array($globalQueue)) {
-        $globalQueue = [];
-    }
-    $globalQueue[] = $entry;
-    if (count($globalQueue) > 100) {
-        $globalQueue = array_slice($globalQueue, -100);
-    }
-    setGlobalModuleParameter('LaneAssist', 'FeedbackQueue', $globalQueue);
-
-    $competitionQueueCount = null;
-    if (!empty($_SESSION['TourId'])) {
-        $tourId = intval($_SESSION['TourId']);
-        $competitionQueue = getModuleParameter('LaneAssist', 'FeedbackQueue', [], $tourId);
-        if (!is_array($competitionQueue)) {
-            $competitionQueue = [];
-        }
-
-        $entryCompetition = $entry;
-        $entryCompetition['scope'] = 'competition';
-        $competitionQueue[] = $entryCompetition;
-        if (count($competitionQueue) > 100) {
-            $competitionQueue = array_slice($competitionQueue, -100);
-        }
-        setModuleParameter('LaneAssist', 'FeedbackQueue', $competitionQueue, $tourId);
-        $competitionQueueCount = count($competitionQueue);
-    }
-
-    echo json_encode([
-        'error' => 0,
-        'message' => 'Feedback received. Thank you!',
-        'entry' => $entry,
-        'stored' => [
-            'globalCount' => count($globalQueue),
-            'competitionCount' => $competitionQueueCount,
-        ]
-    ]);
-}
-
-function getFeedbackQueue() {
-    if (empty($_SESSION['debug'])) {
-        echo json_encode(['error' => 1, 'message' => 'Feedback queue is available only in debug mode']);
-        return;
-    }
-
-    $items = [];
-
-    if (!empty($_SESSION['TourId'])) {
-        $competitionQueue = getModuleParameter('LaneAssist', 'FeedbackQueue', [], intval($_SESSION['TourId']));
-        if (is_array($competitionQueue)) {
-            foreach ($competitionQueue as $entry) {
-                $entry = normalizeFeedbackEntry($entry);
-                if (empty($entry['scope'])) {
-                    $entry['scope'] = 'competition';
-                }
-                $items[] = $entry;
-            }
-        }
-    }
-
-    $globalQueue = getGlobalModuleParameter('LaneAssist', 'FeedbackQueue', []);
-    if (is_array($globalQueue)) {
-        foreach ($globalQueue as $entry) {
-            $entry = normalizeFeedbackEntry($entry);
-            if (empty($entry['scope'])) {
-                $entry['scope'] = 'global';
-            }
-            $items[] = $entry;
-        }
-    }
-
-    $deduped = [];
-    $seen = [];
-    foreach ($items as $entry) {
-        $fingerprint = ($entry['id'] ?? '') . '|' . ($entry['createdAt'] ?? '') . '|' . ($entry['author'] ?? '') . '|' . ($entry['type'] ?? '') . '|' . ($entry['message'] ?? '') . '|' . intval($entry['tournament'] ?? 0);
-        if (isset($seen[$fingerprint])) {
-            continue;
-        }
-        $seen[$fingerprint] = true;
-        $deduped[] = $entry;
-    }
-
-    usort($deduped, function($a, $b) {
-        return strcmp((string)$b['createdAt'], (string)$a['createdAt']);
-    });
-
-    if (count($deduped) > 200) {
-        $deduped = array_slice($deduped, 0, 200);
-    }
-
-    echo json_encode([
-        'error' => 0,
-        'items' => $deduped,
-        'count' => count($deduped),
-    ]);
-}
 
 function donateIntent() {
     echo json_encode([
@@ -784,46 +659,6 @@ function decodeModuleParameterValue($rawValue) {
     return $rawValue;
 }
 
-function normalizeFeedbackEntry($entry) {
-    if (!is_array($entry)) {
-        $entry = [
-            'id' => uniqid('fb_', true),
-            'author' => 'Unknown',
-            'type' => 'general',
-            'message' => (string)$entry,
-            'createdAt' => '',
-            'tournament' => 0,
-            'scope' => 'global',
-        ];
-    }
-
-    $entry['id'] = trim((string)($entry['id'] ?? ''));
-    $entry['author'] = trim((string)($entry['author'] ?? ''));
-    if ($entry['author'] === '') {
-        $entry['author'] = 'Unknown';
-    }
-    $entry['type'] = in_array(($entry['type'] ?? 'general'), ['feature', 'bug', 'general'], true) ? $entry['type'] : 'general';
-    $entry['message'] = trim((string)($entry['message'] ?? ''));
-    $entry['createdAt'] = trim((string)($entry['createdAt'] ?? ''));
-    $entry['tournament'] = intval($entry['tournament'] ?? 0);
-    $entry['scope'] = trim((string)($entry['scope'] ?? ''));
-
-    return $entry;
-}
-
-function resolveFeedbackAuthor() {
-    global $CFG;
-
-    $authEnabled = !empty($CFG->USERAUTH);
-    if ($authEnabled) {
-        $user = trim((string)($_SESSION['AUTH_User'] ?? ''));
-        if ($user !== '') {
-            return $user;
-        }
-    }
-
-    return 'Unknown';
-}
 
 function getUserScopedGlobalSetting($module, $param, $defaultValue='') {
     $userParam = buildUserScopedParamName($param);

@@ -206,51 +206,10 @@ include('Common/Templates/head.php');
         
         <section class="settings-card">
             <h3><i class="fa fa-bug"></i> Feature requests & bugs</h3>
-            <p>Send feature requests, bug reports, or general suggestions.</p>
-            <div class="settings-field">
-                <label for="feedback-type">Type</label>
-                <select id="feedback-type">
-                    <option value="feature">Feature request</option>
-                    <option value="bug">Bug report</option>
-                    <option value="general">General feedback</option>
-                </select>
-            </div>
-            <div class="settings-field">
-                <label for="feedback-text">Message</label>
-                <textarea id="feedback-text" rows="4" placeholder="Describe your request, issue, or idea..."></textarea>
-            </div>
-            <div class="settings-actions">
-                <button id="btn-send-feedback" class="btn btn-info"><i class="fa fa-paper-plane"></i> Send Feedback</button>
-            </div>
+            <p>Have a feature request, bug report, or general suggestion?</p>
+            <p>Please send an email to <a href="mailto:ianseo@vester.net">ianseo@vester.net</a> with a description of your request or issue.</p>
         </section>
 
-        <?php if ($isDebugMode): ?>
-        <section class="settings-card settings-card-debug">
-            <h3><i class="fa fa-terminal"></i> Debug feedback view</h3>
-            <p class="inline-note">Visible only while debug mode is enabled.</p>
-            <div class="settings-actions">
-                <button id="btn-refresh-feedback-debug" class="btn btn-info"><i class="fa fa-refresh"></i> Refresh Queue</button>
-            </div>
-            <div id="feedback-debug-summary" class="inline-note"></div>
-            <div class="feedback-debug-table-wrap">
-                <table class="feedback-debug-table">
-                    <thead>
-                        <tr>
-                            <th>When</th>
-                            <th>User</th>
-                            <th>Scope</th>
-                            <th>Type</th>
-                            <th>Tournament</th>
-                            <th>Message</th>
-                        </tr>
-                    </thead>
-                    <tbody id="feedback-debug-body">
-                        <tr><td colspan="6">Loading…</td></tr>
-                    </tbody>
-                </table>
-            </div>
-        </section>
-        <?php endif; ?>
 
         
     </div>
