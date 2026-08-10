@@ -2028,11 +2028,12 @@
                     });
                 }
 
-                const projectedPlayable = projectedParticipants >= 2 &&
+                const projectedPlayable = projectedParticipants === 0 ||
+                    (projectedParticipants >= 2 &&
                     seedPositions.length >= 2 &&
                     seedPositions.slice(0, 2).every(function(seed) {
                         return seed <= projectedParticipants;
-                    });
+                    }));
 
                 const pairHasAssignedTarget = pairRows.some(function(row) {
                     return parseTargetNumber(row.target) !== null;
