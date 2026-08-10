@@ -336,7 +336,7 @@ function getCurrent() {
     // Get target face images for the faces used in this session
     $targetFaceImages = array();
     if (!empty($targetFaceIds)) {
-        $tfSql = "SELECT TarId, TarDescr, TarFullSize FROM Targets WHERE TarId IN (" . implode(',', array_keys($targetFaceIds)) . ")";
+        $tfSql = "SELECT TarId, TarDescr, TarFullSize FROM Targets WHERE TarId IN (" . implode(',', array_map('intval', array_keys($targetFaceIds))) . ")";
         $tfRs = safe_r_sql($tfSql);
         while ($tfRow = safe_fetch($tfRs)) {
             // Try .svg first, then .svgz as fallback

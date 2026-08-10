@@ -47,8 +47,8 @@ function getLaneAssistGlobalParameter($param, $defaultValue = '') {
         if ($rowUser = safe_fetch($resultUser)) {
             $rawUser = $rowUser->MpValue;
             if ($rawUser !== '' && $rawUser !== null) {
-                $decodedUser = @unserialize($rawUser);
-                if ($decodedUser !== false) {
+                $decodedUser = @unserialize($rawUser, ['allowed_classes' => false]);
+                if ($decodedUser !== false || $rawUser === 'b:0;') {
                     return $decodedUser;
                 }
             }
@@ -66,8 +66,8 @@ function getLaneAssistGlobalParameter($param, $defaultValue = '') {
     if ($row = safe_fetch($result)) {
         $raw = $row->MpValue;
         if ($raw !== '' && $raw !== null) {
-            $decoded = @unserialize($raw);
-            if ($decoded !== false) {
+            $decoded = @unserialize($raw, ['allowed_classes' => false]);
+            if ($decoded !== false || $raw === 'b:0;') {
                 return $decoded;
             }
         }
@@ -164,8 +164,8 @@ include('Common/Templates/head.php');
                                     </label>
                                     <?php foreach ($divisions as $div): ?>
                                     <label class="multi-option">
-                                        <input type="checkbox" value="<?php echo $div->DivId; ?>">
-                                        <span><?php echo $div->DivDescription . ' (' . $div->DivId . ')'; ?></span>
+                                        <input type="checkbox" value="<?php echo htmlspecialchars($div->DivId, ENT_QUOTES, 'UTF-8'); ?>">
+                                        <span><?php echo htmlspecialchars($div->DivDescription, ENT_QUOTES, 'UTF-8') . ' (' . htmlspecialchars($div->DivId, ENT_QUOTES, 'UTF-8') . ')'; ?></span>
                                     </label>
                                     <?php endforeach; ?>
                                 </div>
@@ -173,8 +173,8 @@ include('Common/Templates/head.php');
                             <select id="division-filter" name="division" multiple size="5" class="hidden-filter-select" aria-hidden="true" tabindex="-1">
                                 <option value="" selected>-- <?php echo get_text('AllEvents'); ?> --</option>
                                 <?php foreach ($divisions as $div): ?>
-                                    <option value="<?php echo $div->DivId; ?>">
-                                        <?php echo $div->DivDescription . ' (' . $div->DivId . ')'; ?>
+                                    <option value="<?php echo htmlspecialchars($div->DivId, ENT_QUOTES, 'UTF-8'); ?>">
+                                        <?php echo htmlspecialchars($div->DivDescription, ENT_QUOTES, 'UTF-8') . ' (' . htmlspecialchars($div->DivId, ENT_QUOTES, 'UTF-8') . ')'; ?>
                                     </option>
                                 <?php endforeach; ?>
                             </select>
@@ -193,8 +193,8 @@ include('Common/Templates/head.php');
                                     </label>
                                     <?php foreach ($classes as $cls): ?>
                                     <label class="multi-option">
-                                        <input type="checkbox" value="<?php echo $cls->ClId; ?>">
-                                        <span><?php echo $cls->ClDescription . ' (' . $cls->ClId . ')'; ?></span>
+                                        <input type="checkbox" value="<?php echo htmlspecialchars($cls->ClId, ENT_QUOTES, 'UTF-8'); ?>">
+                                        <span><?php echo htmlspecialchars($cls->ClDescription, ENT_QUOTES, 'UTF-8') . ' (' . htmlspecialchars($cls->ClId, ENT_QUOTES, 'UTF-8') . ')'; ?></span>
                                     </label>
                                     <?php endforeach; ?>
                                 </div>
@@ -202,8 +202,8 @@ include('Common/Templates/head.php');
                             <select id="class-filter" name="class" multiple size="5" class="hidden-filter-select" aria-hidden="true" tabindex="-1">
                                 <option value="" selected>-- <?php echo get_text('AllEvents'); ?> --</option>
                                 <?php foreach ($classes as $cls): ?>
-                                    <option value="<?php echo $cls->ClId; ?>">
-                                        <?php echo $cls->ClDescription . ' (' . $cls->ClId . ')'; ?>
+                                    <option value="<?php echo htmlspecialchars($cls->ClId, ENT_QUOTES, 'UTF-8'); ?>">
+                                        <?php echo htmlspecialchars($cls->ClDescription, ENT_QUOTES, 'UTF-8') . ' (' . htmlspecialchars($cls->ClId, ENT_QUOTES, 'UTF-8') . ')'; ?>
                                     </option>
                                 <?php endforeach; ?>
                             </select>

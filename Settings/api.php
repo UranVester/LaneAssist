@@ -651,8 +651,8 @@ function setGlobalModuleParameter($module, $param, $value) {
 
 function decodeModuleParameterValue($rawValue) {
     if ($rawValue !== '' && $rawValue !== null) {
-        $decoded = @unserialize($rawValue);
-        if ($decoded !== false) {
+        $decoded = @unserialize($rawValue, ['allowed_classes' => false]);
+        if ($decoded !== false || $rawValue === 'b:0;') {
             return $decoded;
         }
     }

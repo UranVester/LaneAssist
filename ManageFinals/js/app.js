@@ -2727,6 +2727,10 @@
         });
         $card.toggleClass('changed', changed);
 
+        if (!bundle.isPlayable) {
+            $card.addClass('not-playable');
+        }
+
         const warningText = state.bundleWarnings[bundle.key] || (bundle.warningText || '');
         if (!bundle.isPlayable && bundleHasAssignedTarget(bundle)) {
             $card.addClass('has-warning');
@@ -3119,7 +3123,17 @@
     let activeDragSourceWrapper = null;
 
     function makeBundlesDraggable() {
-        $('.bundle-card').draggable({
+        var allBundles = buildBundles(state.rows);
+        var playableKeys = {};
+        allBundles.forEach(function(bundle) {
+            if (bundle.isPlayable) {
+                playableKeys[bundle.key] = true;
+            }
+        });
+
+        $('.bundle-card').filter(function() {
+            return !!playableKeys[$(this).data('bundle-key')];
+        }).draggable({
             helper: function() {
                 const $clone = $(this).clone();
                 $clone.data('mf-source-card', this);

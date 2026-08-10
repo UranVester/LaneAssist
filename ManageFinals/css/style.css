@@ -835,6 +835,11 @@
     box-shadow: 0 0 0 1px rgba(220, 53, 69, 0.25);
 }
 
+.bundle-card.not-playable {
+    cursor: default;
+    opacity: 0.7;
+}
+
 .card-top {
     display: flex;
     align-items: flex-start;

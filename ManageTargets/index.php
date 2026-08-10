@@ -149,11 +149,11 @@ $JS_SCRIPT = array(
     '<script type="text/javascript">
         var ROOT_DIR = "' . $CFG->ROOT_DIR . '";
         var TourId = ' . intval($_SESSION['TourId']) . ';
-        var TourCode = "' . (isset($_SESSION['TourCode']) ? $_SESSION['TourCode'] : '') . '";
+        var TourCode = ' . json_encode(isset($_SESSION['TourCode']) ? $_SESSION['TourCode'] : '', JSON_HEX_TAG | JSON_HEX_AMP) . ';
         var TargetNoPadding = ' . intval(TargetNoPadding) . ';
-        var DivisionMeta = ' . json_encode($divisionMeta) . ';
-        var ClassMeta = ' . json_encode($classMeta) . ';
-        var TargetLayouts = ' . json_encode($targetLayouts) . ';
+        var DivisionMeta = ' . json_encode($divisionMeta, JSON_HEX_TAG | JSON_HEX_AMP) . ';
+        var ClassMeta = ' . json_encode($classMeta, JSON_HEX_TAG | JSON_HEX_AMP) . ';
+        var TargetLayouts = ' . json_encode($targetLayouts, JSON_HEX_TAG | JSON_HEX_AMP) . ';
     </script>',
     '<link href="' . $CFG->ROOT_DIR . 'Modules/Custom/LaneAssist/Common/css/shared.css" rel="stylesheet" type="text/css">',
     '<link href="' . $CFG->ROOT_DIR . 'Modules/Custom/LaneAssist/ManageTargets/css/style.css" rel="stylesheet" type="text/css">',
@@ -181,8 +181,8 @@ include('Common/Templates/head.php');
                         <option value="">-- <?php echo get_text('Select', 'Tournament'); ?> --</option>
                         <?php endif; ?>
                         <?php foreach ($sessions as $s): ?>
-                            <option value="<?php echo $s->SesOrder; ?>"<?php echo (count($sessions) == 1) ? ' selected="selected"' : ''; ?>>
-                                <?php echo $s->SesOrder . ' - ' . $s->Descr; ?>
+                            <option value="<?php echo intval($s->SesOrder); ?>"<?php echo (count($sessions) == 1) ? ' selected="selected"' : ''; ?>>
+                                <?php echo intval($s->SesOrder) . ' - ' . htmlspecialchars($s->Descr, ENT_QUOTES, 'UTF-8'); ?>
                             </option>
                         <?php endforeach; ?>
                     </select>
@@ -200,14 +200,14 @@ include('Common/Templates/head.php');
                     <select id="layout-select" name="layout" title="Select how targets are arranged on mats">
                         <option value="layout_fallback_stacked">No layout</option>
                         <?php foreach ($targetLayouts as $layout): ?>
-                            <option value="<?php echo $layout['id']; ?>" 
-                                    data-archers="<?php echo $layout['archersPerLane']; ?>"
-                                    data-targets-per-mat="<?php echo $layout['targetsPerMat']; ?>"
-                                    data-lanes-per-mat="<?php echo $layout['lanesPerMat']; ?>"
-                                    data-target-size="<?php echo $layout['targetSize']; ?>"
-                                    title="<?php echo htmlspecialchars($layout['description']); ?>"
-                                    data-description="<?php echo htmlspecialchars($layout['description']); ?>">
-                                <?php echo $layout['name']; ?>
+                            <option value="<?php echo htmlspecialchars($layout['id'], ENT_QUOTES, 'UTF-8'); ?>"
+                                    data-archers="<?php echo intval($layout['archersPerLane']); ?>"
+                                    data-targets-per-mat="<?php echo intval($layout['targetsPerMat']); ?>"
+                                    data-lanes-per-mat="<?php echo intval($layout['lanesPerMat']); ?>"
+                                    data-target-size="<?php echo intval($layout['targetSize']); ?>"
+                                    title="<?php echo htmlspecialchars($layout['description'], ENT_QUOTES, 'UTF-8'); ?>"
+                                    data-description="<?php echo htmlspecialchars($layout['description'], ENT_QUOTES, 'UTF-8'); ?>">
+                                <?php echo htmlspecialchars($layout['name'], ENT_QUOTES, 'UTF-8'); ?>
                             </option>
                         <?php endforeach; ?>
                     </select>
@@ -260,8 +260,8 @@ include('Common/Templates/head.php');
                                     </label>
                                     <?php foreach ($divisions as $div): ?>
                                     <label class="multi-option">
-                                        <input type="checkbox" value="<?php echo $div->DivId; ?>">
-                                        <span><?php echo $div->DivDescription . ' (' . $div->DivId . ')'; ?></span>
+                                        <input type="checkbox" value="<?php echo htmlspecialchars($div->DivId, ENT_QUOTES, 'UTF-8'); ?>">
+                                        <span><?php echo htmlspecialchars($div->DivDescription, ENT_QUOTES, 'UTF-8') . ' (' . htmlspecialchars($div->DivId, ENT_QUOTES, 'UTF-8') . ')'; ?></span>
                                     </label>
                                     <?php endforeach; ?>
                                 </div>
@@ -269,8 +269,8 @@ include('Common/Templates/head.php');
                             <select id="division-filter" name="division" multiple size="5" class="hidden-filter-select" aria-hidden="true" tabindex="-1">
                                 <option value="" selected>-- <?php echo get_text('AllEvents'); ?> --</option>
                                 <?php foreach ($divisions as $div): ?>
-                                    <option value="<?php echo $div->DivId; ?>">
-                                        <?php echo $div->DivDescription . ' (' . $div->DivId . ')'; ?>
+                                    <option value="<?php echo htmlspecialchars($div->DivId, ENT_QUOTES, 'UTF-8'); ?>">
+                                        <?php echo htmlspecialchars($div->DivDescription, ENT_QUOTES, 'UTF-8') . ' (' . htmlspecialchars($div->DivId, ENT_QUOTES, 'UTF-8') . ')'; ?>
                                     </option>
                                 <?php endforeach; ?>
                             </select>
@@ -289,8 +289,8 @@ include('Common/Templates/head.php');
                                     </label>
                                     <?php foreach ($classes as $cls): ?>
                                     <label class="multi-option">
-                                        <input type="checkbox" value="<?php echo $cls->ClId; ?>">
-                                        <span><?php echo $cls->ClDescription . ' (' . $cls->ClId . ')'; ?></span>
+                                        <input type="checkbox" value="<?php echo htmlspecialchars($cls->ClId, ENT_QUOTES, 'UTF-8'); ?>">
+                                        <span><?php echo htmlspecialchars($cls->ClDescription, ENT_QUOTES, 'UTF-8') . ' (' . htmlspecialchars($cls->ClId, ENT_QUOTES, 'UTF-8') . ')'; ?></span>
                                     </label>
                                     <?php endforeach; ?>
                                 </div>
@@ -298,8 +298,8 @@ include('Common/Templates/head.php');
                             <select id="class-filter" name="class" multiple size="5" class="hidden-filter-select" aria-hidden="true" tabindex="-1">
                                 <option value="" selected>-- <?php echo get_text('AllEvents'); ?> --</option>
                                 <?php foreach ($classes as $cls): ?>
-                                    <option value="<?php echo $cls->ClId; ?>">
-                                        <?php echo $cls->ClDescription . ' (' . $cls->ClId . ')'; ?>
+                                    <option value="<?php echo htmlspecialchars($cls->ClId, ENT_QUOTES, 'UTF-8'); ?>">
+                                        <?php echo htmlspecialchars($cls->ClDescription, ENT_QUOTES, 'UTF-8') . ' (' . htmlspecialchars($cls->ClId, ENT_QUOTES, 'UTF-8') . ')'; ?>
                                     </option>
                                 <?php endforeach; ?>
                             </select>

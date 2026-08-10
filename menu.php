@@ -13,7 +13,7 @@ function laneAssistGetAdminMenuToggle($paramName) {
 	$res = safe_r_sql($query);
 	if ($row = safe_fetch($res)) {
 		$raw = $row->MpValue;
-		$decoded = @unserialize($raw);
+		$decoded = @unserialize($raw, ['allowed_classes' => false]);
 		$value = ($decoded !== false || $raw === 'b:0;') ? $decoded : $raw;
 		return intval($value) ? true : false;
 	}
