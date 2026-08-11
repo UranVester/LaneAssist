@@ -631,6 +631,20 @@ function getProjectedFinalistsForEvent($eventCode, $teamEvent, $eventNumQualifie
                 $entrantCount = max(0, intval($fallbackRow->Cnt));
             }
         }
+
+        // Final fallback: count teams marked for finals directly (no TeamFinComponent yet)
+        if ($entrantCount === 0) {
+            $directSql = "SELECT COUNT(DISTINCT CONCAT(t.TeCoId,'-',t.TeSubTeam)) AS Cnt
+                          FROM Teams t
+                          WHERE t.TeTournament=" . StrSafe_DB($_SESSION['TourId']) . "
+                            AND t.TeEvent=" . StrSafe_DB($eventCode) . "
+                            AND t.TeFinEvent=1
+                            AND t.TeSO!=0";
+            $directRs = safe_r_sql($directSql);
+            if ($directRow = safe_fetch($directRs)) {
+                $entrantCount = max(0, intval($directRow->Cnt));
+            }
+        }
     }
 
     if ($numQualified > 0) {
