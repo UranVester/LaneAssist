@@ -1,6 +1,11 @@
 <?php
 require_once(dirname(__FILE__, 3) . '/config.php');
 
+if (empty($_SESSION['debug'])) {
+    header('HTTP/1.0 403 Forbidden');
+    die('Debug mode required');
+}
+
 CheckTourSession(true);
 checkACL(AclParticipants, AclReadOnly);
 require_once('Common/Fun_Sessions.inc.php');

@@ -661,7 +661,7 @@
         }
 
         const time = (timeValue || '').toString().trim();
-        if (!time || time === '00:00:00') {
+        if (!time) {
             return '';
         }
         return time;
@@ -1701,6 +1701,25 @@
 
         state.manualTimeslots = [];
 
+        var savedRowState = state.rows.map(function(row) {
+            return { key: row.key, target: row.target, scheduledDate: row.scheduledDate, scheduledTime: row.scheduledTime, scheduledLen: row.scheduledLen };
+        });
+
+        function restoreRowState() {
+            var lookup = {};
+            savedRowState.forEach(function(s) { lookup[s.key] = s; });
+            state.rows.forEach(function(row) {
+                var saved = lookup[row.key];
+                if (saved) {
+                    row.target = saved.target;
+                    row.scheduledDate = saved.scheduledDate;
+                    row.scheduledTime = saved.scheduledTime;
+                    row.scheduledLen = saved.scheduledLen;
+                    refreshRowPlacementKeys(row);
+                }
+            });
+        }
+
         allBundles.forEach(function(bundle) {
             bundle.rows.forEach(function(row) {
                 row.target = '';
@@ -1729,12 +1748,14 @@
             if (typeof invalidPlanTeam !== 'undefined') {
                 const label = (parseInt(invalidPlanTeam, 10) || 0) === 1 ? 'team' : 'individual';
                 showStatus('Auto assign failed: not enough targets to keep fixed distance lanes for ' + label + ' finals', 'error');
+                restoreRowState();
                 return;
             }
 
             const distanceLocksResult = buildDistanceLocksFromLanePlans(lanePlanByTeam);
             if (!distanceLocksResult.valid) {
                 showStatus('Auto assign failed: ' + (distanceLocksResult.message || 'distance lane conflict'), 'error');
+                restoreRowState();
                 return;
             }
 
@@ -1889,6 +1910,7 @@
                 const result = placeBundle(ordered[b]);
                 if (!result.ok) {
                     showStatus(result.message || 'Auto assign failed', 'error');
+                    restoreRowState();
                     return;
                 }
             }
@@ -1903,6 +1925,7 @@
                 const result = placeBundle(orderedMedals[m]);
                 if (!result.ok) {
                     showStatus(result.message || 'Auto assign failed', 'error');
+                    restoreRowState();
                     return;
                 }
             }
@@ -1928,6 +1951,7 @@
                 const result = placeBundle(orderedMedals[m]);
                 if (!result.ok) {
                     showStatus(result.message || 'Auto assign failed', 'error');
+                    restoreRowState();
                     return;
                 }
             }

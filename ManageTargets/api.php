@@ -141,7 +141,13 @@ function normalizeTargetRange($requestedFrom, $requestedTo, $sessionFirstTarget,
     return array($fromTarget, $toTarget, $sessionLastTarget);
 }
 
+require_once(dirname(__FILE__, 2) . '/Common/csrf.php');
+
 $action = requestString('action');
+
+if (in_array($action, ['apply', 'validate', 'previewAutoAssign'], true)) {
+    laneAssistRequirePost();
+}
 
 switch ($action) {
     case 'getCurrent':
@@ -1243,7 +1249,9 @@ function applyChanges() {
     $results = array();
     $successCount = 0;
     $errorCount = 0;
-    
+
+    safe_w_BeginTransaction();
+
     foreach ($changes as $change) {
         $participantId = intval($change['participantId']);
         $targetFull = $change['targetFull'] ?? '';
@@ -1327,6 +1335,12 @@ function applyChanges() {
         }
     }
     
+    if ($errorCount > 0) {
+        safe_w_Rollback();
+    } else {
+        safe_w_Commit();
+    }
+
     $message = "$successCount change(s) applied successfully";
     if ($errorCount > 0) {
         $message .= ", $errorCount error(s)";

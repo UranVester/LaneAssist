@@ -16,7 +16,14 @@ if (!function_exists('getModuleParameter')) {
     require_once(dirname(__FILE__, 5) . '/Common/Lib/Fun_Modules.php');
 }
 
+require_once(dirname(__FILE__, 2) . '/Common/csrf.php');
+
 $action = $_REQUEST['action'] ?? '';
+
+$writeActions = ['saveAdminSettings', 'saveUserSettings', 'saveGlobalSettings', 'saveCompetitionSettings', 'saveTournamentSettings', 'applyUpdateFromGithub', 'applyUpdateFromFile'];
+if (in_array($action, $writeActions, true)) {
+    laneAssistRequirePost();
+}
 
 switch ($action) {
     case 'getSettings':

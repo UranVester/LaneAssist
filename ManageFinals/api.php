@@ -13,7 +13,13 @@ if (!CheckTourSession()) {
 
 checkFullACL(AclCompetition, 'cSchedule', AclReadWrite, false);
 
+require_once(dirname(__FILE__, 2) . '/Common/csrf.php');
+
 $action = $_REQUEST['action'] ?? '';
+
+if (in_array($action, ['apply', 'validateChanges'], true)) {
+    laneAssistRequirePost();
+}
 
 switch ($action) {
     case 'getCurrent':
@@ -59,7 +65,7 @@ function normalizeScheduledTimeForUi($timeValue, $normalizedDate) {
     }
 
     $time = trim((string)$timeValue);
-    if ($time === '' || $time === '00:00:00') {
+    if ($time === '') {
         return '';
     }
     return $time;
@@ -1130,7 +1136,7 @@ function applyChanges() {
                     FSScheduledLen=VALUES(FSScheduledLen)";
 
         safe_w_sql($sql);
-        if (safe_w_affected_rows() >= 0) {
+        if (safe_w_affected_rows() > 0) {
             $updated++;
         }
     }

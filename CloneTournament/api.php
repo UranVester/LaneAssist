@@ -8,7 +8,13 @@ header('Content-Type: application/json');
 
 checkFullACL(AclRoot, '', AclReadWrite, false);
 
+require_once(dirname(__FILE__, 2) . '/Common/csrf.php');
+
 $action = $_REQUEST['action'] ?? '';
+
+if ($action === 'cloneTournament') {
+    laneAssistRequirePost();
+}
 
 switch ($action) {
     case 'getMeta':
