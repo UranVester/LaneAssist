@@ -393,9 +393,7 @@ function getProjectedFinalistsForEvent($eventCode, $teamEvent, $eventNumQualifie
         }
     }
 
-    if ($numQualified > 0) {
-        $entrantCount = min($entrantCount, $numQualified);
-    }
+    $entrantCount = projectFinalists($entrantCount, $eventNumQualified);
 
     $cache[$cacheKey] = $entrantCount;
     return $entrantCount;

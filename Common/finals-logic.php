@@ -112,6 +112,22 @@ function buildValidationFocusFromChanges($rowsAfter, $changes) {
     return $focus;
 }
 
+/**
+ * Apply the finalist-count rule: entrants clamped to >= 0, then capped by
+ * numQualified when a positive cap is set. In planning mode the caller passes
+ * the count of entrants carrying the finals-type flag (assumed to continue to
+ * finals); post-qualification it passes the seated participant count.
+ */
+function projectFinalists($entrantCount, $numQualified)
+{
+    $entrantCount = max(0, intval($entrantCount));
+    $numQualified = max(0, intval($numQualified));
+    if ($numQualified > 0) {
+        return min($entrantCount, $numQualified);
+    }
+    return $entrantCount;
+}
+
 function validateFinalRows($rows, $focus = null) {
     $errors = [];
 
