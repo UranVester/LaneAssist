@@ -3,3 +3,4 @@
 laneassist-module*.zip
 *.log
 .DS_Store
+.superpowers/

@@ -85,7 +85,7 @@ final class ValidateFinalRowsTest extends TestCase
             $this->phase(1, 1, '2026-08-16', '10:00'),
         );
         $errors = validateFinalRows($rows);
-        $this->assertGreaterThanOrEqual(2, count(array_filter($this->errorTypes($errors), fn($t) => $t === 'phase_order')));
+        $this->assertSame(2, count(array_filter($this->errorTypes($errors), fn($t) => $t === 'phase_order')));
     }
 
     public function testUnscheduledPhasesDoNotRaiseOrderError(): void
@@ -114,5 +114,33 @@ final class ValidateFinalRowsTest extends TestCase
         foreach ($rows as &$r) { $r['target'] = '0005'; } unset($r);
         $errors = validateFinalRows($rows);
         $this->assertNotContains('target_conflict', $this->errorTypes($errors));
+    }
+
+    public function testHasParticipantZeroIsNotPlayable(): void
+    {
+        // phase(8) is playable; phase(4) pair has hasParticipant=0 on both rows (scheduled) -> not playable -> no phase_order error
+        $rows = array_merge(
+            $this->phase(8, 1, '2026-08-16', '09:00'),
+            [
+                $this->row(['phase' => 4, 'matchNo' => 0, 'hasParticipant' => 0, 'scheduledDate' => '2026-08-16', 'scheduledTime' => '11:00']),
+                $this->row(['phase' => 4, 'matchNo' => 1, 'hasParticipant' => 0, 'scheduledDate' => '2026-08-16', 'scheduledTime' => '11:00']),
+            ]
+        );
+        $errors = validateFinalRows($rows);
+        $this->assertNotContains('phase_order', $this->errorTypes($errors));
+    }
+
+    public function testFullFivePhaseBracketCorrectlyOrderedHasNoErrors(): void
+    {
+        // All five phases in correct chronological order: phase(8) -> phase(4) -> phase(2) -> phase(1) Bronze -> phase(0) Gold
+        $rows = array_merge(
+            $this->phase(8, 2, '2026-08-16', '08:00'),
+            $this->phase(4, 1, '2026-08-16', '10:00'),
+            $this->phase(2, 1, '2026-08-16', '12:00'),
+            $this->phase(1, 1, '2026-08-16', '14:00'),
+            $this->phase(0, 1, '2026-08-16', '14:00'),
+        );
+        $errors = validateFinalRows($rows);
+        $this->assertSame([], $errors);
     }
 }

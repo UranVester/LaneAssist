@@ -179,7 +179,8 @@ find "$STAGE_ROOT/$REL_MODULE_PATH" -type f -name '*.sh' -exec chmod 775 {} +
        "*/vendor/*" \
        "*/tests/*" \
        "*/tools/*" \
-       "*/phpunit.xml"
+       "*/phpunit.xml" \
+       "*/.superpowers/*"
 )
 
 ZIP_SHA256="$(sha256sum "$ZIP_PATH" | awk '{print $1}')"

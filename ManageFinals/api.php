@@ -276,7 +276,6 @@ function getProjectedFinalistsForEvent($eventCode, $teamEvent, $eventNumQualifie
     }
 
     $team = intval($teamEvent) !== 0 ? 1 : 0;
-    $numQualified = max(0, intval($eventNumQualified));
     $entrantCount = 0;
 
     if ($team === 0) {
