@@ -1,7 +1,12 @@
 <?php
 /**
- * LaneAssist Finals — pure match/validation logic.
- * No DB, no session, no superglobals. Safe to unit test.
+ * LaneAssist Finals — match/validation logic.
+ *
+ * Most functions here are pure (no DB, no session) and safe to unit test
+ * directly. EXCEPTION: getProjectedFinalistsForEvent() is DB- and
+ * session-bound (reads $_SESSION['TourId'] and runs safe_r_sql). Defining it
+ * needs no DB; CALLING it requires an IANSEO request context or a test that
+ * bootstraps the DB layer. The pure tests never call it.
  */
 
 if (!defined('TargetNoPadding')) {
@@ -125,6 +130,137 @@ function projectFinalists($entrantCount, $numQualified)
     if ($numQualified > 0) {
         return min($entrantCount, $numQualified);
     }
+    return $entrantCount;
+}
+
+function getProjectedFinalistsForEvent($eventCode, $teamEvent, $eventNumQualified) {
+    static $cache = [];
+
+    $cacheKey = intval($_SESSION['TourId']) . '|' . intval($teamEvent) . '|' . trim((string)$eventCode) . '|' . intval($eventNumQualified);
+    if (isset($cache[$cacheKey])) {
+        return $cache[$cacheKey];
+    }
+
+    $team = intval($teamEvent) !== 0 ? 1 : 0;
+    $entrantCount = 0;
+
+    if ($team === 0) {
+        $sql = "SELECT COUNT(DISTINCT e.EnId) AS Cnt
+                FROM Entries e
+                INNER JOIN EventClass ec
+                    ON ec.EcTournament=e.EnTournament
+                    AND ec.EcCode=" . StrSafe_DB($eventCode) . "
+                    AND IF(ec.EcTeamEvent!=0,1,0)=0
+                    AND ec.EcDivision=e.EnDivision
+                    AND ec.EcClass=e.EnClass
+                WHERE e.EnTournament=" . StrSafe_DB($_SESSION['TourId']) . "
+                  AND e.EnIndFEvent=1";
+        $rs = safe_r_sql($sql);
+        if ($row = safe_fetch($rs)) {
+            $entrantCount = max(0, intval($row->Cnt));
+        }
+
+        // Planning fallback: if no athletes are finals-marked yet, still expose
+        // potentially playable finals from registered entrants in the event classes.
+        if ($entrantCount === 0) {
+            $fallbackSql = "SELECT COUNT(DISTINCT e.EnId) AS Cnt
+                            FROM Entries e
+                            INNER JOIN EventClass ec
+                                ON ec.EcTournament=e.EnTournament
+                                AND ec.EcCode=" . StrSafe_DB($eventCode) . "
+                                AND IF(ec.EcTeamEvent!=0,1,0)=0
+                                AND ec.EcDivision=e.EnDivision
+                                AND ec.EcClass=e.EnClass
+                            WHERE e.EnTournament=" . StrSafe_DB($_SESSION['TourId']) . "";
+            $fallbackRs = safe_r_sql($fallbackSql);
+            if ($fallbackRow = safe_fetch($fallbackRs)) {
+                $entrantCount = max(0, intval($fallbackRow->Cnt));
+            }
+        }
+    } else {
+        $sql = "SELECT COUNT(DISTINCT CONCAT(t.TeCoId,'-',t.TeSubTeam)) AS Cnt
+                FROM Teams t
+                INNER JOIN Events ev
+                    ON ev.EvTournament=t.TeTournament
+                    AND ev.EvCode=t.TeEvent
+                    AND ev.EvTeamEvent=1
+                WHERE t.TeTournament=" . StrSafe_DB($_SESSION['TourId']) . "
+                  AND t.TeEvent=" . StrSafe_DB($eventCode) . "
+                  AND t.TeFinEvent=1
+                  AND t.TeSO!=0
+                  AND EXISTS (
+                      SELECT 1
+                      FROM TeamFinComponent tfc
+                      INNER JOIN Entries e
+                          ON e.EnTournament=tfc.TfcTournament
+                          AND e.EnId=tfc.TfcId
+                      WHERE tfc.TfcTournament=t.TeTournament
+                        AND tfc.TfcEvent=t.TeEvent
+                        AND tfc.TfcCoId=t.TeCoId
+                        AND tfc.TfcSubTeam=t.TeSubTeam
+                        AND IF(ev.EvMixedTeam=0, e.EnTeamFEvent, e.EnTeamMixEvent)=1
+                  )
+                  AND NOT EXISTS (
+                      SELECT 1
+                      FROM TeamFinComponent tfc
+                      INNER JOIN Entries e
+                          ON e.EnTournament=tfc.TfcTournament
+                          AND e.EnId=tfc.TfcId
+                      WHERE tfc.TfcTournament=t.TeTournament
+                        AND tfc.TfcEvent=t.TeEvent
+                        AND tfc.TfcCoId=t.TeCoId
+                        AND tfc.TfcSubTeam=t.TeSubTeam
+                        AND IF(ev.EvMixedTeam=0, e.EnTeamFEvent, e.EnTeamMixEvent)=0
+                  )";
+        $rs = safe_r_sql($sql);
+        if ($row = safe_fetch($rs)) {
+            $entrantCount = max(0, intval($row->Cnt));
+        }
+
+        // Planning fallback: when team finals flags are cleared, count team entries
+        // linked to the event so finals can still be planned.
+        if ($entrantCount === 0) {
+            $fallbackSql = "SELECT COUNT(DISTINCT CONCAT(t.TeCoId,'-',t.TeSubTeam)) AS Cnt
+                            FROM Teams t
+                            INNER JOIN Events ev
+                                ON ev.EvTournament=t.TeTournament
+                                AND ev.EvCode=t.TeEvent
+                                AND ev.EvTeamEvent=1
+                            WHERE t.TeTournament=" . StrSafe_DB($_SESSION['TourId']) . "
+                              AND t.TeEvent=" . StrSafe_DB($eventCode) . "
+                              AND t.TeSO!=0
+                              AND EXISTS (
+                                  SELECT 1
+                                  FROM TeamFinComponent tfc
+                                  WHERE tfc.TfcTournament=t.TeTournament
+                                    AND tfc.TfcEvent=t.TeEvent
+                                    AND tfc.TfcCoId=t.TeCoId
+                                    AND tfc.TfcSubTeam=t.TeSubTeam
+                              )";
+            $fallbackRs = safe_r_sql($fallbackSql);
+            if ($fallbackRow = safe_fetch($fallbackRs)) {
+                $entrantCount = max(0, intval($fallbackRow->Cnt));
+            }
+        }
+
+        // Final fallback: count teams marked for finals directly (no TeamFinComponent yet)
+        if ($entrantCount === 0) {
+            $directSql = "SELECT COUNT(DISTINCT CONCAT(t.TeCoId,'-',t.TeSubTeam)) AS Cnt
+                          FROM Teams t
+                          WHERE t.TeTournament=" . StrSafe_DB($_SESSION['TourId']) . "
+                            AND t.TeEvent=" . StrSafe_DB($eventCode) . "
+                            AND t.TeFinEvent=1
+                            AND t.TeSO!=0";
+            $directRs = safe_r_sql($directSql);
+            if ($directRow = safe_fetch($directRs)) {
+                $entrantCount = max(0, intval($directRow->Cnt));
+            }
+        }
+    }
+
+    $entrantCount = projectFinalists($entrantCount, $eventNumQualified);
+
+    $cache[$cacheKey] = $entrantCount;
     return $entrantCount;
 }
 
