@@ -420,3 +420,566 @@ function validateFinalRows($rows, $focus = null) {
 
     return $errors;
 }
+
+function normalizeFilterValues($rawValue) {
+    if (!is_array($rawValue)) {
+        if ($rawValue === null || $rawValue === '') {
+            return [];
+        }
+        $rawValue = explode(',', (string)$rawValue);
+    }
+
+    $values = [];
+    foreach ($rawValue as $value) {
+        $clean = trim((string)$value);
+        if ($clean === '') {
+            continue;
+        }
+        $values[] = $clean;
+    }
+
+    return array_values(array_unique($values));
+}
+
+function normalizeDistanceToken($token) {
+    $token = trim((string)$token);
+    if ($token === '' || $token === '-') {
+        return '';
+    }
+
+    if (preg_match('/(\d+)/', $token, $matches)) {
+        return intval($matches[1]) . 'm';
+    }
+
+    return '';
+}
+
+function getDistanceProfileForCategory($category) {
+    static $cache = [];
+
+    $category = trim((string)$category);
+    if ($category === '') {
+        return '';
+    }
+
+    if (array_key_exists($category, $cache)) {
+        return $cache[$category];
+    }
+
+    $sql = "SELECT Td1, Td2, Td3, Td4, Td5, Td6, Td7, Td8
+            FROM TournamentDistances
+            WHERE TdType=" . StrSafe_DB($_SESSION['TourType']) . "
+              AND TdTournament=" . StrSafe_DB($_SESSION['TourId']) . "
+              AND " . StrSafe_DB($category) . " LIKE TdClasses
+            ORDER BY TdTournament=0,
+                     " . StrSafe_DB($category) . " = TdClasses DESC,
+                     LEFT(TdClasses,1)!='_' AND LEFT(TdClasses,1)!='%' DESC,
+                     LEFT(TdClasses,1)='_' DESC,
+                     TdClasses DESC,
+                     TdClasses='%'
+            LIMIT 1";
+
+    $rs = safe_r_sql($sql);
+    $profile = '';
+
+    if ($row = safe_fetch($rs)) {
+        $distances = [];
+        for ($index = 1; $index <= 8; $index++) {
+            $fieldName = 'Td' . $index;
+            $normalized = normalizeDistanceToken((string)($row->$fieldName ?? ''));
+            if ($normalized !== '') {
+                $distances[$normalized] = true;
+            }
+        }
+
+        $distanceList = array_keys($distances);
+        usort($distanceList, function($a, $b) {
+            $na = intval($a);
+            $nb = intval($b);
+            if ($na === $nb) {
+                return strcmp($a, $b);
+            }
+            return $na - $nb;
+        });
+
+        $profile = implode('-', $distanceList);
+    }
+
+    $cache[$category] = $profile;
+    return $profile;
+}
+
+function getEventDistanceMeta($eventCode, $teamEvent) {
+    static $cache = [];
+
+    $eventCode = trim((string)$eventCode);
+    $teamEvent = intval($teamEvent);
+    $cacheKey = $teamEvent . '|' . $eventCode;
+
+    if (array_key_exists($cacheKey, $cache)) {
+        return $cache[$cacheKey];
+    }
+
+    $meta = [
+        'profile' => '',
+        'sort' => null,
+    ];
+
+    if ($eventCode === '') {
+        $cache[$cacheKey] = $meta;
+        return $meta;
+    }
+
+    $sql = "SELECT ec.EcDivision, ec.EcClass, divs.DivViewOrder, cls.ClViewOrder
+            FROM EventClass ec
+            INNER JOIN Divisions divs
+                ON divs.DivTournament=ec.EcTournament
+                AND divs.DivId=ec.EcDivision
+            INNER JOIN Classes cls
+                ON cls.ClTournament=ec.EcTournament
+                AND cls.ClId=ec.EcClass
+            WHERE ec.EcTournament=" . StrSafe_DB($_SESSION['TourId']) . "
+              AND ec.EcCode=" . StrSafe_DB($eventCode) . "
+              AND IF(ec.EcTeamEvent!=0,1,0)=" . StrSafe_DB($teamEvent) . "
+            ORDER BY divs.DivViewOrder, cls.ClViewOrder";
+
+    $rs = safe_r_sql($sql);
+    $profilesSeen = [];
+    $profileList = [];
+
+    while ($row = safe_fetch($rs)) {
+        $category = trim((string)$row->EcDivision) . trim((string)$row->EcClass);
+        $profile = getDistanceProfileForCategory($category);
+        if ($profile !== '' && !isset($profilesSeen[$profile])) {
+            $profilesSeen[$profile] = true;
+            $profileList[] = $profile;
+        }
+
+        if ($meta['sort'] === null) {
+            $meta['sort'] = intval($row->DivViewOrder) * 1000 + intval($row->ClViewOrder);
+        }
+    }
+
+    if (!empty($profileList)) {
+        $meta['profile'] = $profileList[0];
+    }
+
+    $cache[$cacheKey] = $meta;
+    return $meta;
+}
+
+function getLastQualificationSessionEnd() {
+    // Primary source: qualification distance schedule rows from Session page
+    // (DiDay + DiStart + DiDuration).
+    $sql = "SELECT MAX(
+                DATE_ADD(TIMESTAMP(di.DiDay, di.DiStart), INTERVAL di.DiDuration MINUTE)
+            ) AS LastQualEnd
+            FROM DistanceInformation di
+            WHERE di.DiTournament=" . StrSafe_DB($_SESSION['TourId']) . "
+              AND di.DiType='Q'
+              AND di.DiDay IS NOT NULL
+              AND di.DiDay!='0000-00-00'
+              AND di.DiStart IS NOT NULL
+              AND di.DiStart!='00:00:00'";
+
+    $rs = safe_r_sql($sql);
+    if ($row = safe_fetch($rs)) {
+        $value = trim((string)($row->LastQualEnd ?? ''));
+        if ($value !== '') {
+            return $value;
+        }
+    }
+
+    // Fallback: session-level qualification datetimes.
+    $fallbackSql = "SELECT MAX(
+                        CASE
+                            WHEN SesDtEnd IS NOT NULL AND SesDtEnd!='0000-00-00 00:00:00' THEN SesDtEnd
+                            WHEN SesDtStart IS NOT NULL AND SesDtStart!='0000-00-00 00:00:00' THEN SesDtStart
+                            ELSE NULL
+                        END
+                    ) AS LastQualEnd
+                    FROM Session
+                    WHERE SesTournament=" . StrSafe_DB($_SESSION['TourId']) . "
+                      AND SesType='Q'";
+
+    $fallbackRs = safe_r_sql($fallbackSql);
+    if ($fallbackRow = safe_fetch($fallbackRs)) {
+        return trim((string)($fallbackRow->LastQualEnd ?? ''));
+    }
+
+    return '';
+}
+
+function getCurrent() {
+    $teamEvent = $_REQUEST['teamEvent'] ?? '';
+    $dateFilter = trim($_REQUEST['dateFilter'] ?? '');
+    $divisionFilter = normalizeFilterValues($_REQUEST['divisionFilter'] ?? []);
+    $classFilter = normalizeFilterValues($_REQUEST['classFilter'] ?? []);
+
+    $where = [
+        'fs.FSTournament=' . StrSafe_DB($_SESSION['TourId'])
+    ];
+
+    if ($teamEvent !== '' && ($teamEvent === '0' || $teamEvent === '1')) {
+        $where[] = 'fs.FSTeamEvent=' . StrSafe_DB(intval($teamEvent));
+    }
+
+    if ($dateFilter !== '') {
+        $where[] = 'fs.FSScheduledDate=' . StrSafe_DB($dateFilter);
+    }
+
+    if (!empty($divisionFilter)) {
+        $divList = array_map('StrSafe_DB', $divisionFilter);
+        $where[] = "EXISTS (
+            SELECT 1
+            FROM EventClass ecDiv
+            WHERE ecDiv.EcTournament=fs.FSTournament
+              AND ecDiv.EcCode=fs.FSEvent
+              AND IF(ecDiv.EcTeamEvent!=0,1,0)=fs.FSTeamEvent
+              AND ecDiv.EcDivision IN (" . implode(',', $divList) . ")
+        )";
+    }
+
+    if (!empty($classFilter)) {
+        $clsList = array_map('StrSafe_DB', $classFilter);
+        $where[] = "EXISTS (
+            SELECT 1
+            FROM EventClass ecCls
+            WHERE ecCls.EcTournament=fs.FSTournament
+              AND ecCls.EcCode=fs.FSEvent
+              AND IF(ecCls.EcTeamEvent!=0,1,0)=fs.FSTeamEvent
+              AND ecCls.EcClass IN (" . implode(',', $clsList) . ")
+        )";
+    }
+
+    $sql = "SELECT
+                fs.FSTeamEvent,
+                fs.FSEvent,
+                ev.EvEventName,
+                fs.FSMatchNo,
+                fs.FSScheduledDate,
+                fs.FSScheduledTime,
+                fs.FSScheduledLen,
+                fs.FSGroup,
+                fs.FSTarget,
+                fs.FSLetter,
+                gr.GrPhase,
+                gr.GrPosition,
+                gr.GrPosition2,
+                ev.EvNumQualified,
+                ev.EvFinalAthTarget,
+                fi.FinAthlete,
+                                tf.TfTeam,
+                                (
+                                        SELECT MIN(divs.DivViewOrder)
+                                        FROM EventClass ecDivOrder
+                                        INNER JOIN Divisions divs
+                                            ON divs.DivTournament=ecDivOrder.EcTournament
+                                            AND divs.DivId=ecDivOrder.EcDivision
+                                        WHERE ecDivOrder.EcTournament=fs.FSTournament
+                                            AND ecDivOrder.EcCode=fs.FSEvent
+                                            AND IF(ecDivOrder.EcTeamEvent!=0,1,0)=fs.FSTeamEvent
+                                ) AS EventDivisionOrder,
+                                (
+                                        SELECT MIN(cls.ClViewOrder)
+                                        FROM EventClass ecClsOrder
+                                        INNER JOIN Classes cls
+                                            ON cls.ClTournament=ecClsOrder.EcTournament
+                                            AND cls.ClId=ecClsOrder.EcClass
+                                        WHERE ecClsOrder.EcTournament=fs.FSTournament
+                                            AND ecClsOrder.EcCode=fs.FSEvent
+                                            AND IF(ecClsOrder.EcTeamEvent!=0,1,0)=fs.FSTeamEvent
+                                ) AS EventClassOrder,
+                                (
+                                        SELECT GROUP_CONCAT(DISTINCT ecDiv.EcDivision ORDER BY ecDiv.EcDivision SEPARATOR ',')
+                                        FROM EventClass ecDiv
+                                        WHERE ecDiv.EcTournament=fs.FSTournament
+                                            AND ecDiv.EcCode=fs.FSEvent
+                                            AND IF(ecDiv.EcTeamEvent!=0,1,0)=fs.FSTeamEvent
+                                ) AS EvDivisions,
+                                (
+                                        SELECT GROUP_CONCAT(DISTINCT ecCls.EcClass ORDER BY ecCls.EcClass SEPARATOR ',')
+                                        FROM EventClass ecCls
+                                        WHERE ecCls.EcTournament=fs.FSTournament
+                                            AND ecCls.EcCode=fs.FSEvent
+                                            AND IF(ecCls.EcTeamEvent!=0,1,0)=fs.FSTeamEvent
+                                ) AS EvClasses
+            FROM FinSchedule fs
+            LEFT JOIN Events ev
+                ON ev.EvTournament=fs.FSTournament
+                AND ev.EvCode=fs.FSEvent
+                AND ev.EvTeamEvent=fs.FSTeamEvent
+            LEFT JOIN Grids gr
+                ON gr.GrMatchNo=fs.FSMatchNo
+            LEFT JOIN Finals fi
+                ON fi.FinTournament=fs.FSTournament
+                AND fi.FinEvent=fs.FSEvent
+                AND fi.FinMatchNo=fs.FSMatchNo
+                AND fs.FSTeamEvent=0
+            LEFT JOIN TeamFinals tf
+                ON tf.TfTournament=fs.FSTournament
+                AND tf.TfEvent=fs.FSEvent
+                AND tf.TfMatchNo=fs.FSMatchNo
+                AND fs.FSTeamEvent=1
+            WHERE " . implode(' AND ', $where) . "
+            ORDER BY fs.FSTeamEvent, fs.FSScheduledDate, fs.FSScheduledTime, fs.FSEvent, fs.FSMatchNo";
+
+    $rs = safe_r_sql($sql);
+    $rows = [];
+
+    while ($row = safe_fetch($rs)) {
+        $scheduledDate = normalizeScheduledDateForUi($row->FSScheduledDate);
+        $scheduledTime = normalizeScheduledTimeForUi($row->FSScheduledTime, $scheduledDate);
+        $phase = intval($row->GrPhase);
+        $phaseBit = max(1, $phase * 2);
+        $finalAthTargetMask = intval($row->EvFinalAthTarget);
+        $archersPerTarget = (($finalAthTargetMask & $phaseBit) ? 2 : 1);
+        $projectedParticipants = getProjectedFinalistsForEvent($row->FSEvent, $row->FSTeamEvent, $row->EvNumQualified);
+        $distanceMeta = getEventDistanceMeta($row->FSEvent, $row->FSTeamEvent);
+
+        $rows[] = [
+            'teamEvent' => intval($row->FSTeamEvent),
+            'event' => $row->FSEvent,
+            'eventName' => $row->EvEventName,
+            'matchNo' => intval($row->FSMatchNo),
+            'scheduledDate' => $scheduledDate,
+            'scheduledTime' => $scheduledTime,
+            'scheduledLen' => intval($row->FSScheduledLen),
+            'group' => intval($row->FSGroup),
+            'target' => (string)$row->FSTarget,
+            'letter' => (string)$row->FSLetter,
+            'phase' => $phase,
+            'gridPosition' => is_numeric($row->GrPosition) ? intval($row->GrPosition) : null,
+            'gridPosition2' => is_numeric($row->GrPosition2) ? intval($row->GrPosition2) : null,
+            'archersPerTarget' => $archersPerTarget,
+            'projectedParticipants' => $projectedParticipants,
+            'division' => trim((string)$row->EvDivisions),
+            'class' => trim((string)$row->EvClasses),
+            'eventDivisionOrder' => is_numeric($row->EventDivisionOrder) ? intval($row->EventDivisionOrder) : null,
+            'eventClassOrder' => is_numeric($row->EventClassOrder) ? intval($row->EventClassOrder) : null,
+            'distanceProfile' => trim((string)$distanceMeta['profile']),
+            'distanceSort' => is_numeric($distanceMeta['sort']) ? intval($distanceMeta['sort']) : null,
+            'hasParticipant' => (intval($row->FSTeamEvent) === 1)
+                ? (intval($row->TfTeam) > 0 ? 1 : 0)
+                : (intval($row->FinAthlete) > 0 ? 1 : 0),
+        ];
+    }
+
+    // Planning fallback: if FinSchedule is empty, synthesize finals rows from
+    // event bracket definitions so the day can still be planned.
+    if ($dateFilter === '') {
+        $fallbackWhere = [
+            'ev.EvTournament=' . StrSafe_DB($_SESSION['TourId']),
+            'ev.EvFinalFirstPhase>0',
+            "NOT EXISTS (
+                SELECT 1 FROM FinSchedule fsx
+                WHERE fsx.FSTournament=ev.EvTournament
+                  AND fsx.FSEvent=ev.EvCode
+                  AND fsx.FSTeamEvent=ev.EvTeamEvent
+                  AND fsx.FSMatchNo=gr.GrMatchNo
+            )",
+        ];
+
+        if ($teamEvent !== '' && ($teamEvent === '0' || $teamEvent === '1')) {
+            $fallbackWhere[] = 'ev.EvTeamEvent=' . StrSafe_DB(intval($teamEvent));
+        }
+
+        if (!empty($divisionFilter)) {
+            $divList = array_map('StrSafe_DB', $divisionFilter);
+            $fallbackWhere[] = "EXISTS (
+                SELECT 1
+                FROM EventClass ecDiv
+                WHERE ecDiv.EcTournament=ev.EvTournament
+                  AND ecDiv.EcCode=ev.EvCode
+                  AND IF(ecDiv.EcTeamEvent!=0,1,0)=ev.EvTeamEvent
+                  AND ecDiv.EcDivision IN (" . implode(',', $divList) . ")
+            )";
+        }
+
+        if (!empty($classFilter)) {
+            $clsList = array_map('StrSafe_DB', $classFilter);
+            $fallbackWhere[] = "EXISTS (
+                SELECT 1
+                FROM EventClass ecCls
+                WHERE ecCls.EcTournament=ev.EvTournament
+                  AND ecCls.EcCode=ev.EvCode
+                  AND IF(ecCls.EcTeamEvent!=0,1,0)=ev.EvTeamEvent
+                  AND ecCls.EcClass IN (" . implode(',', $clsList) . ")
+            )";
+        }
+
+        $fallbackSql = "SELECT
+                            ev.EvTeamEvent AS FSTeamEvent,
+                            ev.EvCode AS FSEvent,
+                            ev.EvEventName,
+                            gr.GrMatchNo AS FSMatchNo,
+                            '' AS FSScheduledDate,
+                            '' AS FSScheduledTime,
+                            0 AS FSScheduledLen,
+                            0 AS FSGroup,
+                            '' AS FSTarget,
+                            '' AS FSLetter,
+                            gr.GrPhase,
+                            gr.GrPosition,
+                            gr.GrPosition2,
+                            ev.EvNumQualified,
+                            ev.EvFinalAthTarget,
+                            fi.FinAthlete,
+                            tf.TfTeam,
+                            (
+                                SELECT MIN(divs.DivViewOrder)
+                                FROM EventClass ecDivOrder
+                                INNER JOIN Divisions divs
+                                    ON divs.DivTournament=ecDivOrder.EcTournament
+                                    AND divs.DivId=ecDivOrder.EcDivision
+                                WHERE ecDivOrder.EcTournament=ev.EvTournament
+                                  AND ecDivOrder.EcCode=ev.EvCode
+                                  AND IF(ecDivOrder.EcTeamEvent!=0,1,0)=ev.EvTeamEvent
+                            ) AS EventDivisionOrder,
+                            (
+                                SELECT MIN(cls.ClViewOrder)
+                                FROM EventClass ecClsOrder
+                                INNER JOIN Classes cls
+                                    ON cls.ClTournament=ecClsOrder.EcTournament
+                                    AND cls.ClId=ecClsOrder.EcClass
+                                WHERE ecClsOrder.EcTournament=ev.EvTournament
+                                  AND ecClsOrder.EcCode=ev.EvCode
+                                  AND IF(ecClsOrder.EcTeamEvent!=0,1,0)=ev.EvTeamEvent
+                            ) AS EventClassOrder,
+                            (
+                                SELECT GROUP_CONCAT(DISTINCT ecDiv.EcDivision ORDER BY ecDiv.EcDivision SEPARATOR ',')
+                                FROM EventClass ecDiv
+                                WHERE ecDiv.EcTournament=ev.EvTournament
+                                  AND ecDiv.EcCode=ev.EvCode
+                                  AND IF(ecDiv.EcTeamEvent!=0,1,0)=ev.EvTeamEvent
+                            ) AS EvDivisions,
+                            (
+                                SELECT GROUP_CONCAT(DISTINCT ecCls.EcClass ORDER BY ecCls.EcClass SEPARATOR ',')
+                                FROM EventClass ecCls
+                                WHERE ecCls.EcTournament=ev.EvTournament
+                                  AND ecCls.EcCode=ev.EvCode
+                                  AND IF(ecCls.EcTeamEvent!=0,1,0)=ev.EvTeamEvent
+                            ) AS EvClasses
+                        FROM Events ev
+                        INNER JOIN Grids gr
+                            ON gr.GrPhase IN (0,1,2,4,8,16,32,64)
+                            AND gr.GrPhase<=ev.EvFinalFirstPhase
+                        LEFT JOIN Finals fi
+                            ON fi.FinTournament=ev.EvTournament
+                            AND fi.FinEvent=ev.EvCode
+                            AND fi.FinMatchNo=gr.GrMatchNo
+                            AND ev.EvTeamEvent=0
+                        LEFT JOIN TeamFinals tf
+                            ON tf.TfTournament=ev.EvTournament
+                            AND tf.TfEvent=ev.EvCode
+                            AND tf.TfMatchNo=gr.GrMatchNo
+                            AND ev.EvTeamEvent=1
+                        WHERE " . implode(' AND ', $fallbackWhere) . "
+                        ORDER BY ev.EvTeamEvent, ev.EvCode, gr.GrPhase, gr.GrMatchNo";
+
+        $fallbackRs = safe_r_sql($fallbackSql);
+        while ($row = safe_fetch($fallbackRs)) {
+            $phase = intval($row->GrPhase);
+            $phaseBit = max(1, $phase * 2);
+            $finalAthTargetMask = intval($row->EvFinalAthTarget);
+            $archersPerTarget = (($finalAthTargetMask & $phaseBit) ? 2 : 1);
+            $projectedParticipants = getProjectedFinalistsForEvent($row->FSEvent, $row->FSTeamEvent, $row->EvNumQualified);
+            $distanceMeta = getEventDistanceMeta($row->FSEvent, $row->FSTeamEvent);
+
+            $rows[] = [
+                'teamEvent' => intval($row->FSTeamEvent),
+                'event' => $row->FSEvent,
+                'eventName' => $row->EvEventName,
+                'matchNo' => intval($row->FSMatchNo),
+                'scheduledDate' => $row->FSScheduledDate,
+                'scheduledTime' => $row->FSScheduledTime,
+                'scheduledLen' => intval($row->FSScheduledLen),
+                'group' => intval($row->FSGroup),
+                'target' => (string)$row->FSTarget,
+                'letter' => (string)$row->FSLetter,
+                'phase' => $phase,
+                'gridPosition' => is_numeric($row->GrPosition) ? intval($row->GrPosition) : null,
+                'gridPosition2' => is_numeric($row->GrPosition2) ? intval($row->GrPosition2) : null,
+                'archersPerTarget' => $archersPerTarget,
+                'projectedParticipants' => $projectedParticipants,
+                'division' => trim((string)$row->EvDivisions),
+                'class' => trim((string)$row->EvClasses),
+                'eventDivisionOrder' => is_numeric($row->EventDivisionOrder) ? intval($row->EventDivisionOrder) : null,
+                'eventClassOrder' => is_numeric($row->EventClassOrder) ? intval($row->EventClassOrder) : null,
+                'distanceProfile' => trim((string)$distanceMeta['profile']),
+                'distanceSort' => is_numeric($distanceMeta['sort']) ? intval($distanceMeta['sort']) : null,
+                'hasParticipant' => (intval($row->FSTeamEvent) === 1)
+                    ? (intval($row->TfTeam) > 0 ? 1 : 0)
+                    : (intval($row->FinAthlete) > 0 ? 1 : 0),
+            ];
+        }
+    }
+
+    // Build full available target list from qualification session setup
+    $availableTargets = [];
+    $rangeSql = "SELECT SesFirstTarget, SesTar4Session
+                 FROM Session
+                 WHERE SesTournament=" . StrSafe_DB($_SESSION['TourId']) . "
+                   AND SesType='Q'";
+    $rangeRs = safe_r_sql($rangeSql);
+
+    $minTarget = null;
+    $maxTarget = null;
+    while ($sessionRow = safe_fetch($rangeRs)) {
+        $first = intval($sessionRow->SesFirstTarget);
+        $count = intval($sessionRow->SesTar4Session);
+        if ($count <= 0) {
+            continue;
+        }
+
+        $last = $first + $count - 1;
+        $minTarget = $minTarget === null ? $first : min($minTarget, $first);
+        $maxTarget = $maxTarget === null ? $last : max($maxTarget, $last);
+    }
+
+    // Ensure currently assigned finals targets are always visible in the grid
+    foreach ($rows as $row) {
+        $target = trim((string)$row['target']);
+        if ($target === '' || !ctype_digit($target)) {
+            continue;
+        }
+
+        $targetNo = intval($target);
+        if ($targetNo <= 0) {
+            continue;
+        }
+
+        $minTarget = $minTarget === null ? $targetNo : min($minTarget, $targetNo);
+        $maxTarget = $maxTarget === null ? $targetNo : max($maxTarget, $targetNo);
+    }
+
+    if ($minTarget !== null && $maxTarget !== null) {
+        for ($targetNo = $minTarget; $targetNo <= $maxTarget; $targetNo++) {
+            $availableTargets[] = str_pad($targetNo, TargetNoPadding, '0', STR_PAD_LEFT);
+        }
+    }
+
+    // Fallback: if no session range available, derive from finals rows
+    if (empty($availableTargets)) {
+        $derived = [];
+        foreach ($rows as $row) {
+            $target = trim($row['target']);
+            if ($target !== '') {
+                $derived[$target] = true;
+            }
+        }
+        $availableTargets = array_keys($derived);
+        sort($availableTargets);
+    }
+
+    $validationErrors = validateFinalRows($rows);
+    $lastQualificationEnd = getLastQualificationSessionEnd();
+
+    echo json_encode([
+        'error' => 0,
+        'rows' => $rows,
+        'availableTargets' => $availableTargets,
+        'lastQualificationEnd' => $lastQualificationEnd,
+        'validationErrors' => $validationErrors,
+    ]);
+}
