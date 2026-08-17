@@ -34,9 +34,17 @@ abstract class LaneAssistDbTestCase extends TestCase
         if (!is_file($root . '/Common/config.inc.php')) {
             self::markTestSkipped('IANSEO config.inc.php not found; DB unavailable');
         }
-        $GLOBALS['CFG'] = new stdClass();
-        $CFG = $GLOBALS['CFG'];
-        @include_once($root . '/Common/config.inc.php');
+        // config.inc.php populates $CFG and include_once only runs once per
+        // process; a second DB test class must not clobber the populated CFG
+        // with a fresh empty stdClass (that would make it skip). Reuse the
+        // existing global if config was already loaded.
+        if (!isset($GLOBALS['CFG']) || !isset($GLOBALS['CFG']->R_HOST)) {
+            if (!isset($GLOBALS['CFG'])) {
+                $GLOBALS['CFG'] = new stdClass();
+            }
+            $CFG = $GLOBALS['CFG'];
+            @include_once($root . '/Common/config.inc.php');
+        }
         require_once($root . '/Common/distro.inc.php');
         require_once($root . '/Common/Fun_DB.inc.php');
 
