@@ -1,4 +1,6 @@
 <?php
+require_once __DIR__ . '/LaneAssistDbTestCase.php';
+
 use PHPUnit\Framework\TestCase;
 
 /**
@@ -8,119 +10,8 @@ use PHPUnit\Framework\TestCase;
  * deletes them in teardown. Skips entirely if the IANSEO DB layer cannot be
  * bootstrapped. DO NOT run against a production database.
  */
-final class ProjectedFinalistsIntegrationTest extends TestCase
+final class ProjectedFinalistsIntegrationTest extends LaneAssistDbTestCase
 {
-    private const SENTINEL = 999999;
-
-    /** table => its tournament-id column */
-    private static array $tables = [
-        'Entries'          => 'EnTournament',
-        'EventClass'       => 'EcTournament',
-        'Teams'            => 'TeTournament',
-        'Events'           => 'EvTournament',
-        'TeamFinComponent' => 'TfcTournament',
-    ];
-
-    /** cache of required (NOT NULL, no default) columns per table */
-    private static array $requiredColsCache = [];
-
-    public static function setUpBeforeClass(): void
-    {
-        $root = dirname(__DIR__, 4); // .../LaneAssist/tests -> repo root /opt/ianseo
-        // Bootstrap IANSEO DB layer without triggering auth/dispatch.
-        if (!is_file($root . '/Common/config.inc.php')) {
-            self::markTestSkipped('IANSEO config.inc.php not found; DB unavailable');
-        }
-        $GLOBALS['CFG'] = new stdClass();
-        // config.inc.php assigns $CFG->R_HOST etc.; alias our global to $CFG.
-        $CFG = $GLOBALS['CFG'];
-        @include_once($root . '/Common/config.inc.php');
-        require_once($root . '/Common/distro.inc.php');
-        require_once($root . '/Common/Fun_DB.inc.php');
-
-        foreach (['safe_r_sql', 'safe_w_sql', 'StrSafe_DB', 'safe_fetch'] as $fn) {
-            if (!function_exists($fn)) {
-                self::markTestSkipped("IANSEO function $fn missing; DB layer not loaded");
-            }
-        }
-
-        // Probe the connection with a raw mysqli BEFORE any safe_* call.
-        // IANSEO's safe_r_sql/safe_r_con call safe_error() which exit()s on a
-        // failed connect (it does not throw), so a try/catch around safe_r_sql
-        // cannot turn an unreachable DB into a skip — we must probe directly.
-        $cfg = $GLOBALS['CFG'] ?? null;
-        if (!$cfg || !isset($cfg->R_HOST, $cfg->R_USER, $cfg->R_PASS, $cfg->DB_NAME)) {
-            self::markTestSkipped('IANSEO DB config incomplete; cannot probe');
-        }
-        mysqli_report(MYSQLI_REPORT_OFF);
-        $probe = @mysqli_connect($cfg->R_HOST, $cfg->R_USER, $cfg->R_PASS, $cfg->DB_NAME);
-        if (!$probe) {
-            self::markTestSkipped('IANSEO DB not reachable');
-        }
-        mysqli_close($probe);
-
-        $_SESSION['TourId'] = self::SENTINEL;
-        self::cleanupSentinel(); // recover from any prior killed run
-    }
-
-    public static function tearDownAfterClass(): void
-    {
-        if (function_exists('safe_w_sql')) {
-            self::cleanupSentinel();
-        }
-    }
-
-    private static function cleanupSentinel(): void
-    {
-        foreach (self::$tables as $table => $col) {
-            safe_w_sql("DELETE FROM $table WHERE $col=" . StrSafe_DB(self::SENTINEL));
-        }
-    }
-
-    private static function requiredCols(string $table): array
-    {
-        if (isset(self::$requiredColsCache[$table])) {
-            return self::$requiredColsCache[$table];
-        }
-        global $CFG;
-        $sql = "SELECT COLUMN_NAME, DATA_TYPE
-                FROM information_schema.columns
-                WHERE table_schema=" . StrSafe_DB($CFG->DB_NAME) . "
-                  AND table_name=" . StrSafe_DB($table) . "
-                  AND IS_NULLABLE='NO' AND COLUMN_DEFAULT IS NULL";
-        $rs = safe_r_sql($sql);
-        $cols = [];
-        while ($r = safe_fetch($rs)) {
-            $cols[$r->COLUMN_NAME] = $r->DATA_TYPE;
-        }
-        return self::$requiredColsCache[$table] = $cols;
-    }
-
-    private static function zeroFor(string $type)
-    {
-        if ($type === 'date') return '1970-01-01';
-        if ($type === 'datetime' || $type === 'timestamp') return '1970-01-01 00:00:00';
-        $numeric = ['int','tinyint','smallint','mediumint','bigint','decimal','float','double'];
-        if (in_array($type, $numeric, true)) return 0;
-        return '';
-    }
-
-    /** Insert a row filling all required columns with zero-values, then overrides. */
-    private static function seedRow(string $table, array $overrides): void
-    {
-        $vals = [];
-        foreach (self::requiredCols($table) as $col => $type) {
-            $vals[$col] = self::zeroFor($type);
-        }
-        foreach ($overrides as $col => $v) {
-            $vals[$col] = $v;
-        }
-        $cols = array_keys($vals);
-        $sqlVals = array_map(fn($v) => StrSafe_DB($v), array_values($vals));
-        $sql = "INSERT INTO $table (" . implode(',', $cols) . ") VALUES (" . implode(',', $sqlVals) . ")";
-        safe_w_sql($sql);
-    }
-
     // ---------- Individual event scenarios ----------
 
     public function testIndividualPrimaryCountsFlaggedEntrants(): void
