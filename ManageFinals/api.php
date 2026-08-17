@@ -854,10 +854,17 @@ function getCurrent() {
 
     // Planning fallback: if FinSchedule is empty, synthesize finals rows from
     // event bracket definitions so the day can still be planned.
-    if (empty($rows) && $dateFilter === '') {
+    if ($dateFilter === '') {
         $fallbackWhere = [
             'ev.EvTournament=' . StrSafe_DB($_SESSION['TourId']),
             'ev.EvFinalFirstPhase>0',
+            "NOT EXISTS (
+                SELECT 1 FROM FinSchedule fsx
+                WHERE fsx.FSTournament=ev.EvTournament
+                  AND fsx.FSEvent=ev.EvCode
+                  AND fsx.FSTeamEvent=ev.EvTeamEvent
+                  AND fsx.FSMatchNo=gr.GrMatchNo
+            )",
         ];
 
         if ($teamEvent !== '' && ($teamEvent === '0' || $teamEvent === '1')) {
@@ -1118,6 +1125,18 @@ function applyChanges() {
 
         $letter = $target;
 
+        // Unassign = remove the row, don't leave a blank shell behind.
+        // An empty FinSchedule is what lets the bracket-synthesis fallback repopulate the pool.
+        if ($target === '') {
+            safe_w_sql("DELETE FROM FinSchedule
+                        WHERE FSTournament=" . StrSafe_DB($_SESSION['TourId']) . "
+                          AND FSTeamEvent="  . StrSafe_DB($teamEvent) . "
+                          AND FSEvent="      . StrSafe_DB($event) . "
+                          AND FSMatchNo="    . StrSafe_DB($matchNo));
+            $updated++;
+            continue;
+        }
+        
         $sql = "INSERT INTO FinSchedule
                     (FSTournament, FSTeamEvent, FSEvent, FSMatchNo, FSGroup, FSTarget, FSLetter, FSScheduledDate, FSScheduledTime, FSScheduledLen)
                 VALUES
