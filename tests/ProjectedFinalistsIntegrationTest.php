@@ -44,15 +44,20 @@ final class ProjectedFinalistsIntegrationTest extends TestCase
             }
         }
 
-        // Probe the connection; skip if unreachable.
-        try {
-            $rs = safe_r_sql('SELECT 1 AS ok');
-            if (!$rs || !safe_fetch($rs)) {
-                self::markTestSkipped('IANSEO DB not reachable');
-            }
-        } catch (\Throwable $e) {
-            self::markTestSkipped('IANSEO DB not reachable: ' . $e->getMessage());
+        // Probe the connection with a raw mysqli BEFORE any safe_* call.
+        // IANSEO's safe_r_sql/safe_r_con call safe_error() which exit()s on a
+        // failed connect (it does not throw), so a try/catch around safe_r_sql
+        // cannot turn an unreachable DB into a skip — we must probe directly.
+        $cfg = $GLOBALS['CFG'] ?? null;
+        if (!$cfg || !isset($cfg->R_HOST, $cfg->R_USER, $cfg->R_PASS, $cfg->DB_NAME)) {
+            self::markTestSkipped('IANSEO DB config incomplete; cannot probe');
         }
+        mysqli_report(MYSQLI_REPORT_OFF);
+        $probe = @mysqli_connect($cfg->R_HOST, $cfg->R_USER, $cfg->R_PASS, $cfg->DB_NAME);
+        if (!$probe) {
+            self::markTestSkipped('IANSEO DB not reachable');
+        }
+        mysqli_close($probe);
 
         $_SESSION['TourId'] = self::SENTINEL;
         self::cleanupSentinel(); // recover from any prior killed run
