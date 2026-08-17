@@ -181,4 +181,67 @@ final class ProjectedFinalistsIntegrationTest extends TestCase
         // Same data, no cap -> 30.
         $this->assertSame(30, getProjectedFinalistsForEvent('TIC', 0, 0));
     }
+
+    // ---------- Team event scenarios ----------
+
+    /** Seed one team (coId/subTeam) with a finals-flagged component entry. */
+    private function seedTeamWithComponent(string $event, int $coId, int $subTeam, int $entryId, int $teFinEvent, int $enTeamFEvent): void
+    {
+        self::seedRow('Teams', [
+            'TeCoId' => $coId, 'TeSubTeam' => $subTeam, 'TeEvent' => $event,
+            'TeTournament' => self::SENTINEL, 'TeFinEvent' => $teFinEvent, 'TeSO' => 1,
+        ]);
+        self::seedRow('Entries', [
+            'EnId' => $entryId, 'EnTournament' => self::SENTINEL,
+            'EnDivision' => 'R', 'EnClass' => 'CM', 'EnCode' => "TC$entryId",
+            'EnName' => 'T', 'EnFirstName' => 'T', 'EnTeamFEvent' => $enTeamFEvent,
+        ]);
+        self::seedRow('TeamFinComponent', [
+            'TfcCoId' => $coId, 'TfcSubTeam' => $subTeam, 'TfcTournament' => self::SENTINEL,
+            'TfcEvent' => $event, 'TfcId' => $entryId,
+        ]);
+    }
+
+    public function testTeamPrimaryCountsFinalsFlaggedTeams(): void
+    {
+        self::seedRow('Events', [
+            'EvCode' => 'TTP', 'EvTeamEvent' => 1, 'EvTournament' => self::SENTINEL,
+            'EvEventName' => 'T', 'EvMixedTeam' => 0,
+        ]);
+        // Two distinct teams, each with a finals-flagged (EnTeamFEvent=1) component.
+        $this->seedTeamWithComponent('TTP', 5001, 0, 993001, 1, 1);
+        $this->seedTeamWithComponent('TTP', 5002, 0, 993002, 1, 1);
+        $this->assertSame(2, getProjectedFinalistsForEvent('TTP', 1, 0));
+    }
+
+    public function testTeamFallbackCountsWhenFinalsFlagsCleared(): void
+    {
+        self::seedRow('Events', [
+            'EvCode' => 'TTF', 'EvTeamEvent' => 1, 'EvTournament' => self::SENTINEL,
+            'EvEventName' => 'T', 'EvMixedTeam' => 0,
+        ]);
+        // TeFinEvent=0 so primary yields 0; components exist so fallback counts team entries.
+        $this->seedTeamWithComponent('TTF', 5101, 0, 994001, 0, 1);
+        $this->seedTeamWithComponent('TTF', 5102, 0, 994002, 0, 1);
+        $this->assertSame(2, getProjectedFinalistsForEvent('TTF', 1, 0));
+    }
+
+    public function testTeamDirectFallbackCountsFlaggedTeamsWithoutComponents(): void
+    {
+        self::seedRow('Events', [
+            'EvCode' => 'TTD', 'EvTeamEvent' => 1, 'EvTournament' => self::SENTINEL,
+            'EvEventName' => 'T', 'EvMixedTeam' => 0,
+        ]);
+        // TeFinEvent=1, TeSO!=0, NO TeamFinComponent -> primary & first fallback yield 0,
+        // direct fallback counts the flagged teams.
+        self::seedRow('Teams', [
+            'TeCoId' => 5201, 'TeSubTeam' => 0, 'TeEvent' => 'TTD',
+            'TeTournament' => self::SENTINEL, 'TeFinEvent' => 1, 'TeSO' => 1,
+        ]);
+        self::seedRow('Teams', [
+            'TeCoId' => 5202, 'TeSubTeam' => 0, 'TeEvent' => 'TTD',
+            'TeTournament' => self::SENTINEL, 'TeFinEvent' => 1, 'TeSO' => 1,
+        ]);
+        $this->assertSame(2, getProjectedFinalistsForEvent('TTD', 1, 0));
+    }
 }
