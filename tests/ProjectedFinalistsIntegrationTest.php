@@ -1,8 +1,6 @@
 <?php
 require_once __DIR__ . '/LaneAssistDbTestCase.php';
 
-use PHPUnit\Framework\TestCase;
-
 /**
  * DB integration test for getProjectedFinalistsForEvent.
  *

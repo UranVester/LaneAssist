@@ -6,6 +6,13 @@ use PHPUnit\Framework\TestCase;
  * skips cleanly when no DB is available, and provides sentinel-scoped seeding
  * and teardown. Writes to the real ianseo DB under TourId 999999. DO NOT run
  * against a production database.
+ *
+ * NOTE for subclass authors: some finals-logic.php functions (e.g.
+ * getProjectedFinalistsForEvent, getEventDistanceMeta) keep a per-process
+ * `static $cache` keyed by TourId + event code. Tests here stay correct only
+ * because each subclass uses DISTINCT event codes. If you seed under an event
+ * code another test already used, you may read a stale cached result. Use a
+ * fresh event code per scenario.
  */
 abstract class LaneAssistDbTestCase extends TestCase
 {
@@ -42,6 +49,9 @@ abstract class LaneAssistDbTestCase extends TestCase
             if (!isset($GLOBALS['CFG'])) {
                 $GLOBALS['CFG'] = new stdClass();
             }
+            // An included file runs in the scope of the include statement, and
+            // config.inc.php writes to a bare `$CFG` (e.g. `$CFG->R_HOST = ...`).
+            // Bind a local $CFG to the global object so those writes land on it.
             $CFG = $GLOBALS['CFG'];
             @include_once($root . '/Common/config.inc.php');
         }
@@ -75,6 +85,9 @@ abstract class LaneAssistDbTestCase extends TestCase
         if (function_exists('safe_w_sql') && function_exists('StrSafe_DB')) {
             static::cleanupSentinel();
         }
+        // Don't leave the sentinel TourId in the shared process $_SESSION, where a
+        // later test could read it. cleanupSentinel already ran above.
+        unset($_SESSION['TourId']);
     }
 
     protected static function cleanupSentinel(): void
