@@ -55,6 +55,11 @@ LaneAssist adds practical tools on top of IANSEO, including:
 
 ## Update
 
+1. Open the settings page (Modules/Lane Assist Settings)
+2. Under Updates, click the "Update Now" button.
+
+### Manual 
+
 1. Download the newest `laneassist-module-vX.Y.zip` from Releases.
 2. Replace `Modules/Custom/LaneAssist` with the new files.
 3. Reload IANSEO and test:
