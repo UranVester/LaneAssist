@@ -1,6 +1,12 @@
 (function($) {
     'use strict';
 
+    // Pure pair-playability rules, shared with the unit tests (Common/js/finals-playability.js).
+    const playability = (window.LaneAssist && window.LaneAssist.finalsPlayability) || null;
+    if (!playability) {
+        throw new Error('LaneAssist finals-playability.js must load before ManageFinals app.js');
+    }
+
     let dragHintTimer = null;
 
     const state = {
@@ -559,7 +565,12 @@
                     row.target = (row.target || '').toString().trim().toUpperCase();
                     row.archersPerTarget = parseInt(row.archersPerTarget, 10) === 2 ? 2 : 1;
                     row.hasParticipant = parseInt(row.hasParticipant, 10) > 0 ? 1 : 0;
-                    row.projectedParticipants = Math.max(0, parseInt(row.projectedParticipants, 10) || 0);
+                    row.projectedParticipants = parseInt(row.projectedParticipants, 10);
+                    if (Number.isNaN(row.projectedParticipants)) {
+                        row.projectedParticipants = null;
+                    } else {
+                        row.projectedParticipants = Math.max(0, row.projectedParticipants);
+                    }
                     row.gridPosition = parseInt(row.gridPosition, 10);
                     if (Number.isNaN(row.gridPosition)) {
                         row.gridPosition = null;
@@ -2026,44 +2037,12 @@
             const playableRows = [];
             Object.keys(bundle.pairs).forEach(function(pairNo) {
                 const pairRows = bundle.pairs[pairNo].sort(function(a, b) { return a.matchNo - b.matchNo; });
-                const participants = pairRows.filter(function(row) { return row.hasParticipant > 0; }).length;
-                const projectedParticipants = pairRows.reduce(function(maxValue, row) {
-                    const value = parseInt(row.projectedParticipants, 10);
-                    if (Number.isNaN(value)) {
-                        return maxValue;
-                    }
-                    return Math.max(maxValue, value);
-                }, 0);
-
-                const seedPositions = [];
-                pairRows.forEach(function(row) {
-                    const seedFromRow = parseInt(row.gridPosition, 10);
-                    if (!Number.isNaN(seedFromRow) && seedFromRow > 0 && seedPositions.indexOf(seedFromRow) === -1) {
-                        seedPositions.push(seedFromRow);
-                    }
-                });
-
-                if (seedPositions.length < 2) {
-                    pairRows.forEach(function(row) {
-                        const seedAlt = parseInt(row.gridPosition2, 10);
-                        if (!Number.isNaN(seedAlt) && seedAlt > 0 && seedPositions.indexOf(seedAlt) === -1) {
-                            seedPositions.push(seedAlt);
-                        }
-                    });
-                }
-
-                const projectedPlayable = projectedParticipants === 0 ||
-                    (projectedParticipants >= 2 &&
-                    seedPositions.length >= 2 &&
-                    seedPositions.slice(0, 2).every(function(seed) {
-                        return seed <= projectedParticipants;
-                    }));
 
                 const pairHasAssignedTarget = pairRows.some(function(row) {
                     return parseTargetNumber(row.target) !== null;
                 });
 
-                if (participants >= 2 || (participants < 2 && projectedPlayable)) {
+                if (playability.isPairPlayable(pairRows)) {
                     pairRows.forEach(function(row) {
                         playableRows.push(row);
                     });

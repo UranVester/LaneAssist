@@ -138,4 +138,26 @@ final class ProjectedFinalistsIntegrationTest extends LaneAssistDbTestCase
         ]);
         $this->assertSame(2, getProjectedFinalistsForEvent('TTD', 1, 0));
     }
+
+    public function testTeamEventWithNoTeamsProjectsZero(): void
+    {
+        // Regression (arhS26): a team event whose bracket is configured but which
+        // nobody entered. All three team fallbacks must yield 0 rather than a
+        // non-zero "just in case" figure -- ManageFinals relies on the hard 0 to
+        // keep the phantom bracket out of the unassigned pool.
+        self::seedRow('Events', [
+            'EvCode' => 'TTZ', 'EvTeamEvent' => 1, 'EvTournament' => self::SENTINEL,
+            'EvEventName' => 'T', 'EvMixedTeam' => 0, 'EvFinalFirstPhase' => 8,
+            'EvNumQualified' => 16,
+        ]);
+        self::seedRow('EventClass', [
+            'EcCode' => 'TTZ', 'EcTournament' => self::SENTINEL,
+            'EcClass' => 'ZT', 'EcDivision' => 'R', 'EcSubClass' => '',
+            'EcExtraAddons' => 0, 'EcTeamEvent' => 1,
+        ]);
+        // No Teams rows at all for TTZ.
+        $this->assertSame(0, getProjectedFinalistsForEvent('TTZ', 1, 16));
+        // The numQualified cap must not manufacture entrants either.
+        $this->assertSame(0, getProjectedFinalistsForEvent('TTZ', 1, 0));
+    }
 }

@@ -133,4 +133,41 @@ final class PartialScheduleSynthesisTest extends LaneAssistDbTestCase
             'team partial schedule should show scheduled + synthesized matches');
         $this->assertSame(count($matchNos), count(array_unique($matchNos)), 'no duplicates');
     }
+
+    public function testZeroTeamEventStillSynthesizesButProjectsZero(): void
+    {
+        // Regression (arhS26): 14 team events with 1/8 brackets and zero Teams rows
+        // put 448 phantom match rows in the unassigned pool. The fix is NOT to stop
+        // synthesizing -- the rows still cross the wire so the UI can count them as
+        // "hidden non-playable" -- but to have each carry projectedParticipants=0,
+        // which the frontend rule (Common/js/finals-playability.js) treats as
+        // unplayable. This test pins that server-side contract.
+        $ev = 'PSTZ';
+        self::seedRow('Events', [
+            'EvCode' => $ev, 'EvTeamEvent' => 1, 'EvTournament' => self::SENTINEL,
+            'EvEventName' => 'PS Team Zero', 'EvFinalFirstPhase' => 2,
+            'EvNumQualified' => 16, 'EvMixedTeam' => 0,
+        ]);
+        self::seedRow('EventClass', [
+            'EcCode' => $ev, 'EcTournament' => self::SENTINEL,
+            'EcClass' => 'PZ', 'EcDivision' => 'R', 'EcSubClass' => '',
+            'EcExtraAddons' => 0, 'EcTeamEvent' => 1,
+        ]);
+        // Deliberately no Teams rows and no FinSchedule rows for this event.
+
+        $response = $this->callGetCurrent(['teamEvent' => '1']);
+        $this->assertSame(self::BRACKET_MATCHNOS, $this->matchNosFor($response, $ev),
+            'synthesis must still emit the full bracket so the UI can report it as hidden');
+
+        $rows = array_values(array_filter($response['rows'] ?? [], static function ($r) use ($ev) {
+            return ($r['event'] ?? null) === $ev;
+        }));
+        $this->assertNotEmpty($rows);
+        foreach ($rows as $row) {
+            $this->assertSame(0, intval($row['projectedParticipants']),
+                'match ' . $row['matchNo'] . ' of an unentered team event must project 0 finalists');
+            $this->assertSame(0, intval($row['hasParticipant']),
+                'match ' . $row['matchNo'] . ' of an unentered team event must have no seated team');
+        }
+    }
 }
