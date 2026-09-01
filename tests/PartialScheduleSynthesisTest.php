@@ -170,4 +170,39 @@ final class PartialScheduleSynthesisTest extends LaneAssistDbTestCase
                 'match ' . $row['matchNo'] . ' of an unentered team event must have no seated team');
         }
     }
+
+    public function testZeroEntrantIndividualEventStillSynthesizesButProjectsZero(): void
+    {
+        // Individual counterpart of testZeroTeamEventStillSynthesizesButProjectsZero.
+        // Real case: tournament CloneTes, 11 individual events with brackets configured
+        // and no entries, showed 42 phantom bundles in the unassigned pool. Individual
+        // and team events must be treated identically here -- the frontend rule in
+        // Common/js/finals-playability.js never looks at teamEvent.
+        $ev = 'PSIZ';
+        self::seedRow('Events', [
+            'EvCode' => $ev, 'EvTeamEvent' => 0, 'EvTournament' => self::SENTINEL,
+            'EvEventName' => 'PS Ind Zero', 'EvFinalFirstPhase' => 2, 'EvNumQualified' => 16,
+        ]);
+        self::seedRow('EventClass', [
+            'EcCode' => $ev, 'EcTournament' => self::SENTINEL,
+            'EcClass' => 'PQ', 'EcDivision' => 'R', 'EcSubClass' => '',
+            'EcExtraAddons' => 0, 'EcTeamEvent' => 0,
+        ]);
+        // Deliberately no Entries rows and no FinSchedule rows for this event.
+
+        $response = $this->callGetCurrent(['teamEvent' => '0']);
+        $this->assertSame(self::BRACKET_MATCHNOS, $this->matchNosFor($response, $ev),
+            'synthesis must still emit the full bracket so the UI can report it as hidden');
+
+        $rows = array_values(array_filter($response['rows'] ?? [], static function ($r) use ($ev) {
+            return ($r['event'] ?? null) === $ev;
+        }));
+        $this->assertNotEmpty($rows);
+        foreach ($rows as $row) {
+            $this->assertSame(0, intval($row['projectedParticipants']),
+                'match ' . $row['matchNo'] . ' of an unentered individual event must project 0 finalists');
+            $this->assertSame(0, intval($row['hasParticipant']),
+                'match ' . $row['matchNo'] . ' of an unentered individual event must have no seated athlete');
+        }
+    }
 }

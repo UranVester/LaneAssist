@@ -160,4 +160,24 @@ final class ProjectedFinalistsIntegrationTest extends LaneAssistDbTestCase
         // The numQualified cap must not manufacture entrants either.
         $this->assertSame(0, getProjectedFinalistsForEvent('TTZ', 1, 0));
     }
+
+    public function testIndividualEventWithNoEntriesProjectsZero(): void
+    {
+        // Symmetric to testTeamEventWithNoTeamsProjectsZero: the individual path has
+        // only one fallback (all registered entrants in the class) where the team path
+        // has three, but both must bottom out at a hard 0 when nobody is entered.
+        // Sentinel class 'ZI' isolates this from the other individual scenarios.
+        self::seedRow('Events', [
+            'EvCode' => 'TIZ', 'EvTeamEvent' => 0, 'EvTournament' => self::SENTINEL,
+            'EvEventName' => 'T', 'EvFinalFirstPhase' => 8, 'EvNumQualified' => 16,
+        ]);
+        self::seedRow('EventClass', [
+            'EcCode' => 'TIZ', 'EcTournament' => self::SENTINEL,
+            'EcClass' => 'ZI', 'EcDivision' => 'R', 'EcSubClass' => '',
+            'EcExtraAddons' => 0, 'EcTeamEvent' => 0,
+        ]);
+        // No Entries rows in division R / class ZI at all.
+        $this->assertSame(0, getProjectedFinalistsForEvent('TIZ', 0, 16));
+        $this->assertSame(0, getProjectedFinalistsForEvent('TIZ', 0, 0));
+    }
 }

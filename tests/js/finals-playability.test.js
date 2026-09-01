@@ -95,3 +95,27 @@ test('empty and malformed input does not throw', () => {
     assert.strictEqual(playability.isPairPlayable(null), true);
     assert.deepStrictEqual(playability.collectSeedPositions([null, undefined]), []);
 });
+
+test('the rule is identical for individual and team events', () => {
+    // The module never reads teamEvent, so an individual event with nobody entered
+    // is hidden exactly like an unentered team event (real cases: arhS26 team
+    // brackets, CloneTes individual brackets). This pins that symmetry.
+    const scenarios = [
+        {projectedParticipants: 0, seeds: [1, 2], expected: false},
+        {projectedParticipants: 1, seeds: [1, 2], expected: false},
+        {projectedParticipants: 4, seeds: [1, 4], expected: true},
+        {projectedParticipants: 4, seeds: [5, 12], expected: false},
+        {projectedParticipants: undefined, seeds: [1, 2], expected: true},
+    ];
+
+    scenarios.forEach(function(s) {
+        [0, 1].forEach(function(teamEvent) {
+            const rows = pair(s).map(function(row) {
+                return Object.assign({teamEvent: teamEvent}, row);
+            });
+            assert.strictEqual(playability.isPairPlayable(rows), s.expected,
+                'projected ' + s.projectedParticipants + ' seeds ' + JSON.stringify(s.seeds) +
+                ' teamEvent ' + teamEvent);
+        });
+    });
+});
