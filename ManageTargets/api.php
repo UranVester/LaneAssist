@@ -142,6 +142,7 @@ function normalizeTargetRange($requestedFrom, $requestedTo, $sessionFirstTarget,
 }
 
 require_once(dirname(__FILE__, 2) . '/Common/csrf.php');
+require_once(dirname(__FILE__, 2) . '/Common/targets-logic.php');
 
 $action = requestString('action');
 
@@ -819,20 +820,8 @@ function previewAutoAssign() {
     $Offset2019 = ($drawType == 3 ? 1 : 0);
 
     // Build assignment snapshot maps from current unsaved UI state
-    $snapshotAssignedByParticipant = array();
-    $snapshotOccupiedTargets = array();
-    if (is_array($currentAssignments)) {
-        foreach ($currentAssignments as $assignment) {
-            $participantId = intval($assignment['participantId'] ?? 0);
-            $targetFull = strtoupper(trim((string)($assignment['targetFull'] ?? '')));
-            if ($participantId > 0) {
-                $snapshotAssignedByParticipant[$participantId] = $targetFull;
-            }
-            if ($targetFull !== '') {
-                $snapshotOccupiedTargets[$targetFull] = true;
-            }
-        }
-    }
+    $snapshot = laParseAssignmentSnapshot($currentAssignments);
+    $snapshotAssignedByParticipant = $snapshot['assignedByParticipant'];
 
     $sessionFirstTarget = intval($sessionInfo->SesFirstTarget);
     list($CurTarget, $EndTarget) = normalizeTargetRange(
@@ -844,25 +833,24 @@ function previewAutoAssign() {
     $CurPlace = 0;
     $EndPlace = $ArcPerButt - 1;
 
-    $TgtAvailable = array();
-    for ($i = $CurTarget; $i <= $EndTarget; $i++) {
-        for ($j = 0; $j < $ArcPerButt; $j++) {
-            $targetFull = str_pad($i . $TgtArray[$j], (TargetNoPadding + 1), '0', STR_PAD_LEFT);
-            if (!empty($snapshotOccupiedTargets)) {
-                $TgtAvailable[$targetFull] = (empty($snapshotOccupiedTargets[$targetFull]) ? 1 : 0);
-            } else {
-                $checkSql = "SELECT q.QuId
-                             FROM Qualifications q
-                             INNER JOIN Entries e ON q.QuId = e.EnId
-                             WHERE q.QuSession=" . StrSafe_DB($session) . "
-                               AND q.QuTarget=" . intval($i) . "
-                               AND q.QuLetter=" . StrSafe_DB($TgtArray[$j]) . "
-                               AND e.EnTournament=" . StrSafe_DB($_SESSION['TourId']);
-                $checkRs = safe_r_sql($checkSql);
-                $TgtAvailable[$targetFull] = (safe_num_rows($checkRs) == 1 ? 0 : 1);
-            }
+    $TgtAvailable = laBuildTargetAvailability(
+        $CurTarget,
+        $EndTarget,
+        $TgtArray,
+        $snapshot,
+        function ($target, $letter) use ($session) {
+            // Only reached when the UI supplied no snapshot: fall back to saved state.
+            $checkSql = "SELECT q.QuId
+                         FROM Qualifications q
+                         INNER JOIN Entries e ON q.QuId = e.EnId
+                         WHERE q.QuSession=" . StrSafe_DB($session) . "
+                           AND q.QuTarget=" . intval($target) . "
+                           AND q.QuLetter=" . StrSafe_DB($letter) . "
+                           AND e.EnTournament=" . StrSafe_DB($_SESSION['TourId']);
+            $checkRs = safe_r_sql($checkSql);
+            return safe_num_rows($checkRs) == 1;
         }
-    }
+    );
 
     $Distances = getDistFields();
     $sortOrder = array('DivViewOrder', 'ClViewOrder', 'rand()');
