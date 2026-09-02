@@ -4,6 +4,7 @@ const test = require('node:test');
 const assert = require('node:assert');
 
 const playability = require('../../Common/js/finals-playability.js');
+const distanceLanePlan = require('../../Common/js/distance-lane-plan.js');
 
 /** Two bracket rows of one match. seed/seed2 map to Grids GrPosition/GrPosition2. */
 function pair(overrides) {
@@ -117,5 +118,26 @@ test('the rule is identical for individual and team events', () => {
                 'projected ' + s.projectedParticipants + ' seeds ' + JSON.stringify(s.seeds) +
                 ' teamEvent ' + teamEvent);
         });
+    });
+});
+
+test('fixed-distance planning leaves spare targets unlocked', () => {
+    const makeBundle = function(distanceProfile, distanceSort, targetsUsed) {
+        return {
+            distanceProfile: distanceProfile,
+            distanceSort: distanceSort,
+            targetsUsed: targetsUsed,
+            rows: [{teamEvent: 0}]
+        };
+    };
+
+    const plan = distanceLanePlan.buildDistanceLanePlan(0, [
+        makeBundle('30m', 1, 12),
+        makeBundle('15m', 2, 1)
+    ], Array.from({length: 17}, function(_, index) { return index + 1; }));
+
+    assert.deepStrictEqual(plan.ranges, {
+        '30m': {start: 1, end: 12},
+        '15m': {start: 13, end: 13}
     });
 });
