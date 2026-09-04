@@ -29,12 +29,14 @@ if (!empty($CFG->USERAUTH)) {
 $PAGE_TITLE = 'LaneAssist Settings';
 $IncludeJquery = true;
 $IncludeFA = true;
+$assetVersion = rawurlencode(getLaneAssistModuleVersion());
 
 $JS_SCRIPT = array(
     '<script type="text/javascript">var ROOT_DIR = "' . $CFG->ROOT_DIR . '"; var LANEASSIST_HAS_COMPETITION = ' . ($hasCompetition ? '1' : '0') . '; var LANEASSIST_DEBUG_MODE = ' . ($isDebugMode ? '1' : '0') . ';</script>',
     '<link href="' . $CFG->ROOT_DIR . 'Modules/Custom/LaneAssist/Common/css/shared.css" rel="stylesheet" type="text/css">',
     '<link href="' . $CFG->ROOT_DIR . 'Modules/Custom/LaneAssist/Settings/css/style.css" rel="stylesheet" type="text/css">',
-    '<script src="' . $CFG->ROOT_DIR . 'Modules/Custom/LaneAssist/Settings/js/app.js"></script>',
+    '<script src="' . $CFG->ROOT_DIR . 'Modules/Custom/LaneAssist/Common/js/update-status.js?v=' . $assetVersion . '"></script>',
+    '<script src="' . $CFG->ROOT_DIR . 'Modules/Custom/LaneAssist/Settings/js/app.js?v=' . $assetVersion . '"></script>',
 );
 
 include('Common/Templates/head.php');

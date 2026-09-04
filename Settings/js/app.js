@@ -54,7 +54,7 @@
                 const currentVersion = (response.currentVersion || 'unknown').toString();
                 const latestVersion = (response.latestVersion || 'unknown').toString();
                 const published = (response.publishedAt || '').toString();
-                const signed = response.signature && parseInt(response.signature.ok, 10) > 0;
+                const signed = LaneAssist.updateStatus.isSignatureVerified(response.signature);
 
                 if ($('#update-github-summary').length) {
                     $('#update-github-summary').text(hasUpdate
