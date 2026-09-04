@@ -2,7 +2,7 @@
 
 if (!defined('LANEASSIST_MODULE_VERSION')) {
     // Bump this version on every release.
-    define('LANEASSIST_MODULE_VERSION', '1.4');
+    define('LANEASSIST_MODULE_VERSION', '1.5');
 }
 
 if (!function_exists('getLaneAssistModuleVersion')) {
