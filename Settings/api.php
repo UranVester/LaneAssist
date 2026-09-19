@@ -5,6 +5,7 @@
 
 require_once(dirname(__FILE__, 3) . '/config.php');
 require_once(dirname(__FILE__, 2) . '/version.php');
+require_once(dirname(__FILE__) . '/update-integrity.php');
 header('Content-Type: application/json');
 
 $hasCompetition = CheckTourSession();
@@ -1137,6 +1138,14 @@ function applyUpdateArchiveFile($zipFilePath) {
         $written++;
     }
 
+    $integrity = verifyLaneAssistUpdateIntegrity($projectRoot);
+    if (!$integrity['ok']) {
+        return [
+            'ok' => false,
+            'message' => 'Update applied but critical files are missing or unreadable: ' . implode(', ', $integrity['missingFiles']),
+        ];
+    }
+
     $backupPathRel = str_replace(dirname(__FILE__, 5) . '/', '', $backupRootAbs);
     if ($backupPathRel === $backupRootAbs) {
         $backupPathRel = $backupRootAbs;
@@ -1171,34 +1180,7 @@ function buildWritableBackupPath() {
 }
 
 function writeFileAtomic($targetFile, $content) {
-    $targetDir = dirname($targetFile);
-    if (!is_dir($targetDir) || !is_writable($targetDir)) {
-        return false;
-    }
-
-    $tmp = tempnam($targetDir, '.laneassist-upd-');
-    if ($tmp === false) {
-        return false;
-    }
-
-    if (@file_put_contents($tmp, $content) === false) {
-        @unlink($tmp);
-        return false;
-    }
-
-    if (file_exists($targetFile)) {
-        $perms = @fileperms($targetFile);
-        if ($perms !== false) {
-            @chmod($tmp, $perms & 0777);
-        }
-    }
-
-    if (!@rename($tmp, $targetFile)) {
-        @unlink($tmp);
-        return false;
-    }
-
-    return true;
+    return writeLaneAssistUpdateFileAtomically($targetFile, $content);
 }
 
 function normalizeZipEntryPath($entryName) {
