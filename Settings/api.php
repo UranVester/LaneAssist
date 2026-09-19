@@ -1117,7 +1117,9 @@ function applyUpdateArchiveFile($zipFilePath) {
         if (file_exists($target)) {
             $existingContent = @file_get_contents($target);
             if ($existingContent !== false && hash('sha256', $existingContent) === hash('sha256', (string)$entry['content'])) {
-                // Skip unchanged files to avoid unnecessary writes on restrictive file perms.
+                if (!normalizeLaneAssistUpdateFilePermissions($target)) {
+                    return ['ok' => false, 'message' => 'Failed to repair file permissions: ' . $relPath];
+                }
                 continue;
             }
 

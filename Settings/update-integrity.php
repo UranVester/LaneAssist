@@ -33,7 +33,7 @@ function writeLaneAssistUpdateFileAtomically($targetFile, $content) {
         return false;
     }
 
-    if (@file_put_contents($tmp, $content) === false || !@chmod($tmp, 0664)) {
+    if (@file_put_contents($tmp, $content) === false || !normalizeLaneAssistUpdateFilePermissions($tmp)) {
         @unlink($tmp);
         return false;
     }
@@ -44,4 +44,8 @@ function writeLaneAssistUpdateFileAtomically($targetFile, $content) {
     }
 
     return true;
+}
+
+function normalizeLaneAssistUpdateFilePermissions($path) {
+    return @chmod($path, 0664);
 }

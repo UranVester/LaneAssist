@@ -60,6 +60,16 @@ class UpdateIntegrityTest extends TestCase {
         $this->assertSame(0664, fileperms($existingFile) & 0777);
     }
 
+    public function testPermissionNormalizerRepairsUnchangedFile(): void {
+        $file = $this->root . '/Modules/Custom/LaneAssist/Common/js/unchanged-file.js';
+        file_put_contents($file, 'unchanged');
+        chmod($file, 0600);
+
+        $this->assertTrue(normalizeLaneAssistUpdateFilePermissions($file));
+        $this->assertSame('unchanged', file_get_contents($file));
+        $this->assertSame(0664, fileperms($file) & 0777);
+    }
+
     private function removeDirectory($path): void {
         if (!is_dir($path)) {
             return;
