@@ -6,7 +6,6 @@ if (empty($_SESSION['debug'])) {
     die('Debug mode required');
 }
 
-CheckTourSession(true);
 checkACL(AclParticipants, AclReadOnly);
 require_once('Common/Fun_Sessions.inc.php');
 require_once('Common/Lib/CommonLib.php');
@@ -298,6 +297,17 @@ echo '</div>';
 echo '<h1>Target Faces</h1>';
 echo '<p>Available target faces: ' . count($targetFaces) . '</p>';
 
+echo '<section class="target-value-legend">';
+echo '<h2>Value code legend</h2>';
+echo '<p>Each code identifies a scoring value. The size shown for a target is that ring\'s diameter in cm; a size of 0 disables the value.</p>';
+echo '<div class="target-value-legend-grid">';
+foreach (array_merge(range('A', 'Z'), range('1', '9')) as $key) {
+    $point = $LetterPoint[$key] ?? array('P' => '?', 'N' => '?');
+    echo '<div><strong>' . htmlspecialchars($key) . '</strong> = ' . htmlspecialchars($point['P']) . ' (' . htmlspecialchars($point['N']) . ' pts)</div>';
+}
+echo '</div>';
+echo '</section>';
+
 if ($saveFeedback !== '') {
     echo '<p class="alert ' . ($saveError ? 'alert-warning' : 'alert-success') . '">' . htmlspecialchars($saveFeedback) . '</p>';
 }
@@ -331,12 +341,17 @@ if (empty($targetFaces)) {
         $tarDef = (string)($tf->TarIskDefinition ?? '');
         $isClonedTarget = (strpos($tarArray, 'NoX') !== false) || (strpos($tarDef, 'LANEASSIST_CLONE_FROM=') !== false);
         $activeValues = array();
+        $activeLetters = array();
         $ngInfo = GetTargetNgInfo(intval($tf->TarId));
         if (is_array($ngInfo)) {
             foreach ($ngInfo as $item) {
                 $pointLabel = trim((string)($item['point'] ?? ''));
                 if ($pointLabel !== '' && !in_array($pointLabel, $activeValues, true)) {
                     $activeValues[] = $pointLabel;
+                }
+                $letter = trim((string)($item['letter'] ?? ''));
+                if ($letter !== '' && !in_array($letter, $activeLetters, true)) {
+                    $activeLetters[] = $letter;
                 }
             }
         }
@@ -363,37 +378,33 @@ if (empty($targetFaces)) {
         echo '<div><strong>ISK Values:</strong> ' . htmlspecialchars(implode(', ', $activeValues)) . '</div>';
         echo '</div>';
 
-        echo '<div class="target-value-editor">';
-        echo '<h3>Edit Value Sizes</h3>';
-        echo '<p class="editor-help">Set a size to 0 to remove that value from ISK keypad options.</p>';
-
-        echo '<form method="post" class="target-edit-form">';
-        echo '<input type="hidden" name="action" value="saveTargetValues">';
-        echo '<input type="hidden" name="targetId" value="' . intval($tf->TarId) . '">';
-
-        echo '<div class="value-grid">';
-        foreach (range('A', 'Z') as $letter) {
-            $field = $letter . '_size';
-            $value = intval($tf->{$field} ?? 0);
-            echo '<label>';
-            echo '<span>' . htmlspecialchars($letter) . '</span>';
-            echo '<input type="number" min="0" max="999" name="' . htmlspecialchars($field) . '" value="' . $value . '" ' . (!$canEditTargetValues ? 'disabled="disabled"' : '') . '>';
-            echo '</label>';
-        }
-        foreach (range('1', '9') as $digit) {
-            $field = $digit . '_size';
-            $value = intval($tf->{$field} ?? 0);
-            echo '<label>';
-            echo '<span>' . htmlspecialchars($digit) . '</span>';
-            echo '<input type="number" min="0" max="999" name="' . htmlspecialchars($field) . '" value="' . $value . '" ' . (!$canEditTargetValues ? 'disabled="disabled"' : '') . '>';
-            echo '</label>';
-        }
+        echo '<div class="target-active-letters">';
+        echo '<h3>Active letters</h3>';
+        echo '<div class="active-letter-list">' . htmlspecialchars(implode(', ', $activeLetters)) . '</div>';
         echo '</div>';
 
         if ($canEditTargetValues) {
+            echo '<details class="target-value-editor">';
+            echo '<summary>Edit value sizes</summary>';
+            echo '<p class="editor-help">Set a size to 0 to remove that value from ISK keypad options.</p>';
+            echo '<form method="post" class="target-edit-form">';
+            echo '<input type="hidden" name="action" value="saveTargetValues">';
+            echo '<input type="hidden" name="targetId" value="' . intval($tf->TarId) . '">';
+
+            echo '<div class="value-grid">';
+            foreach (array_merge(range('A', 'Z'), range('1', '9')) as $key) {
+                $field = $key . '_size';
+                $value = intval($tf->{$field} ?? 0);
+                echo '<label>';
+                echo '<span>' . htmlspecialchars($key) . '</span>';
+                echo '<input type="number" min="0" max="999" name="' . htmlspecialchars($field) . '" value="' . $value . '">';
+                echo '</label>';
+            }
+            echo '</div>';
             echo '<button type="submit" class="btn btn-primary">Save Values</button>';
+            echo '</form>';
+            echo '</details>';
         }
-        echo '</form>';
 
         if ($canEditTargetValues) {
             echo '<form method="post" class="clone-form">';
@@ -410,8 +421,6 @@ if (empty($targetFaces)) {
                 echo '</form>';
             }
         }
-        echo '</div>';
-
         echo '</div>';
     }
 

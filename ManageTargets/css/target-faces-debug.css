@@ -198,16 +198,75 @@
     color: #155724;
 }
 
-.target-value-editor {
+.target-value-legend {
+    margin: 20px 0;
+    padding: 14px;
+    background: #f8f9fa;
+    border: 1px solid #dfe3e6;
+    border-radius: 4px;
+}
+
+.target-value-legend h2 {
+    margin: 0 0 6px;
+    font-size: 16px;
+}
+
+.target-value-legend p {
+    margin: 0 0 10px;
+    font-size: 13px;
+    color: #555;
+}
+
+.target-value-legend-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(105px, 1fr));
+    gap: 5px;
+}
+
+.target-value-legend-grid > div {
+    padding: 4px 6px;
+    font-size: 12px;
+    background: #fff;
+    border: 1px solid #e1e1e1;
+}
+
+.target-active-letters {
     margin-top: 14px;
     border-top: 1px solid #e5e5e5;
     padding-top: 12px;
 }
 
-.target-value-editor h3 {
-    margin: 0 0 6px;
+.target-active-letters h3 {
+    margin: 0 0 8px;
     font-size: 14px;
     color: #2c2c2c;
+}
+
+.active-letter-list {
+    font-size: 13px;
+    line-height: 1.6;
+}
+
+.target-value-editor {
+    margin-top: 14px;
+}
+
+.target-value-editor summary {
+    display: inline-block;
+    padding: 8px 16px;
+    cursor: pointer;
+    color: #fff;
+    background: #1f7a3f;
+    border-radius: 4px;
+    font-size: 14px;
+}
+
+.target-value-editor summary:hover {
+    background: #186032;
+}
+
+.target-value-editor[open] summary {
+    margin-bottom: 10px;
 }
 
 .editor-help {
@@ -218,7 +277,7 @@
 
 .value-grid {
     display: grid;
-    grid-template-columns: repeat(7, minmax(0, 1fr));
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 6px;
     margin-bottom: 10px;
 }
