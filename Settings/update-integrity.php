@@ -11,7 +11,8 @@ function verifyLaneAssistUpdateIntegrity($projectRoot) {
 
     foreach ($requiredFiles as $relativePath) {
         $path = rtrim((string)$projectRoot, '/\\') . '/' . $relativePath;
-        if (!is_file($path) || !is_readable($path)) {
+        $permissions = @fileperms($path);
+        if (!is_file($path) || !is_readable($path) || $permissions === false || ($permissions & 0004) === 0) {
             $missingFiles[] = $relativePath;
         }
     }
@@ -48,4 +49,51 @@ function writeLaneAssistUpdateFileAtomically($targetFile, $content) {
 
 function normalizeLaneAssistUpdateFilePermissions($path) {
     return @chmod($path, 0664);
+}
+
+function repairLaneAssistModulePermissions($moduleRoot) {
+    if (!is_dir($moduleRoot)) {
+        return ['ok' => false, 'changed' => 0, 'failedPaths' => [$moduleRoot]];
+    }
+
+    $changed = 0;
+    $failedPaths = [];
+    $entries = new RecursiveIteratorIterator(
+        new RecursiveDirectoryIterator($moduleRoot, FilesystemIterator::SKIP_DOTS),
+        RecursiveIteratorIterator::CHILD_FIRST
+    );
+
+    foreach ($entries as $entry) {
+        if ($entry->isLink()) {
+            continue;
+        }
+
+        $path = $entry->getPathname();
+        $targetPermissions = $entry->isDir() ? 0775 : 0664;
+        $currentPermissions = $entry->getPerms() & 0777;
+        if ($currentPermissions === $targetPermissions) {
+            continue;
+        }
+
+        if (!@chmod($path, $targetPermissions)) {
+            $failedPaths[] = $path;
+            continue;
+        }
+        $changed++;
+    }
+
+    $rootPermissions = @fileperms($moduleRoot);
+    if ($rootPermissions === false || ($rootPermissions & 0777) !== 0775) {
+        if (!@chmod($moduleRoot, 0775)) {
+            $failedPaths[] = $moduleRoot;
+        } else {
+            $changed++;
+        }
+    }
+
+    return [
+        'ok' => empty($failedPaths),
+        'changed' => $changed,
+        'failedPaths' => $failedPaths,
+    ];
 }

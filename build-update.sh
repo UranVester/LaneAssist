@@ -163,7 +163,7 @@ cp -a "$MODULE_SOURCE_DIR" "$STAGE_ROOT/Modules/Custom/LaneAssist"
 # Normalize file modes in staged payload to avoid restrictive perms after updates.
 find "$STAGE_ROOT/$REL_MODULE_PATH" -type d -exec chmod 775 {} +
 find "$STAGE_ROOT/$REL_MODULE_PATH" -type f -exec chmod 664 {} +
-find "$STAGE_ROOT/$REL_MODULE_PATH" -type f -name '*.sh' -exec chmod 775 {} +
+find "$STAGE_ROOT/$REL_MODULE_PATH" -type f -name '*.sh' -delete
 
 (
   cd "$STAGE_ROOT"
@@ -172,7 +172,6 @@ find "$STAGE_ROOT/$REL_MODULE_PATH" -type f -name '*.sh' -exec chmod 775 {} +
     "*/laneassist-module*.zip" \
     "*/.env" \
     "*/docs/screenshots/*" \
-    "build-update.sh" \
     ".gitignore" \
     "*/.env.*" \
        "*/node_modules/*" \

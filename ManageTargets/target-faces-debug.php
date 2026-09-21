@@ -11,6 +11,7 @@ require_once('Common/Fun_Sessions.inc.php');
 require_once('Common/Lib/CommonLib.php');
 require_once('Common/Fun_FormatText.inc.php');
 require_once('Common/Lib/ArrTargets.inc.php');
+require_once(dirname(__FILE__, 2) . '/Settings/update-integrity.php');
 
 global $CFG;
 
@@ -41,6 +42,20 @@ function buildVegas610DataFromSource($sourceRow, $newTarId) {
     }
 
     return $data;
+}
+
+if (
+    $_SERVER['REQUEST_METHOD'] === 'POST'
+    && isset($_POST['action'])
+    && $_POST['action'] === 'repairPermissions'
+) {
+    $repair = repairLaneAssistModulePermissions(dirname(__FILE__, 2));
+    if (!$repair['ok']) {
+        $saveError = true;
+        $saveFeedback = 'Permission repair failed for: ' . implode(', ', $repair['failedPaths']);
+    } else {
+        $saveFeedback = 'LaneAssist permissions repaired. Changed ' . intval($repair['changed']) . ' path(s).';
+    }
 }
 
 if (
@@ -287,6 +302,11 @@ while ($r = safe_fetch($q)) {
 echo '<div class="container">';
 echo '<div class="header-actions">';
 echo '<a href="index.php" class="btn btn-secondary"><i class="fa fa-arrow-left"></i> Back to Target Assignment</a>';
+echo '<a href="target-faces-backup.php" class="btn btn-primary"><i class="fa fa-download"></i> Download Tournament Backup</a>';
+echo '<form method="post" class="header-inline-form">';
+echo '<input type="hidden" name="action" value="repairPermissions">';
+echo '<button type="submit" class="btn btn-warning"><i class="fa fa-wrench"></i> Repair LaneAssist Permissions</button>';
+echo '</form>';
 if ($canEditTargetValues) {
     echo '<form method="post" class="header-inline-form">';
     echo '<input type="hidden" name="action" value="createVegas610">';
