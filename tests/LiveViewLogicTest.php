@@ -16,6 +16,25 @@ final class LiveViewLogicTest extends TestCase
         $this->assertSame(24, laneAssistLastEndPoints('987X', 3, $decode));
     }
 
+    public function testPersonalBestMatchesNormalizedNameAndClubAndRequiresAHigherScore(): void
+    {
+        $archers = laneAssistAttachPersonalBests([
+            ['firstName' => 'Ada', 'lastName' => ' Archer', 'club' => 'North  Club', 'totalPoints' => 601],
+            ['firstName' => 'Ada', 'lastName' => 'Archer', 'club' => 'South Club', 'totalPoints' => 600],
+            ['firstName' => 'No', 'lastName' => 'History', 'club' => 'North Club', 'totalPoints' => 550],
+        ], [
+            ['firstName' => ' ada ', 'lastName' => 'archer', 'club' => 'north club', 'score' => 600],
+            ['firstName' => 'Ada', 'lastName' => 'Archer', 'club' => 'South Club', 'score' => 600],
+        ]);
+
+        $this->assertSame(600, $archers[0]['personalBest']);
+        $this->assertTrue($archers[0]['hasNewPersonalBest']);
+        $this->assertSame(600, $archers[1]['personalBest']);
+        $this->assertFalse($archers[1]['hasNewPersonalBest']);
+        $this->assertNull($archers[2]['personalBest']);
+        $this->assertFalse($archers[2]['hasNewPersonalBest']);
+    }
+
     public function testFinalSetPointsAreLimitedAndPaddedToFiveSets(): void
     {
         $decode = static function(string $arrow): int {

@@ -17,10 +17,12 @@
             var archers = mat.archers.map(function(archer) {
                 var problemClass = archer.isBehind ? ' danger' : (archer.isAhead ? ' warning' : '');
                 var endPoints = archer.lastEndPoints === null ? '-' : archer.lastEndPoints;
+                var personalBest = archer.personalBest === null || archer.personalBest === undefined ? '' : ' · PB ' + archer.personalBest;
+                var newPersonalBest = archer.hasNewPersonalBest ? '<i class="fa fa-trophy new-personal-best" title="New personal best" aria-label="New personal best"></i>' : '';
                 return '<div class="competitor' + problemClass + '">' +
                     '<div class="competitor-position">' + escapeHtml(archer.position) + '</div>' +
-                    '<div class="competitor-main"><strong>' + escapeHtml(archer.name) + '</strong><small>' + escapeHtml(archer.club) + ' · ' + archer.completedEnds + ' ends</small></div>' +
-                    '<div class="score-pair"><span><small>Last end</small><b>' + endPoints + '</b></span><span><small>Total</small><b>' + archer.totalPoints + '</b></span></div></div>';
+                    '<div class="competitor-main"><strong>' + escapeHtml(archer.name) + '</strong><small>' + escapeHtml(archer.club) + ' · ' + archer.completedEnds + ' ends' + personalBest + '</small></div>' +
+                    '<div class="score-pair"><span><small>Last end</small><b>' + endPoints + '</b></span><span><small>Total</small><b>' + archer.totalPoints + newPersonalBest + '</b></span></div></div>';
             }).join('');
             return '<article class="live-card qual-card"><header>' + targetFace(mat.target) + '<div><span class="eyebrow">Target / mat</span><h3>' + escapeHtml(mat.target) + '</h3><small>Pace: end ' + mat.expectedEnds + '</small></div></header><div class="competitors">' + archers + '</div></article>';
         }).join('');

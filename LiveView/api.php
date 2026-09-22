@@ -79,6 +79,8 @@ function qualificationSnapshot($session) {
         }
         $mats[$target]['archers'][] = [
             'participantId' => intval($row->EnId),
+            'firstName' => trim((string)$row->EnFirstName),
+            'lastName' => trim((string)$row->EnName),
             'name' => trim((string)$row->EnFirstName . ' ' . (string)$row->EnName),
             'club' => trim((string)$row->CoCode),
             'position' => trim((string)$row->QuLetter),
@@ -98,6 +100,7 @@ function qualificationSnapshot($session) {
     foreach ($mats as $mat) {
         $allArchers = array_merge($allArchers, $mat['archers']);
     }
+    $allArchers = laneAssistAttachPersonalBests($allArchers, loadQualificationPersonalBestScores($allArchers));
     $pace = laneAssistMarkQualificationLag($allArchers);
     $paceByParticipant = [];
     foreach ($pace['archers'] as $archer) {
@@ -112,6 +115,51 @@ function qualificationSnapshot($session) {
     }
     unset($mat);
     return array_values($mats);
+}
+
+function loadQualificationPersonalBestScores(array $archers) {
+    if (!$archers) {
+        return [];
+    }
+
+    $tourId = StrSafe_DB($_SESSION['TourId']);
+    $tournament = safe_fetch(safe_r_sql("SELECT ToLocRule, ToType FROM Tournament WHERE ToId=$tourId"));
+    if (!$tournament) {
+        return [];
+    }
+
+    $identityConditions = [];
+    foreach ($archers as $archer) {
+        $firstName = strtolower(trim((string)($archer['firstName'] ?? '')));
+        $lastName = strtolower(trim((string)($archer['lastName'] ?? '')));
+        $club = strtolower(trim((string)($archer['club'] ?? '')));
+        $identityConditions[$firstName . '|' . $lastName . '|' . $club] = "(LOWER(TRIM(past.EnFirstName))=" . StrSafe_DB($firstName) . "
+            AND LOWER(TRIM(past.EnName))=" . StrSafe_DB($lastName) . "
+            AND LOWER(TRIM(COALESCE(pastClub.CoCode, '')))=" . StrSafe_DB($club) . ')';
+    }
+
+    $sql = "SELECT past.EnFirstName FirstName, past.EnName LastName, COALESCE(pastClub.CoCode, '') Club, MAX(history.QuScore) Score
+        FROM Qualifications history
+        INNER JOIN Entries past ON past.EnId=history.QuId
+        INNER JOIN Tournament pastTournament ON pastTournament.ToId=past.EnTournament
+        LEFT JOIN Countries pastClub ON pastClub.CoId=past.EnCountry
+        WHERE past.EnAthlete=1 AND past.EnStatus<=1 AND history.QuScore>0
+          AND pastTournament.ToId<>$tourId
+          AND pastTournament.ToLocRule=" . StrSafe_DB($tournament->ToLocRule) . '
+          AND pastTournament.ToType=' . StrSafe_DB($tournament->ToType) . '
+          AND (' . implode(' OR ', $identityConditions) . ')
+        GROUP BY past.EnFirstName, past.EnName, pastClub.CoCode';
+    $scores = [];
+    $rs = safe_r_sql($sql);
+    while ($row = safe_fetch($rs)) {
+        $scores[] = [
+            'firstName' => (string)$row->FirstName,
+            'lastName' => (string)$row->LastName,
+            'club' => (string)$row->Club,
+            'score' => intval($row->Score),
+        ];
+    }
+    return $scores;
 }
 
 function loadFinalSides($teamEvent) {

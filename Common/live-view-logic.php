@@ -5,6 +5,30 @@ function laneAssistCompletedEnds($arrowString, $arrowsPerEnd) {
     return intdiv(strlen(rtrim((string)$arrowString)), $arrowsPerEnd);
 }
 
+function laneAssistPersonalBestKey($firstName, $lastName, $club) {
+    $normalize = function($value) {
+        return preg_replace('/\s+/', ' ', strtolower(trim((string)$value)));
+    };
+    return $normalize($firstName) . '|' . $normalize($lastName) . '|' . $normalize($club);
+}
+
+function laneAssistAttachPersonalBests(array $archers, array $historicalScores) {
+    $bestScores = [];
+    foreach ($historicalScores as $score) {
+        $key = laneAssistPersonalBestKey($score['firstName'] ?? '', $score['lastName'] ?? '', $score['club'] ?? '');
+        $bestScores[$key] = max($bestScores[$key] ?? 0, max(0, intval($score['score'] ?? 0)));
+    }
+
+    foreach ($archers as &$archer) {
+        $key = laneAssistPersonalBestKey($archer['firstName'] ?? '', $archer['lastName'] ?? '', $archer['club'] ?? '');
+        $personalBest = $bestScores[$key] ?? null;
+        $archer['personalBest'] = $personalBest;
+        $archer['hasNewPersonalBest'] = $personalBest !== null && intval($archer['totalPoints'] ?? 0) > $personalBest;
+    }
+    unset($archer);
+    return $archers;
+}
+
 function laneAssistLastEndPoints($arrowString, $arrowsPerEnd, callable $decodeArrow) {
     $arrowString = rtrim((string)$arrowString);
     $arrowsPerEnd = max(1, intval($arrowsPerEnd));
