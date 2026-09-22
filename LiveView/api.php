@@ -138,7 +138,8 @@ function loadQualificationPersonalBestScores(array $archers) {
             AND LOWER(TRIM(COALESCE(pastClub.CoCode, '')))=" . StrSafe_DB($club) . ')';
     }
 
-    $sql = "SELECT past.EnFirstName FirstName, past.EnName LastName, COALESCE(pastClub.CoCode, '') Club, MAX(history.QuScore) Score
+    $sql = "SELECT past.EnFirstName FirstName, past.EnName LastName, COALESCE(pastClub.CoCode, '') Club,
+            history.QuScore Score, pastTournament.ToName CompetitionName
         FROM Qualifications history
         INNER JOIN Entries past ON past.EnId=history.QuId
         INNER JOIN Tournament pastTournament ON pastTournament.ToId=past.EnTournament
@@ -147,8 +148,8 @@ function loadQualificationPersonalBestScores(array $archers) {
           AND pastTournament.ToId<>$tourId
           AND pastTournament.ToLocRule=" . StrSafe_DB($tournament->ToLocRule) . '
           AND pastTournament.ToType=' . StrSafe_DB($tournament->ToType) . '
-          AND (' . implode(' OR ', $identityConditions) . ')
-        GROUP BY past.EnFirstName, past.EnName, pastClub.CoCode';
+                    AND (' . implode(' OR ', $identityConditions) . ')
+                ORDER BY history.QuScore DESC, pastTournament.ToWhenTo DESC, pastTournament.ToName';
     $scores = [];
     $rs = safe_r_sql($sql);
     while ($row = safe_fetch($rs)) {
@@ -157,6 +158,7 @@ function loadQualificationPersonalBestScores(array $archers) {
             'lastName' => (string)$row->LastName,
             'club' => (string)$row->Club,
             'score' => intval($row->Score),
+            'competitionName' => (string)$row->CompetitionName,
         ];
     }
     return $scores;

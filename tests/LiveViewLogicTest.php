@@ -23,15 +23,18 @@ final class LiveViewLogicTest extends TestCase
             ['firstName' => 'Ada', 'lastName' => 'Archer', 'club' => 'South Club', 'totalPoints' => 600],
             ['firstName' => 'No', 'lastName' => 'History', 'club' => 'North Club', 'totalPoints' => 550],
         ], [
-            ['firstName' => ' ada ', 'lastName' => 'archer', 'club' => 'north club', 'score' => 600],
-            ['firstName' => 'Ada', 'lastName' => 'Archer', 'club' => 'South Club', 'score' => 600],
+            ['firstName' => ' ada ', 'lastName' => 'archer', 'club' => 'north club', 'score' => 600, 'competitionName' => 'Spring Open'],
+            ['firstName' => 'Ada', 'lastName' => 'Archer', 'club' => 'South Club', 'score' => 600, 'competitionName' => 'Autumn Open'],
         ]);
 
         $this->assertSame(600, $archers[0]['personalBest']);
+        $this->assertSame('Spring Open', $archers[0]['personalBestCompetitionName']);
         $this->assertTrue($archers[0]['hasNewPersonalBest']);
         $this->assertSame(600, $archers[1]['personalBest']);
+        $this->assertSame('Autumn Open', $archers[1]['personalBestCompetitionName']);
         $this->assertFalse($archers[1]['hasNewPersonalBest']);
         $this->assertNull($archers[2]['personalBest']);
+        $this->assertSame('', $archers[2]['personalBestCompetitionName']);
         $this->assertFalse($archers[2]['hasNewPersonalBest']);
     }
 

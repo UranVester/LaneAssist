@@ -16,14 +16,18 @@ function laneAssistAttachPersonalBests(array $archers, array $historicalScores) 
     $bestScores = [];
     foreach ($historicalScores as $score) {
         $key = laneAssistPersonalBestKey($score['firstName'] ?? '', $score['lastName'] ?? '', $score['club'] ?? '');
-        $bestScores[$key] = max($bestScores[$key] ?? 0, max(0, intval($score['score'] ?? 0)));
+        $points = max(0, intval($score['score'] ?? 0));
+        if (!isset($bestScores[$key]) || $points > $bestScores[$key]['score']) {
+            $bestScores[$key] = ['score' => $points, 'competitionName' => trim((string)($score['competitionName'] ?? ''))];
+        }
     }
 
     foreach ($archers as &$archer) {
         $key = laneAssistPersonalBestKey($archer['firstName'] ?? '', $archer['lastName'] ?? '', $archer['club'] ?? '');
         $personalBest = $bestScores[$key] ?? null;
-        $archer['personalBest'] = $personalBest;
-        $archer['hasNewPersonalBest'] = $personalBest !== null && intval($archer['totalPoints'] ?? 0) > $personalBest;
+        $archer['personalBest'] = $personalBest['score'] ?? null;
+        $archer['personalBestCompetitionName'] = $personalBest['competitionName'] ?? '';
+        $archer['hasNewPersonalBest'] = $personalBest !== null && intval($archer['totalPoints'] ?? 0) > $personalBest['score'];
     }
     unset($archer);
     return $archers;

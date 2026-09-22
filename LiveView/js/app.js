@@ -17,7 +17,7 @@
             var archers = mat.archers.map(function(archer) {
                 var problemClass = archer.isBehind ? ' danger' : (archer.isAhead ? ' warning' : '');
                 var endPoints = archer.lastEndPoints === null ? '-' : archer.lastEndPoints;
-                var personalBest = archer.personalBest === null || archer.personalBest === undefined ? '' : ' · PB ' + archer.personalBest;
+                var personalBest = archer.personalBest === null || archer.personalBest === undefined ? '' : ' · <span title="' + escapeHtml(archer.personalBestCompetitionName || 'Competition name unavailable') + '">PB ' + archer.personalBest + '</span>';
                 var newPersonalBest = archer.hasNewPersonalBest ? '<i class="fa fa-trophy new-personal-best" title="New personal best" aria-label="New personal best"></i>' : '';
                 return '<div class="competitor' + problemClass + '">' +
                     '<div class="competitor-position">' + escapeHtml(archer.position) + '</div>' +
