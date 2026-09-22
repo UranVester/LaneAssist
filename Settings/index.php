@@ -18,6 +18,7 @@ if (!empty($CFG->USERAUTH) && !empty($_SESSION['AUTH_ENABLE']) && function_exist
     $isAdminSettings = hasFullACL(AclRoot, '', AclReadWrite);
 }
 $isAdminOrDebugSettings = $isDebugMode || $isAdminSettings;
+$canInstallUpdates = empty($CFG->USERAUTH) || $isAdminSettings;
 $competitionCode = $hasCompetition ? getCodeFromId($_SESSION['TourId']) : '';
 $activeSettingsOwner = 'Shared default';
 if (!empty($CFG->USERAUTH)) {
@@ -143,11 +144,14 @@ include('Common/Templates/head.php');
             <div id="update-github-meta" class="inline-note"></div>
             <div class="settings-actions">
                 <button id="btn-check-updates" class="btn btn-info"><i class="fa fa-refresh"></i> Check Updates</button>
-                <?php if (empty($CFG->USERAUTH) || $isAdminSettings): ?>
+                <?php if ($canInstallUpdates): ?>
                     <button id="btn-apply-update-github" class="btn btn-warning" disabled><i class="fa fa-download"></i> Update Now</button>
                 <?php endif; ?>
             </div>
             <small>Only signed releases with your configured Ed25519 key are accepted.</small>
+            <?php if (!$canInstallUpdates): ?>
+                <small class="inline-note">Installing updates requires a root administrator account.</small>
+            <?php endif; ?>
         </section>
 
         <section class="settings-card">
@@ -171,6 +175,7 @@ include('Common/Templates/head.php');
         <?php if ($isDebugMode): ?>
         <section class="settings-card">
             <h3><i class="fa fa-upload"></i> Debug: Update by file</h3>
+            <?php if ($canInstallUpdates): ?>
             <p class="inline-note">Debug-only local ZIP updater for development/testing using ZIP + Ed25519 signature text.</p>
             <div class="settings-field">
                 <label for="update-file-input">Update ZIP file</label>
@@ -187,6 +192,9 @@ include('Common/Templates/head.php');
             </div>
             <div id="update-file-result" class="inline-note"></div>
             <div class="inline-note">Config file: <strong>Modules/Custom/LaneAssist/Settings/update-config.php</strong></div>
+            <?php else: ?>
+            <p class="inline-note">Installing update files requires a root administrator account.</p>
+            <?php endif; ?>
         </section>
         
         <?php endif; ?>
