@@ -6,6 +6,7 @@
 require_once(dirname(__FILE__, 3) . '/config.php');
 require_once(dirname(__FILE__, 2) . '/version.php');
 require_once(dirname(__FILE__) . '/update-integrity.php');
+require_once(dirname(__FILE__) . '/update-http.php');
 header('Content-Type: application/json');
 
 $hasCompetition = CheckTourSession();
@@ -735,7 +736,7 @@ function fetchRemoteResource($url, $accept = '*/*') {
         'http' => [
             'method' => 'GET',
             'timeout' => 20,
-            'header' => "User-Agent: LaneAssist-Updater\r\nAccept: " . $accept . "\r\n",
+            'header' => laneAssistBuildRemoteRequestHeaders($accept),
             'ignore_errors' => true,
         ],
     ]);
@@ -756,7 +757,11 @@ function fetchRemoteResource($url, $accept = '*/*') {
     }
 
     if ($statusCode < 200 || $statusCode >= 300) {
-        return ['error' => 'Remote request failed with HTTP ' . $statusCode];
+        return ['error' => laneAssistFormatRemoteHttpError(
+            $statusCode,
+            laneAssistParseHttpResponseHeaders($http_response_header ?? []),
+            (string)$body
+        )];
     }
 
     return ['error' => '', 'body' => $body, 'statusCode' => $statusCode];

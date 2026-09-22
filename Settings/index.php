@@ -140,7 +140,7 @@ include('Common/Templates/head.php');
         <section class="settings-card">
             <h3><i class="fa fa-cloud-download"></i> Updates</h3>
             <p class="inline-note">Checks the latest signed release from <strong>GitHub</strong>.</p>
-            <div id="update-github-summary" class="inline-note">Checking for updates...</div>
+            <div id="update-github-summary" class="inline-note">Updates have not been checked yet.</div>
             <div id="update-github-meta" class="inline-note"></div>
             <div class="settings-actions">
                 <button id="btn-check-updates" class="btn btn-info"><i class="fa fa-refresh"></i> Check Updates</button>

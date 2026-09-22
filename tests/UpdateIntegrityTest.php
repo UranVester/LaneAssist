@@ -3,6 +3,7 @@
 use PHPUnit\Framework\TestCase;
 
 require_once dirname(__DIR__) . '/Settings/update-integrity.php';
+require_once dirname(__DIR__) . '/Settings/update-http.php';
 
 class UpdateIntegrityTest extends TestCase {
     private $root;
@@ -25,6 +26,7 @@ class UpdateIntegrityTest extends TestCase {
         $this->assertFalse($result['ok']);
         $this->assertSame([
             'Modules/Custom/LaneAssist/Settings/index.php',
+            'Modules/Custom/LaneAssist/Settings/update-http.php',
             'Modules/Custom/LaneAssist/Settings/js/app.js',
             'Modules/Custom/LaneAssist/Common/js/update-status.js',
         ], $result['missingFiles']);
@@ -34,6 +36,7 @@ class UpdateIntegrityTest extends TestCase {
         foreach ([
             'Modules/Custom/LaneAssist/Settings/api.php',
             'Modules/Custom/LaneAssist/Settings/index.php',
+            'Modules/Custom/LaneAssist/Settings/update-http.php',
             'Modules/Custom/LaneAssist/Settings/js/app.js',
             'Modules/Custom/LaneAssist/Common/js/update-status.js',
         ] as $relativePath) {
@@ -50,6 +53,7 @@ class UpdateIntegrityTest extends TestCase {
         foreach ([
             'Modules/Custom/LaneAssist/Settings/api.php',
             'Modules/Custom/LaneAssist/Settings/index.php',
+            'Modules/Custom/LaneAssist/Settings/update-http.php',
             'Modules/Custom/LaneAssist/Settings/js/app.js',
             'Modules/Custom/LaneAssist/Common/js/update-status.js',
         ] as $relativePath) {
@@ -61,6 +65,30 @@ class UpdateIntegrityTest extends TestCase {
 
         $this->assertFalse($result['ok']);
         $this->assertSame(['Modules/Custom/LaneAssist/Settings/api.php'], $result['missingFiles']);
+    }
+
+    public function testReportsGithubRateLimitWithResetTime(): void {
+        $message = laneAssistFormatRemoteHttpError(403, [
+            'x-ratelimit-remaining' => '0',
+            'x-ratelimit-reset' => '1700000000',
+        ]);
+
+        $this->assertSame('GitHub API rate limit reached. Try again after 2023-11-14 22:13:20 UTC', $message);
+    }
+
+    public function testBuildsGithubRequestHeaders(): void {
+        $headers = laneAssistBuildRemoteRequestHeaders('application/vnd.github+json');
+
+        $this->assertStringContainsString("User-Agent: LaneAssist-Updater\r\n", $headers);
+        $this->assertStringContainsString("Accept: application/vnd.github+json\r\n", $headers);
+        $this->assertStringContainsString("X-GitHub-Api-Version: 2022-11-28\r\n", $headers);
+        $this->assertStringNotContainsString('Authorization:', $headers);
+    }
+
+    public function testReportsGithubResponseMessageForOtherForbiddenRequests(): void {
+        $message = laneAssistFormatRemoteHttpError(403, [], '{"message":"API rate limit exceeded"}');
+
+        $this->assertSame('Remote request failed with HTTP 403: API rate limit exceeded', $message);
     }
 
     public function testAtomicWriterMakesNewAndExistingFilesWebReadable(): void {

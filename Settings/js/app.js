@@ -8,7 +8,6 @@
     function init() {
         bindEvents();
         loadSettings();
-        checkUpdates();
     }
 
     function bindEvents() {

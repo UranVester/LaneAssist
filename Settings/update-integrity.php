@@ -4,6 +4,7 @@ function verifyLaneAssistUpdateIntegrity($projectRoot) {
     $requiredFiles = [
         'Modules/Custom/LaneAssist/Settings/api.php',
         'Modules/Custom/LaneAssist/Settings/index.php',
+        'Modules/Custom/LaneAssist/Settings/update-http.php',
         'Modules/Custom/LaneAssist/Settings/js/app.js',
         'Modules/Custom/LaneAssist/Common/js/update-status.js',
     ];
