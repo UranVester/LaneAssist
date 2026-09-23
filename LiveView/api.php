@@ -14,6 +14,7 @@ checkFullACL(AclCompetition, '', AclReadOnly, false);
 require_once('Common/Lib/ArrTargets.inc.php');
 require_once(dirname(__FILE__, 2) . '/Common/csrf.php');
 require_once(dirname(__FILE__, 2) . '/Common/live-view-logic.php');
+require_once(dirname(__FILE__, 2) . '/Common/badge-providers.php');
 
 $action = $_REQUEST['action'] ?? 'snapshot';
 if ($action === 'advance') {
@@ -38,7 +39,8 @@ function qualificationSnapshot($session) {
         ];
     }
 
-    $sql = "SELECT EnId, EnFirstName, EnName, CoCode, QuTarget, QuLetter, QuScore,
+    $sql = "SELECT EnId, EnFirstName, EnName, CoCode, EnClass, EnDivision,
+            QuTarget, QuLetter, QuScore,
             QuD1Arrowstring, QuD2Arrowstring, QuD3Arrowstring, QuD4Arrowstring,
             QuD5Arrowstring, QuD6Arrowstring, QuD7Arrowstring, QuD8Arrowstring
         FROM Qualifications
@@ -84,6 +86,8 @@ function qualificationSnapshot($session) {
             'name' => trim((string)$row->EnFirstName . ' ' . (string)$row->EnName),
             'club' => trim((string)$row->CoCode),
             'position' => trim((string)$row->QuLetter),
+            'class' => trim((string)$row->EnClass),
+            'division' => trim((string)$row->EnDivision),
             'completedEnds' => laneAssistCompletedEnds($arrowString, $arrowsPerEnd),
             'completedTotalEnds' => $completedTotalEnds,
             'totalEnds' => $totalEnds,
@@ -106,15 +110,44 @@ function qualificationSnapshot($session) {
     foreach ($pace['archers'] as $archer) {
         $paceByParticipant[$archer['participantId']] = $archer;
     }
+    $badges = laneAssistCollectBadges($allArchers, laneAssistLiveBadgeContext($session));
     foreach ($mats as &$mat) {
         $mat['expectedEnds'] = $pace['expectedEnds'];
         foreach ($mat['archers'] as &$archer) {
+            // The pace pass returns rebuilt archer arrays, so read badges after
+            // the replacement or they would be discarded again.
             $archer = $paceByParticipant[$archer['participantId']];
+            $archer['badges'] = $badges[$archer['participantId']] ?? [];
         }
         unset($archer);
     }
     unset($mat);
     return array_values($mats);
+}
+
+/**
+ * Tournament facts a badge provider needs, so no provider has to query the
+ * Tournament row itself.
+ *
+ * ToNumDist and ToMaxDistScore matter as much as the type name: in real data
+ * Type_Indoor 18 exists as both 2x300 (=600) and 1x300 (=300), and
+ * Type_2x70mRound is 4x360 (=1440), so a provider keyed on the name alone would
+ * score against the wrong table.
+ */
+function laneAssistLiveBadgeContext($session) {
+    $tourId = StrSafe_DB($_SESSION['TourId']);
+    $row = safe_fetch(safe_r_sql("SELECT ToTypeName, ToNumDist, ToMaxDistScore, ToLocRule
+        FROM Tournament WHERE ToId=$tourId"));
+
+    return [
+        'tourId' => intval($_SESSION['TourId']),
+        'session' => intval($session),
+        'phase' => 'qualification',
+        'toTypeName' => $row ? (string)$row->ToTypeName : '',
+        'toNumDist' => $row ? intval($row->ToNumDist) : 0,
+        'toMaxDistScore' => $row ? intval($row->ToMaxDistScore) : 0,
+        'toLocRule' => $row ? (string)$row->ToLocRule : '',
+    ];
 }
 
 function loadQualificationPersonalBestScores(array $archers) {
