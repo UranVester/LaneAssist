@@ -21,9 +21,12 @@ $IncludeFA = true;
 $sessions = GetSessions('Q');
 $styleVersion = filemtime(__DIR__ . '/css/style.css');
 $scriptVersion = filemtime(__DIR__ . '/js/app.js');
+$badgeRenderVersion = filemtime(dirname(__DIR__) . '/Common/js/badge-render.js');
 $JS_SCRIPT = [
     '<script>var ROOT_DIR=' . json_encode($CFG->ROOT_DIR, JSON_HEX_TAG | JSON_HEX_AMP) . ';</script>',
     '<link href="' . $CFG->ROOT_DIR . 'Modules/Custom/LaneAssist/LiveView/css/style.css?v=' . $styleVersion . '" rel="stylesheet" type="text/css">',
+    '<script src="' . $CFG->ROOT_DIR . 'Modules/Custom/LaneAssist/Common/js/badge-render.js?v='
+        . $badgeRenderVersion . '"></script>',
     '<script src="' . $CFG->ROOT_DIR . 'Modules/Custom/LaneAssist/LiveView/js/app.js?v=' . $scriptVersion . '"></script>',
 ];
 

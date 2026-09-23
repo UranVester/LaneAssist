@@ -99,3 +99,53 @@
     .bye-notice { align-items: stretch; flex-direction: column; }
     .live-grid { grid-template-columns: minmax(0, 1fr); }
 }
+
+/* Badge slots. The left border of .competitor carries pace status; the right
+   edge carries badges, so the two read as a pair. Absolutely positioned rather
+   than a fourth grid column so an install with no badge provider pays nothing. */
+.competitor { position: relative; }
+
+.competitor-edge {
+    position: absolute;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    width: 4px;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.competitor-edge-seg {
+    flex: 1 1 0;
+    min-height: 0;
+    /* Every segment is outlined whatever its colour: DK's 'Hvid' is #f2f2f2 and
+       would vanish against the card. */
+    box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.18);
+}
+
+.badge-inline {
+    display: inline-flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 3px;
+    margin-left: 6px;
+    vertical-align: middle;
+}
+
+.badge-pill {
+    display: inline-block;
+    padding: 1px 6px;
+    border-radius: 9px;
+    font-size: 10px;
+    font-weight: 700;
+    line-height: 1.5;
+    letter-spacing: 0.02em;
+    white-space: nowrap;
+    border: 1px solid rgba(0, 0, 0, 0.25);
+}
+
+.badge-icon {
+    font-size: 13px;
+    line-height: 1;
+}
