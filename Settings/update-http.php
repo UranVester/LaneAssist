@@ -31,6 +31,14 @@ function laneAssistBuildRemoteRequestHeaders($accept) {
     return implode("\r\n", $headers) . "\r\n";
 }
 
+function laneAssistCanApplyUpdates($debugMode, $hasRootAcl, $aclEnforced = false) {
+    if (!empty($debugMode)) {
+        return true;
+    }
+
+    return !empty($aclEnforced) && !empty($hasRootAcl);
+}
+
 function laneAssistFormatRemoteHttpError($statusCode, $responseHeaders = [], $body = '') {
     $statusCode = intval($statusCode);
     $headers = is_array($responseHeaders) ? $responseHeaders : [];

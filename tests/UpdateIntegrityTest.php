@@ -85,6 +85,18 @@ class UpdateIntegrityTest extends TestCase {
         $this->assertStringNotContainsString('Authorization:', $headers);
     }
 
+    public function testDebugModeCanApplyUpdatesWithoutAuthenticationModule(): void {
+        $this->assertTrue(laneAssistCanApplyUpdates(true, false, false));
+    }
+
+    public function testEnforcedRootAclCanApplyUpdates(): void {
+        $this->assertTrue(laneAssistCanApplyUpdates(false, true, true));
+    }
+
+    public function testRootAclDoesNotGrantUpdatesWhenAclIsNotEnforced(): void {
+        $this->assertFalse(laneAssistCanApplyUpdates(false, true, false));
+    }
+
     public function testReportsGithubResponseMessageForOtherForbiddenRequests(): void {
         $message = laneAssistFormatRemoteHttpError(403, [], '{"message":"API rate limit exceeded"}');
 

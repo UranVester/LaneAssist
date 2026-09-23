@@ -261,6 +261,18 @@ function isLaneAssistAdmin() {
     return false;
 }
 
+function laneAssistCurrentUserCanApplyUpdates() {
+    global $INFO;
+
+    $hasRootAcl = function_exists('hasFullACL') && hasFullACL(AclRoot, '', AclReadWrite);
+
+    return laneAssistCanApplyUpdates(
+        !empty($_SESSION['debug']),
+        $hasRootAcl,
+        !empty($INFO->ACLEnabled)
+    );
+}
+
 function checkUpdates() {
     $update = getGithubReleaseUpdateDescriptor();
     if (!empty($update['error'])) {
@@ -290,7 +302,10 @@ function checkUpdates() {
 }
 
 function applyUpdateFromGithub() {
-    checkFullACL(AclRoot, '', AclReadWrite, false);
+    if (!laneAssistCurrentUserCanApplyUpdates()) {
+        echo json_encode(['error' => 1, 'message' => 'Installing updates requires debug mode or administrator rights']);
+        return;
+    }
 
     $update = getGithubReleaseUpdateDescriptor();
     if (!empty($update['error'])) {

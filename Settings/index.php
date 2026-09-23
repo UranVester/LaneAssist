@@ -5,6 +5,7 @@
 
 require_once(dirname(__FILE__, 3) . '/config.php');
 require_once(dirname(__FILE__, 2) . '/version.php');
+require_once(dirname(__FILE__) . '/update-http.php');
 
 $hasCompetition = CheckTourSession();
 if ($hasCompetition) {
@@ -18,7 +19,8 @@ if (!empty($CFG->USERAUTH) && !empty($_SESSION['AUTH_ENABLE']) && function_exist
     $isAdminSettings = hasFullACL(AclRoot, '', AclReadWrite);
 }
 $isAdminOrDebugSettings = $isDebugMode || $isAdminSettings;
-$canInstallUpdates = empty($CFG->USERAUTH) || $isAdminSettings;
+$hasRootAcl = function_exists('hasFullACL') && hasFullACL(AclRoot, '', AclReadWrite);
+$canInstallUpdates = laneAssistCanApplyUpdates($isDebugMode, $hasRootAcl, !empty($INFO->ACLEnabled));
 $competitionCode = $hasCompetition ? getCodeFromId($_SESSION['TourId']) : '';
 $activeSettingsOwner = 'Shared default';
 if (!empty($CFG->USERAUTH)) {
