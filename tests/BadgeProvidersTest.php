@@ -121,6 +121,34 @@ PHP);
         $this->assertSame('', ob_get_clean());
     }
 
+    public function testAProviderLeavingAnOutputBufferOpenCannotSwallowTheResponse(): void
+    {
+        $this->provider('Leaky', <<<'PHP'
+$GLOBALS['LANEASSIST_BADGE_PROVIDERS']['Leaky'] = function ($archers, $context) {
+    ob_start();
+    echo 'this must not swallow the response';
+    // Deliberately never closed -- a real third-party provider could do this.
+    return [1 => [['label' => 'Guld', 'color' => '#d4af37']]];
+};
+PHP);
+        $level = ob_get_level();
+        $badges = laneAssistCollectBadges($this->archers, [], $this->root);
+
+        $this->assertSame($level, ob_get_level(),
+            'the buffer stack must be back where it started; a buffer left open here '
+            . "would swallow LiveView/api.php's real JSON response");
+        $this->assertSame('Guld', $badges[1][0]['label'],
+            'the leaky provider still contributed its badge');
+    }
+
+    public function testABufferLeftOpenAtIncludeTimeIsAlsoUnwound(): void
+    {
+        $this->provider('LeakyInclude', "ob_start();\necho 'noise';\nreturn;");
+        $level = ob_get_level();
+        laneAssistCollectBadges($this->archers, [], $this->root);
+        $this->assertSame($level, ob_get_level());
+    }
+
     public function testANonCallableRegistrationIsSkipped(): void
     {
         $this->provider('Broken', <<<'PHP'

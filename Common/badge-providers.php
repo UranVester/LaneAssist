@@ -6,9 +6,10 @@
  * A provider module ships Modules/Custom/<Name>/laneassist-badges.php, which
  * registers callables in $GLOBALS['LANEASSIST_BADGE_PROVIDERS']. Each takes
  * (array $archers, array $context) and returns [participantId => [badge, ...]].
- * A badge needs at least 'label' and 'color'; LaneAssist does not interpret it
- * further, so a later module can contribute records or club awards with no
- * change here.
+ * A badge needs a 'label'; everything else depends on its kind, and colour
+ * validation belongs to the renderer, which is where a value would otherwise
+ * reach a style attribute. LaneAssist does not interpret a badge further, so a
+ * later module can contribute records or club awards with no change here.
  *
  * This file knows about no specific provider, deliberately.
  *
@@ -20,6 +21,24 @@
  */
 
 if (!function_exists('laneAssistBadgeProviderFiles')) {
+
+/**
+ * Discard every output buffer above $level.
+ *
+ * A single ob_end_clean() pops whatever is on TOP of the stack. If a provider
+ * called ob_start() and never closed it, the top is the provider's buffer, not
+ * ours -- so one pop would discard theirs and leave OURS open. That stray buffer
+ * then swallows everything printed for the rest of the request, including
+ * LiveView/api.php's real json_encode() output: the client would receive an empty
+ * response, which is precisely the corruption this isolation exists to prevent.
+ * Unwinding to a recorded level cleans up after the provider without touching any
+ * buffer this module did not open.
+ */
+function laneAssistUnwindBuffers($level) {
+    while (ob_get_level() > $level) {
+        ob_end_clean();
+    }
+}
 
 /**
  * Validate one badge, or null if it cannot be rendered.
@@ -93,13 +112,19 @@ function laneAssistCollectBadges(array $archers, array $context, $customRoot = n
     }
 
     foreach (laneAssistBadgeProviderFiles($customRoot) as $file) {
+        $level = ob_get_level();
         ob_start();
         try {
             require_once $file;
         } catch (Throwable $e) {
-            // A broken provider must not take the snapshot down with it.
+            // A broken provider must not take the snapshot down with it -- but it
+            // must not vanish silently either, or whoever maintains that module has
+            // no trail to debug from. Isolation hides the failure from the client,
+            // not from the developer.
+            error_log('LaneAssist badge provider include failed (' . $file . '): '
+                . $e->getMessage());
         }
-        ob_end_clean();
+        laneAssistUnwindBuffers($level);
     }
 
     $collected = [];
@@ -108,13 +133,15 @@ function laneAssistCollectBadges(array $archers, array $context, $customRoot = n
             continue;
         }
 
+        $level = ob_get_level();
         ob_start();
         try {
             $result = $provider($archers, $context);
         } catch (Throwable $e) {
             $result = null;
+            error_log('LaneAssist badge provider failed: ' . $e->getMessage());
         }
-        ob_end_clean();
+        laneAssistUnwindBuffers($level);
 
         if (!is_array($result)) {
             continue;
