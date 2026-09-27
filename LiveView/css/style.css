@@ -54,9 +54,14 @@
 .competitor:last-child { border-bottom: 0; }
 .competitor.danger { border-left-color: var(--live-red); background: #fff0ee; color: #7a1710; }
 .competitor.warning { border-left-color: #e6a700; background: #fff9e8; }
+.competitor.retired { border-left-color: #aab6c0; background: #f2f4f5; color: var(--live-muted); }
+.competitor.retired .competitor-main strong { text-decoration: line-through; }
 .competitor-position { font-weight: bold; color: var(--live-muted); }
 .competitor-main, .final-side > div:first-child { min-width: 0; }
 .competitor-main strong, .competitor-main small, .final-side strong, .final-side small { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.competitor-actions { display: flex; align-items: center; gap: 8px; }
+.retire-toggle { padding: 4px 8px; border: 1px solid #aab6c0; border-radius: 4px; background: #fff; color: var(--live-muted); font-size: 11px; cursor: pointer; }
+.competitor.retired .retire-toggle { border-color: var(--live-green); color: var(--live-green); }
 .score-pair, .final-scores { display: flex; gap: 12px; text-align: right; }
 .score-pair span, .final-scores span { min-width: 44px; }
 .score-pair small, .score-pair b, .final-scores small, .final-scores b { display: block; }

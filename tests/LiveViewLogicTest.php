@@ -62,6 +62,19 @@ final class LiveViewLogicTest extends TestCase
         $this->assertTrue($result['archers'][2]['isBehind']);
     }
 
+    public function testQualificationLagIgnoresRetiredArchersAndNeverFlagsThemAsBehind(): void
+    {
+        $result = laneAssistMarkQualificationLag([
+            ['id' => 1, 'completedEnds' => 4],
+            ['id' => 2, 'completedEnds' => 4],
+            ['id' => 3, 'completedEnds' => 0, 'retired' => true],
+        ]);
+
+        $this->assertSame(4, $result['expectedEnds']);
+        $this->assertFalse($result['archers'][2]['isBehind']);
+        $this->assertFalse($result['archers'][2]['isAhead']);
+    }
+
     public function testQualificationProgressReportsCurrentEndAndArrowTotal(): void
     {
         $result = laneAssistQualificationProgress([['archers' => [
@@ -83,6 +96,17 @@ final class LiveViewLogicTest extends TestCase
 
         $this->assertTrue($complete['complete']);
         $this->assertFalse($empty['complete']);
+    }
+
+    public function testQualificationProgressIgnoresRetiredArchersSoASingleNoShowCannotBlockCompletion(): void
+    {
+        $result = laneAssistQualificationProgress([['archers' => [
+            ['arrowsShot' => 72, 'totalArrows' => 72, 'completedTotalEnds' => 24, 'totalEnds' => 24],
+            ['arrowsShot' => 72, 'totalArrows' => 72, 'completedTotalEnds' => 24, 'totalEnds' => 24],
+            ['arrowsShot' => 0, 'totalArrows' => 72, 'completedTotalEnds' => 0, 'totalEnds' => 24, 'retired' => true],
+        ]] ]);
+
+        $this->assertTrue($result['complete']);
     }
 
     public function testFinalsProgressReportsCurrentEnd(): void

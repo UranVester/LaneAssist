@@ -31,6 +31,7 @@ $IncludeFA = true;
 
 // Get sessions for dropdown
 $sessions = GetSessions('Q');
+$sessionPreselected = (count($sessions) === 1);
 
 // Get divisions and classes for filters
 $divisions = array();
@@ -399,6 +400,16 @@ include('Common/Templates/head.php');
                 <i class="fa fa-times-circle"></i> Unassign All
             </button>
         </div>
+    </div>
+
+    <!-- No Session Selected Notice -->
+    <div id="no-session-notice" class="no-session-notice" style="<?php echo $sessionPreselected ? 'display:none;' : ''; ?>">
+        <i class="fa fa-info-circle"></i>
+        <?php if (count($sessions) === 0): ?>
+            No qualification sessions are configured for this tournament yet.
+        <?php else: ?>
+            Select a session above to load participants and targets.
+        <?php endif; ?>
     </div>
 
     <!-- Main Content Area -->

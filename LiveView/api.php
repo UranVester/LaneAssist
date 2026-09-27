@@ -20,6 +20,12 @@ $action = $_REQUEST['action'] ?? 'snapshot';
 if ($action === 'advance') {
     laneAssistRequirePost();
     advanceLiveMatch();
+} elseif ($action === 'toggleArcherRetired') {
+    laneAssistRequirePost();
+    toggleArcherRetired();
+} elseif ($action === 'toggleArcherRetiredBulk') {
+    laneAssistRequirePost();
+    toggleArcherRetiredBulk();
 } elseif ($action === 'snapshot') {
     liveSnapshot();
 } else {
@@ -39,14 +45,14 @@ function qualificationSnapshot($session) {
         ];
     }
 
-    $sql = "SELECT EnId, EnFirstName, EnName, CoCode, EnClass, EnDivision,
+    $sql = "SELECT EnId, EnFirstName, EnName, CoCode, EnClass, EnDivision, EnStatus,
             QuTarget, QuLetter, QuScore,
             QuD1Arrowstring, QuD2Arrowstring, QuD3Arrowstring, QuD4Arrowstring,
             QuD5Arrowstring, QuD6Arrowstring, QuD7Arrowstring, QuD8Arrowstring
         FROM Qualifications
         INNER JOIN Entries ON EnId=QuId AND EnTournament=" . StrSafe_DB($_SESSION['TourId']) . "
         LEFT JOIN Countries ON CoId=EnCountry
-        WHERE QuSession=" . StrSafe_DB($session) . " AND EnAthlete=1 AND EnStatus<=1
+        WHERE QuSession=" . StrSafe_DB($session) . " AND EnAthlete=1 AND (EnStatus<=1 OR EnStatus=6)
           AND QuTarget<>'' AND QuTarget<>'0'
         ORDER BY QuTarget, QuLetter";
     $rs = safe_r_sql($sql);
@@ -97,6 +103,7 @@ function qualificationSnapshot($session) {
                 return DecodeFromLetter($arrow);
             }),
             'totalPoints' => intval($row->QuScore),
+            'retired' => intval($row->EnStatus) === 6,
         ];
     }
 
@@ -440,4 +447,86 @@ function markLiveMatchBye(array $match) {
     safe_w_sql("UPDATE $table SET $tieField=2, $winField=1, $closestField=0, $irmField=0, $dateField=$now
         WHERE $tournamentField=$tourId AND $eventField=" . StrSafe_DB($event) . " AND $matchField=" . intval($winnerMatch));
     return true;
+}
+
+function recalcRanksAndTeamsAfterRetireToggle() {
+    require_once('Qualification/Fun_Qualification.local.inc.php');
+    for ($i = 0; $i <= 8; $i++) {
+        CalcRank($i);
+    }
+    MakeTeams(NULL, NULL);
+    MakeTeamsAbs(NULL, null, null);
+}
+
+/**
+ * Toggle a single archer between "Pull Out" and their prior status.
+ */
+function toggleArcherRetired() {
+    $enId = intval($_POST['participantId'] ?? 0);
+    $session = max(1, intval($_POST['session'] ?? 0));
+    if ($enId <= 0 || $session <= 0) {
+        echo json_encode(['error' => 1, 'message' => 'Invalid participant']);
+        return;
+    }
+
+    $tourId = intval($_SESSION['TourId']);
+    if (IsBlocked(BIT_BLOCK_QUAL)) {
+        echo json_encode(['error' => 1, 'message' => 'Qualification results are locked']);
+        return;
+    }
+
+    checkFullACL(AclQualification, '', AclReadWrite, false);
+
+    $result = performArcherRetireToggle($enId, $session, $tourId);
+    if (!$result['ok']) {
+        echo json_encode(['error' => 1, 'message' => $result['message']]);
+        return;
+    }
+
+    recalcRanksAndTeamsAfterRetireToggle();
+
+    echo json_encode(['error' => 0, 'retired' => $result['retired'], 'participantId' => $enId]);
+}
+
+/**
+ * Toggle a batch of archers between "Pull Out" and their prior status in one
+ * request, running the tournament-wide rank/team recalculation once for the
+ * whole batch instead of once per archer.
+ */
+function toggleArcherRetiredBulk() {
+    $session = max(1, intval($_POST['session'] ?? 0));
+    $participantIds = array_unique(array_filter(array_map('intval', (array)($_POST['participantIds'] ?? []))));
+    if ($session <= 0 || !count($participantIds)) {
+        echo json_encode(['error' => 1, 'message' => 'Invalid participants']);
+        return;
+    }
+
+    $tourId = intval($_SESSION['TourId']);
+    if (IsBlocked(BIT_BLOCK_QUAL)) {
+        echo json_encode(['error' => 1, 'message' => 'Qualification results are locked']);
+        return;
+    }
+
+    checkFullACL(AclQualification, '', AclReadWrite, false);
+
+    $results = [];
+    $succeeded = 0;
+    foreach ($participantIds as $enId) {
+        $result = performArcherRetireToggle($enId, $session, $tourId);
+        $results[] = $result;
+        if ($result['ok']) {
+            $succeeded++;
+        }
+    }
+
+    if ($succeeded > 0) {
+        recalcRanksAndTeamsAfterRetireToggle();
+    }
+
+    echo json_encode([
+        'error' => 0,
+        'results' => $results,
+        'succeeded' => $succeeded,
+        'failed' => count($results) - $succeeded,
+    ]);
 }

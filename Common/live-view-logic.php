@@ -70,6 +70,9 @@ function laneAssistFinalSetPoints($arrowString, $arrowsPerEnd, callable $decodeA
 function laneAssistMarkQualificationLag(array $archers) {
     $counts = [];
     foreach ($archers as $archer) {
+        if (!empty($archer['retired'])) {
+            continue;
+        }
         $ends = intval($archer['completedEnds'] ?? 0);
         $counts[$ends] = ($counts[$ends] ?? 0) + 1;
     }
@@ -84,6 +87,11 @@ function laneAssistMarkQualificationLag(array $archers) {
     }
 
     foreach ($archers as &$archer) {
+        if (!empty($archer['retired'])) {
+            $archer['isBehind'] = false;
+            $archer['isAhead'] = false;
+            continue;
+        }
         $archer['isBehind'] = intval($archer['completedEnds'] ?? 0) < $expectedEnds;
         $archer['isAhead'] = intval($archer['completedEnds'] ?? 0) > $expectedEnds;
     }
@@ -114,6 +122,9 @@ function laneAssistQualificationProgress(array $mats) {
     foreach ($mats as $mat) {
         $archers = array_merge($archers, $mat['archers'] ?? []);
     }
+    $archers = array_values(array_filter($archers, function($archer) {
+        return empty($archer['retired']);
+    }));
     if (!$archers) {
         return ['end' => 0, 'arrowsShot' => 0, 'totalArrows' => 0, 'complete' => false];
     }
@@ -286,4 +297,63 @@ function laneAssistSelectCurrentFinalMatches(array $matches) {
     }
 
     return ['slot' => '', 'matches' => []];
+}
+
+/**
+ * Whether this archer has any recorded arrows in this session, across all
+ * distances. Enforced server-side so the "disable" action stays limited to
+ * genuine no-shows even if a stale client sends a stale request.
+ */
+function archerHasQualificationArrows($enId, $session) {
+    $row = safe_fetch(safe_r_sql("SELECT QuD1Arrowstring, QuD2Arrowstring, QuD3Arrowstring, QuD4Arrowstring,
+            QuD5Arrowstring, QuD6Arrowstring, QuD7Arrowstring, QuD8Arrowstring
+        FROM Qualifications
+        WHERE QuId=" . StrSafe_DB($enId) . " AND QuSession=" . StrSafe_DB($session)));
+    if (!$row) {
+        return false;
+    }
+    for ($distance = 1; $distance <= 8; $distance++) {
+        $field = 'QuD' . $distance . 'Arrowstring';
+        if (strlen(str_replace(' ', '', rtrim((string)$row->{$field}))) > 0) {
+            return true;
+        }
+    }
+    return false;
+}
+
+/**
+ * Validate and apply the "Pull Out" (EnStatus=6) / restore toggle for one
+ * archer, mirroring Qualification/Went2Home.php's Forfeit action. Does NOT
+ * recalculate ranks/teams — callers run that (tournament-wide) pass once,
+ * after every archer in a batch has been updated, rather than once per archer.
+ * Returns ['ok'=>bool,'message'=>string,'retired'=>bool,'participantId'=>int].
+ */
+function performArcherRetireToggle($enId, $session, $tourId) {
+    $entry = safe_fetch(safe_r_sql("SELECT EnStatus FROM Entries
+        WHERE EnTournament=" . StrSafe_DB($tourId) . " AND EnId=" . StrSafe_DB($enId)));
+    if (!$entry) {
+        return ['ok' => false, 'message' => 'Participant not found', 'participantId' => $enId];
+    }
+
+    $currentlyRetired = intval($entry->EnStatus) === 6;
+    if (!$currentlyRetired && archerHasQualificationArrows($enId, $session)) {
+        return ['ok' => false, 'message' => 'This archer has recorded arrows and cannot be forfeited here', 'participantId' => $enId];
+    }
+
+    if ($currentlyRetired) {
+        safe_w_sql("UPDATE Entries e
+            LEFT JOIN LookUpEntries l ON e.EnCode=l.LueCode AND e.EnTournament=" . StrSafe_DB($tourId) . "
+            SET e.EnStatus=IFNULL(l.LueStatus,0)
+            WHERE e.EnTournament=" . StrSafe_DB($tourId) . " AND e.EnId=" . StrSafe_DB($enId));
+    } else {
+        $zeroFields = '';
+        for ($distance = 1; $distance <= 8; $distance++) {
+            $zeroFields .= "QuD{$distance}Score='0', QuD{$distance}Gold='0', QuD{$distance}Xnine='0', ";
+        }
+        safe_w_sql("UPDATE Entries INNER JOIN Qualifications ON EnId=QuId
+            SET EnStatus='6', $zeroFields QuScore='0', QuGold='0', QuXnine='0'
+            WHERE EnTournament=" . StrSafe_DB($tourId) . " AND QuId=" . StrSafe_DB($enId));
+    }
+
+    return ['ok' => true, 'message' => '', 'retired' => !$currentlyRetired, 'participantId' => $enId];
 }

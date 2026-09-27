@@ -1,7 +1,7 @@
 (function($) {
     'use strict';
 
-    var state = { mode: 'qualification', initialModeResolved: false, loading: false, refreshPending: false, bulkAdvancing: false, timer: null, actionMessage: '', snapshot: null };
+    var state = { mode: 'qualification', initialModeResolved: false, loading: false, refreshPending: false, bulkAdvancing: false, timer: null, actionMessage: '', snapshot: null, qualificationNotice: '', finalsNotice: '', qualificationForfeitEligible: [] };
     var apiUrl = ROOT_DIR + 'Modules/Custom/LaneAssist/LiveView/api.php';
 
     function escapeHtml(value) {
@@ -13,17 +13,45 @@
     }
 
     function renderQualification(mats) {
+        // expectedEnds is the most-common completed-end count, not the max, so
+        // it can stay 0 even once several archers have shot — it's the wrong
+        // signal for "has anyone started." Use the literal signal instead.
+        var sessionStarted = mats.some(function(mat) {
+            return mat.archers.some(function(archer) {
+                return !archer.retired && archer.arrowsShot > 0;
+            });
+        });
+        var forfeitEligible = [];
+        mats.forEach(function(mat) {
+            mat.archers.forEach(function(archer) {
+                if (!archer.retired && archer.arrowsShot === 0 && sessionStarted) {
+                    forfeitEligible.push(archer.participantId);
+                }
+            });
+        });
+        state.qualificationForfeitEligible = forfeitEligible;
+        state.qualificationNotice = forfeitEligible.length
+            ? '<div class="notice bye-notice"><span><i class="fa fa-bell"></i><strong>' + forfeitEligible.length + '</strong> archer' + (forfeitEligible.length === 1 ? '' : 's') + ' with 0 arrows shot.</span>' +
+              '<button type="button" id="forfeit-all-noshows" class="bulk-advance-button"><i class="fa fa-ban" aria-hidden="true"></i> Forfeit all no-shows</button></div>'
+            : '';
+
         var html = mats.map(function(mat) {
             var archers = mat.archers.map(function(archer) {
                 var problemClass = archer.isBehind ? ' danger' : (archer.isAhead ? ' warning' : '');
+                var retiredClass = archer.retired ? ' retired' : '';
                 var endPoints = archer.lastEndPoints === null ? '-' : archer.lastEndPoints;
                 var badgeHtml = (window.LaneAssist && window.LaneAssist.badges)
                     ? window.LaneAssist.badges.render(archer.badges)
                     : {edge: '', inline: ''};
-                return '<div class="competitor' + problemClass + '">' + badgeHtml.edge +
+                var toggleHtml = '';
+                if (archer.retired || (archer.arrowsShot === 0 && sessionStarted)) {
+                    toggleHtml = '<button type="button" class="retire-toggle" data-participant-id="' + archer.participantId + '"'
+                        + (archer.retired ? ' data-retired="1">Un-forfeit</button>' : '>Forfeit</button>');
+                }
+                return '<div class="competitor' + problemClass + retiredClass + '" data-participant-id="' + archer.participantId + '">' + badgeHtml.edge +
                     '<div class="competitor-position">' + escapeHtml(archer.position) + '</div>' +
                     '<div class="competitor-main"><strong>' + escapeHtml(archer.name) + '</strong>' + badgeHtml.inline + '<small>' + escapeHtml(archer.club) + ' · ' + archer.completedEnds + ' ends</small></div>' +
-                    '<div class="score-pair"><span><small>Last end</small><b>' + endPoints + '</b></span><span><small>Total</small><b>' + archer.totalPoints + '</b></span></div></div>';
+                    '<div class="competitor-actions"><div class="score-pair"><span><small>Last end</small><b>' + endPoints + '</b></span><span><small>Total</small><b>' + archer.totalPoints + '</b></span></div>' + toggleHtml + '</div></div>';
             }).join('');
             return '<article class="live-card qual-card"><header>' + targetFace(mat.target) + '<div><span class="eyebrow">Target / mat</span><h3>' + escapeHtml(mat.target) + '</h3><small>Pace: end ' + mat.expectedEnds + '</small></div></header><div class="competitors">' + archers + '</div></article>';
         }).join('');
@@ -52,10 +80,8 @@
     function renderFinals(matches) {
         var byeCount = matches.filter(function(match) { return match.status === 'bye' && match.canMarkBye; }).length;
         $('#final-count').text(matches.length);
-        var notices = state.actionMessage ? '<div class="notice success"><i class="fa fa-check"></i>' + escapeHtml(state.actionMessage) + '</div>' : '';
-        notices += byeCount ? '<div class="notice bye-notice"><span><i class="fa fa-bell"></i><strong>' + byeCount + '</strong> bye match' + (byeCount === 1 ? '' : 'es') + ' ready to advance.</span>' +
+        state.finalsNotice = byeCount ? '<div class="notice bye-notice"><span><i class="fa fa-bell"></i><strong>' + byeCount + '</strong> bye match' + (byeCount === 1 ? '' : 'es') + ' ready to advance.</span>' +
             '<button type="button" id="advance-all-byes" class="bulk-advance-button"><i class="fa fa-step-forward" aria-hidden="true"></i> Mark all byes &amp; advance</button></div>' : '';
-        $('#live-notices').html(notices);
         var html = matches.map(function(match) {
             var sides = match.sides.map(function(side) {
                 var winner = side.winLose || side.tie === 2;
@@ -95,6 +121,12 @@
         $('#live-progress').html('<span>' + label + '</span><strong>' + value + '</strong>');
     }
 
+    function renderNotices() {
+        var notices = state.actionMessage ? '<div class="notice success"><i class="fa fa-check"></i>' + escapeHtml(state.actionMessage) + '</div>' : '';
+        notices += state.mode === 'finals' ? (state.finalsNotice || '') : (state.qualificationNotice || '');
+        $('#live-notices').html(notices);
+    }
+
     function updateVisibleView() {
         var isFinals = state.mode === 'finals';
         $('#qualification-view').prop('hidden', isFinals);
@@ -103,6 +135,7 @@
         $('.session-control').toggle(!isFinals);
         var hasCards = $(isFinals ? '#finals-view' : '#qualification-view').children().length > 0;
         $('#empty-state').prop('hidden', hasCards);
+        renderNotices();
         updateProgress();
     }
 
@@ -176,6 +209,42 @@
         });
     }
 
+    function applyArcherRetiredState(participantId, retired) {
+        var $competitor = $('.competitor[data-participant-id="' + participantId + '"]');
+        $competitor.toggleClass('retired', retired).removeClass('danger warning');
+        $competitor.find('.retire-toggle')
+            .data('retired', retired ? 1 : 0)
+            .prop('disabled', false)
+            .text(retired ? 'Un-forfeit' : 'Forfeit');
+    }
+
+    function toggleArcherRetired(button) {
+        var $button = $(button);
+        var retired = $button.data('retired') === 1 || $button.data('retired') === '1';
+        if (!retired && !window.confirm('Forfeit this archer? They will be marked "Pull Out" and removed from Live View scoring until un-forfeited.')) {
+            return;
+        }
+        $button.prop('disabled', true);
+        $.ajax({ url: apiUrl, method: 'POST', dataType: 'json', headers: { 'X-Requested-With': 'XMLHttpRequest' }, data: {
+            action: 'toggleArcherRetired', participantId: $button.data('participant-id'), session: $('#session-select').val()
+        }}).done(function(data) {
+            if (data.error) {
+                $('#live-notices').html('<div class="notice error">' + escapeHtml(data.message || 'Could not update this archer') + '</div>');
+                $button.prop('disabled', false);
+                return;
+            }
+            // Reflect the change immediately rather than waiting on the round trip
+            // of a full snapshot reload; that reload still runs in the background
+            // to reconcile pace/progress/rank changes elsewhere on the page.
+            applyArcherRetiredState(data.participantId, data.retired);
+            loadSnapshot(true);
+        }).fail(function(xhr) {
+            var message = xhr.responseJSON && xhr.responseJSON.message ? xhr.responseJSON.message : 'Could not update this archer.';
+            $('#live-notices').html('<div class="notice error">' + escapeHtml(message) + '</div>');
+            $button.prop('disabled', false);
+        });
+    }
+
     function advanceAllByes(button) {
         if (state.bulkAdvancing || !state.snapshot) return;
         var byes = (state.snapshot.finals || []).filter(function(match) {
@@ -223,12 +292,56 @@
         advanceNext();
     }
 
+    function forfeitAllNoShows(button) {
+        if (state.bulkAdvancing || !state.snapshot) return;
+        var participantIds = (state.qualificationForfeitEligible || []).slice();
+        if (!participantIds.length) return;
+        if (!window.confirm('Forfeit ' + participantIds.length + ' archer' + (participantIds.length === 1 ? '' : 's') + ' with 0 arrows shot? They will be marked "Pull Out" until un-forfeited.')) {
+            return;
+        }
+
+        state.bulkAdvancing = true;
+        state.refreshPending = false;
+        var session = $('#session-select').val();
+        $(button).prop('disabled', true).html('<i class="fa fa-refresh fa-spin" aria-hidden="true"></i> Forfeiting ' + participantIds.length + '...');
+        $('.advance-button, .bulk-advance-button, .retire-toggle').prop('disabled', true);
+
+        $.ajax({ url: apiUrl, method: 'POST', dataType: 'json', headers: { 'X-Requested-With': 'XMLHttpRequest' }, data: {
+            action: 'toggleArcherRetiredBulk', participantIds: participantIds, session: session
+        }}).done(function(data) {
+            state.bulkAdvancing = false;
+            if (data.error) {
+                state.actionMessage = '';
+                $('#live-notices').html('<div class="notice error">' + escapeHtml(data.message || 'Archers could not be forfeited.') + '</div>');
+                $('.advance-button, .bulk-advance-button, .retire-toggle').prop('disabled', false);
+                return;
+            }
+            (data.results || []).forEach(function(result) {
+                if (result.ok) {
+                    applyArcherRetiredState(result.participantId, result.retired);
+                }
+            });
+            var failed = (data.results || []).filter(function(result) { return !result.ok; });
+            state.actionMessage = data.succeeded + ' archer' + (data.succeeded === 1 ? '' : 's') + ' forfeited'
+                + (failed.length ? ', ' + failed.length + ' skipped (' + failed[0].message + (failed.length > 1 ? ', ...' : '') + ')' : '');
+            loadSnapshot(true);
+        }).fail(function(xhr) {
+            state.bulkAdvancing = false;
+            state.actionMessage = '';
+            var message = xhr.responseJSON && xhr.responseJSON.message ? xhr.responseJSON.message : 'Archers could not be forfeited.';
+            $('#live-notices').html('<div class="notice error">' + escapeHtml(message) + '</div>');
+            $('.advance-button, .bulk-advance-button, .retire-toggle').prop('disabled', false);
+        });
+    }
+
     $(function() {
         $('.mode-button').on('click', function() { state.mode = $(this).data('mode'); updateVisibleView(); });
         $('#session-select').on('change', function() { loadSnapshot(true); });
         $('#refresh-button').on('click', function() { loadSnapshot(true); });
         $(document).on('click', '.advance-button', function() { advanceMatch(this); });
+        $(document).on('click', '.retire-toggle', function() { toggleArcherRetired(this); });
         $(document).on('click', '#advance-all-byes', function(event) { event.stopPropagation(); advanceAllByes(this); });
+        $(document).on('click', '#forfeit-all-noshows', function(event) { event.stopPropagation(); forfeitAllNoShows(this); });
         loadSnapshot(false);
         state.timer = window.setInterval(function() { loadSnapshot(false); }, 5000);
         $(window).on('beforeunload', function() { window.clearInterval(state.timer); });

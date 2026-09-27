@@ -198,6 +198,7 @@
         // Session change
         $('#session-select').on('change', function() {
             state.currentSession = $(this).val();
+            $('#no-session-notice').toggle(!state.currentSession);
             if (state.currentSession) {
                 loadData();
             }
