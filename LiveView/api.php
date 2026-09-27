@@ -89,7 +89,7 @@ function qualificationSnapshot($session) {
             'participantId' => intval($row->EnId),
             'firstName' => trim((string)$row->EnFirstName),
             'lastName' => trim((string)$row->EnName),
-            'name' => trim((string)$row->EnFirstName . ' ' . (string)$row->EnName),
+            'name' => trim((string)$row->EnName . ' ' . (string)$row->EnFirstName),
             'club' => trim((string)$row->CoCode),
             'position' => trim((string)$row->QuLetter),
             'class' => trim((string)$row->EnClass),
@@ -229,7 +229,7 @@ function loadFinalSides($teamEvent) {
             ORDER BY fs.FSTarget, tf.TfEvent, tf.TfMatchNo";
     } else {
         $sql = "SELECT fin.FinEvent EventCode, ev.EvEventName EventName, fin.FinMatchNo MatchNo,
-                fin.FinAthlete ParticipantId, CONCAT(en.EnFirstName, ' ', en.EnName) ParticipantName,
+                fin.FinAthlete ParticipantId, CONCAT(en.EnName, ' ', en.EnFirstName) ParticipantName,
                 fin.FinScore Score, fin.FinSetScore SetScore, fin.FinArrowstring ArrowString,
                 fin.FinWinLose WinLose, fin.FinTie Tie, gr.GrPhase Phase, fs.FSTarget Target,
                 fs.FSScheduledDate ScheduledDate, fs.FSScheduledTime ScheduledTime,
