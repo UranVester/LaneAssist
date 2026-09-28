@@ -15,10 +15,6 @@ require_once('Common/Lib/ArrTargets.inc.php');
 require_once(dirname(__FILE__, 2) . '/Common/csrf.php');
 require_once(dirname(__FILE__, 2) . '/Common/live-view-logic.php');
 require_once(dirname(__FILE__, 2) . '/Common/badge-providers.php');
-if (!function_exists('getModuleParameter')) {
-    require_once(dirname(__FILE__, 5) . '/Common/Lib/Fun_Modules.php');
-}
-require_once(dirname(__FILE__, 2) . '/Common/target-layout-info.php');
 
 $action = $_REQUEST['action'] ?? 'snapshot';
 if ($action === 'advance') {
@@ -422,7 +418,6 @@ function liveSnapshot() {
         'finals' => $finalBlock['matches'], 'finalsSlot' => $finalBlock['slot'],
         'finalsProgress' => laneAssistFinalsProgress($finalBlock['matches']),
         'finalsInitialized' => finalsBracketsInitialized(),
-        'layoutId' => getSavedTournamentLayoutPreference(intval($_SESSION['TourId'])),
         'updatedAt' => date('c'),
     ]);
 }

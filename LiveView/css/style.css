@@ -44,66 +44,21 @@
 .live-view [hidden] { display: none !important; }
 .live-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(330px, 1fr)); gap: 12px; margin-top: 12px; }
 .live-card { overflow: hidden; border: 1px solid var(--live-line); border-radius: 6px; background: var(--live-surface); box-shadow: 0 2px 6px rgba(23,32,42,.06); }
-.live-card > header { display: flex; align-items: center; gap: 12px; min-height: 96px; padding: 10px 12px; border-bottom: 1px solid var(--live-line); }
+.live-card > header { display: flex; align-items: center; gap: 12px; min-height: 72px; padding: 10px 12px; border-bottom: 1px solid var(--live-line); }
 .live-card h3 { margin: 1px 0; font-size: 20px; letter-spacing: 0; }
 .live-card small { color: var(--live-muted); }
 .eyebrow { display: block; color: var(--live-muted); font-size: 11px; font-weight: bold; text-transform: uppercase; }
 .target-illustration { position: relative; flex: 0 0 54px; width: 54px; height: 54px; border-radius: 50%; background: radial-gradient(circle, #f5d04c 0 17%, #e44d3a 18% 34%, #3284b8 35% 51%, #161b20 52% 68%, #f7f7f2 69% 100%); box-shadow: inset 0 0 0 1px #53616c, 0 2px 4px rgba(0,0,0,.14); }
 .target-illustration span { position: absolute; inset: 17px; display: grid; place-items: center; border-radius: 50%; background: rgba(255,255,255,.9); font-weight: bold; }
 
-/* Mini target-face/layout preview, right side of the qual card header.
-   Mirrors ManageTargets' per-layout distinction between one shared physical
-   face (drawn once) and individual faces (drawn one per archer) — that's
-   what identifies the target on the field, so it isn't collapsed to a
-   single generic icon. */
-.mini-target-layout { flex: 0 0 auto; margin-left: auto; display: grid; gap: 3px; }
-.mini-face { position: relative; background-color: #eef1f4; background-size: contain; background-repeat: no-repeat; background-position: center; border: 1px solid var(--live-line); border-radius: 4px; }
-.mini-slot { position: absolute; top: 1px; left: 50%; transform: translateX(-50%); font-size: 11px; font-weight: 700; line-height: 1.2; color: #333; background: rgba(255,255,255,.85); border-radius: 2px; padding: 0 3px; }
-
-.mini-target-layout.layout-abc { grid-template-columns: 36px; }
-.mini-face.mini-shared { width: 36px; height: 72px; }
-.mini-target-layout.layout-abc .mini-slots { position: absolute; inset: 3px; display: grid; grid-template-rows: repeat(3, 1fr); }
-.mini-target-layout.layout-abc .mini-slot { position: static; margin: auto; }
-
-.mini-target-layout.layout-split { grid-template-columns: 32px 32px; }
-.mini-target-layout.layout-split .mini-face.mini-shared { width: 32px; height: 54px; }
-.mini-target-layout.layout-split .mini-slots { position: absolute; inset: 3px; display: grid; grid-template-rows: repeat(2, 1fr); }
-.mini-target-layout.layout-split .mini-slot { position: static; margin: auto; }
-
-.mini-target-layout.layout-quad { grid-template-columns: repeat(2, 34px); grid-template-rows: repeat(2, 34px); }
-.mini-target-layout.layout-quad .mini-face.mini-individual { width: 34px; height: 34px; }
-
-.mini-target-layout.layout-triangle { grid-template-columns: repeat(2, 34px); grid-template-rows: repeat(2, 34px); }
-.mini-target-layout.layout-triangle .mini-face.mini-individual { width: 34px; height: 34px; }
-.mini-target-layout.layout-triangle .mini-pos-top-left { grid-area: 1 / 1; }
-.mini-target-layout.layout-triangle .mini-pos-top-middle { grid-area: 1 / 2; }
-.mini-target-layout.layout-triangle .mini-pos-bottom-left { grid-area: 2 / 1; }
-
-.mini-target-layout.layout-outdoor-shared .mini-face.mini-shared { width: 68px; height: 68px; }
-.mini-target-layout.layout-outdoor-shared .mini-slots { position: absolute; inset: 3px; display: flex; flex-wrap: wrap; align-content: flex-start; gap: 2px; }
-.mini-target-layout.layout-outdoor-shared .mini-slot { position: static; }
-
-.mini-target-layout.layout-outdoor-individual { grid-template-columns: repeat(2, 34px); grid-template-rows: repeat(2, 34px); }
-.mini-target-layout.layout-outdoor-individual .mini-face.mini-individual { width: 34px; height: 34px; }
-.mini-target-layout.layout-outdoor-individual.outdoor-count-1 { grid-template-columns: 34px; grid-template-rows: 34px; }
-.mini-target-layout.layout-outdoor-individual.outdoor-count-2 { grid-template-rows: 34px; }
-.mini-target-layout.layout-outdoor-individual .mini-pos-center { grid-area: 1 / 1 / span 2 / span 1; align-self: center; }
-.mini-target-layout.layout-outdoor-individual.outdoor-count-1 .mini-pos-center { grid-area: 1 / 1; }
-.mini-target-layout.layout-outdoor-individual .mini-pos-top-left { grid-area: 1 / 1; }
-.mini-target-layout.layout-outdoor-individual .mini-pos-top-middle { grid-area: 1 / 1 / span 1 / span 2; justify-self: center; }
-.mini-target-layout.layout-outdoor-individual .mini-pos-top-right { grid-area: 1 / 2; }
-.mini-target-layout.layout-outdoor-individual .mini-pos-bottom-left { grid-area: 2 / 1; }
-.mini-target-layout.layout-outdoor-individual .mini-pos-bottom-right { grid-area: 2 / 2; }
-
-.mini-target-layout.layout-fallback { grid-auto-flow: column; grid-template-columns: repeat(auto-fill, 30px); }
-.mini-target-layout.layout-fallback .mini-face.mini-individual { width: 30px; height: 30px; }
-.competitor { display: grid; grid-template-columns: 28px minmax(0,1fr) auto; align-items: center; gap: 8px; min-height: 54px; padding: 7px 12px; border-bottom: 1px solid #edf0f2; border-left: 4px solid var(--live-green); }
+.competitor { display: grid; grid-template-columns: 40px minmax(0,1fr) auto; align-items: center; gap: 8px; min-height: 54px; padding: 7px 12px; border-bottom: 1px solid #edf0f2; border-left: 4px solid var(--live-green); }
 .competitor:last-child { border-bottom: 0; }
 .competitor.danger { border-left-color: var(--live-red); background: #fff0ee; color: #7a1710; }
 .competitor.warning { border-left-color: #e6a700; background: #fff9e8; }
 .competitor.retired { border-left-color: #aab6c0; background: #f2f4f5; color: var(--live-muted); }
 .competitor.retired .competitor-main strong { text-decoration: line-through; }
-.competitor-position { font-weight: bold; color: var(--live-muted); }
+.competitor-position { display: flex; flex-direction: column; align-items: center; gap: 3px; font-weight: bold; color: var(--live-muted); }
+.position-face { width: 24px; height: 24px; background-color: #eef1f4; background-size: contain; background-repeat: no-repeat; background-position: center; border: 1px solid var(--live-line); border-radius: 4px; }
 .competitor-main, .final-side > div:first-child { min-width: 0; }
 .competitor-main strong, .competitor-main small, .final-side strong, .final-side small { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .competitor-actions { display: flex; align-items: center; gap: 8px; }
