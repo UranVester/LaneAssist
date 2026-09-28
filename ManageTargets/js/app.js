@@ -8,6 +8,7 @@
 
     const divisionMetaMap = (typeof DivisionMeta !== 'undefined' && DivisionMeta) ? DivisionMeta : {};
     const classMetaMap = (typeof ClassMeta !== 'undefined' && ClassMeta) ? ClassMeta : {};
+    const ColorBy = window.LaneAssist && window.LaneAssist.colorBy;
     const OUTDOOR_MIXED_CONFLICT_MESSAGE = 'Invalid move: 122cm and 80cm faces cannot be mixed on the same mat/lane.';
 
     // Application state
@@ -1625,7 +1626,7 @@
 
         const grouping = getParticipantColorGrouping(participant);
         if (grouping) {
-            const palette = getColorPalette(grouping.key);
+            const palette = ColorBy.getColorPalette(grouping.key);
             $card.addClass('colorized').attr('title', grouping.label);
             $card.css({
                 '--group-color': palette.color,
@@ -1696,7 +1697,7 @@
 
         if (mode === 'division') {
             const divisionInfo = getDivisionInfo(participant.division);
-            const bowType = extractBowType(divisionInfo.description, divisionInfo.id);
+            const bowType = ColorBy.extractBowType(divisionInfo.description, divisionInfo.id);
             return {
                 key: 'division|' + bowType,
                 label: 'Division (Bow): ' + bowType
@@ -1754,53 +1755,6 @@
         }
 
         return { id: 'No Division', description: 'No Division' };
-    }
-
-    function extractBowType(divisionDescription, fallbackId) {
-        const text = (divisionDescription || '').toString().trim();
-        const lower = text.toLowerCase();
-
-        const bowTokens = [
-            { token: 'recurve', label: 'Recurve' },
-            { token: 'compound', label: 'Compound' },
-            { token: 'barebow', label: 'Barebow' },
-            { token: 'longbow', label: 'Longbow' },
-            { token: 'traditional', label: 'Traditional' },
-            { token: 'instinctive', label: 'Instinctive' }
-        ];
-
-        for (let i = 0; i < bowTokens.length; i++) {
-            if (lower.indexOf(bowTokens[i].token) !== -1) {
-                return bowTokens[i].label;
-            }
-        }
-
-        if (text) {
-            const firstWord = text.split(/\s+/)[0];
-            if (firstWord) {
-                return firstWord;
-            }
-        }
-
-        const code = (fallbackId || '').toString().trim();
-        return code || 'Unknown Bow';
-    }
-
-    function getColorPalette(key) {
-        const seed = hashString((key || '').toString());
-        const hue = seed % 360;
-        const color = 'hsl(' + hue + ', 60%, 40%)';
-        const bg = 'hsl(' + hue + ', 85%, 94%)';
-        return { color: color, bg: bg };
-    }
-
-    function hashString(text) {
-        let hash = 0;
-        for (let i = 0; i < text.length; i++) {
-            hash = ((hash << 5) - hash) + text.charCodeAt(i);
-            hash |= 0;
-        }
-        return Math.abs(hash);
     }
 
     /**

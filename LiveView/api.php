@@ -213,7 +213,14 @@ function loadFinalSides($teamEvent) {
                 fs.FSScheduledDate ScheduledDate, fs.FSScheduledTime ScheduledTime,
                 ev.EvMatchMode MatchMode,
                 IF((gr.GrPhase & ev.EvMatchArrowsNo), ev.EvElimArrows, ev.EvFinArrows) ArrowsPerEnd,
-                IF((gr.GrPhase & ev.EvMatchArrowsNo), ev.EvElimEnds, ev.EvFinEnds) TotalEnds
+                IF((gr.GrPhase & ev.EvMatchArrowsNo), ev.EvElimEnds, ev.EvFinEnds) TotalEnds,
+                co.CoCode Club,
+                (SELECT MIN(ecDiv.EcDivision) FROM EventClass ecDiv
+                    WHERE ecDiv.EcTournament=tf.TfTournament AND ecDiv.EcCode=tf.TfEvent
+                      AND IF(ecDiv.EcTeamEvent!=0,1,0)=1) Division,
+                (SELECT MIN(ecCls.EcClass) FROM EventClass ecCls
+                    WHERE ecCls.EcTournament=tf.TfTournament AND ecCls.EcCode=tf.TfEvent
+                      AND IF(ecCls.EcTeamEvent!=0,1,0)=1) Class
             FROM TeamFinals tf
             INNER JOIN Events ev ON ev.EvTournament=tf.TfTournament AND ev.EvCode=tf.TfEvent AND ev.EvTeamEvent=1
             INNER JOIN Grids gr ON gr.GrMatchNo=tf.TfMatchNo
@@ -235,11 +242,13 @@ function loadFinalSides($teamEvent) {
                 fs.FSScheduledDate ScheduledDate, fs.FSScheduledTime ScheduledTime,
                 ev.EvMatchMode MatchMode,
                 IF((gr.GrPhase & ev.EvMatchArrowsNo), ev.EvElimArrows, ev.EvFinArrows) ArrowsPerEnd,
-                IF((gr.GrPhase & ev.EvMatchArrowsNo), ev.EvElimEnds, ev.EvFinEnds) TotalEnds
+                IF((gr.GrPhase & ev.EvMatchArrowsNo), ev.EvElimEnds, ev.EvFinEnds) TotalEnds,
+                co.CoCode Club, en.EnDivision Division, en.EnClass Class
             FROM Finals fin
             INNER JOIN Events ev ON ev.EvTournament=fin.FinTournament AND ev.EvCode=fin.FinEvent AND ev.EvTeamEvent=0
             INNER JOIN Grids gr ON gr.GrMatchNo=fin.FinMatchNo
             LEFT JOIN Entries en ON en.EnId=fin.FinAthlete
+            LEFT JOIN Countries co ON co.CoId=en.EnCountry
             LEFT JOIN FinSchedule fs ON fs.FSTournament=fin.FinTournament AND fs.FSTeamEvent=0 AND fs.FSEvent=fin.FinEvent AND fs.FSMatchNo=fin.FinMatchNo
                         WHERE fin.FinTournament=" . StrSafe_DB($_SESSION['TourId']) . "
               AND EXISTS (
@@ -284,6 +293,8 @@ function loadFinalSides($teamEvent) {
             }),
             'arrowString' => rtrim((string)$row->ArrowString), 'winLose' => intval($row->WinLose),
             'tie' => intval($row->Tie),
+            'club' => trim((string)$row->Club), 'division' => trim((string)$row->Division),
+            'class' => trim((string)$row->Class),
         ];
     }
     return $matches;

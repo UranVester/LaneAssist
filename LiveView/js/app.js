@@ -1,11 +1,106 @@
 (function($) {
     'use strict';
 
-    var state = { mode: 'qualification', initialModeResolved: false, loading: false, refreshPending: false, bulkAdvancing: false, timer: null, actionMessage: '', snapshot: null, qualificationNotice: '', finalsNotice: '', qualificationForfeitEligible: [] };
+    var state = { mode: 'qualification', initialModeResolved: false, loading: false, refreshPending: false, bulkAdvancing: false, timer: null, actionMessage: '', snapshot: null, qualificationNotice: '', finalsNotice: '', qualificationForfeitEligible: [], colorBy: 'none' };
     var apiUrl = ROOT_DIR + 'Modules/Custom/LaneAssist/LiveView/api.php';
+    var divisionMetaMap = (typeof DivisionMeta !== 'undefined' && DivisionMeta) ? DivisionMeta : {};
+    var classMetaMap = (typeof ClassMeta !== 'undefined' && ClassMeta) ? ClassMeta : {};
+    var ColorBy = window.LaneAssist && window.LaneAssist.colorBy;
+
+    var QUAL_COLOR_OPTIONS = [
+        { value: 'none', label: 'None' },
+        { value: 'country', label: 'Country/Club' },
+        { value: 'class', label: 'Class (Age/Gender)' },
+        { value: 'division', label: 'Division (Bow type)' }
+    ];
+    var FINALS_COLOR_OPTIONS = [
+        { value: 'none', label: 'None' },
+        { value: 'country', label: 'Country/Club' },
+        { value: 'event', label: 'Event' },
+        { value: 'division', label: 'Division (Bow type)' },
+        { value: 'class', label: 'Class (Age/Gender)' }
+    ];
 
     function escapeHtml(value) {
         return $('<div>').text(value == null ? '' : String(value)).html();
+    }
+
+    function normalizeColorValue(value, fallback) {
+        var text = (value == null ? '' : String(value)).trim();
+        return text !== '' ? text : (fallback || 'Unknown');
+    }
+
+    function getClassInfo(classId) {
+        var id = normalizeColorValue(classId, '');
+        var entry = id !== '' ? classMetaMap[id] : null;
+        var description = entry && entry.description ? String(entry.description).trim() : '';
+        if (description && id) return { id: id, label: description + ' (' + id + ')' };
+        if (description) return { id: description, label: description };
+        if (id) return { id: id, label: id };
+        return { id: 'No Class', label: 'No Class' };
+    }
+
+    function getDivisionInfo(divisionId) {
+        var id = normalizeColorValue(divisionId, '');
+        var entry = id !== '' ? divisionMetaMap[id] : null;
+        var description = entry && entry.description ? String(entry.description).trim() : '';
+        if (description || id) {
+            return { id: id || description, description: description || id };
+        }
+        return { id: 'No Division', description: 'No Division' };
+    }
+
+    function getColorGrouping(entity, mode) {
+        if (!mode || mode === 'none') return null;
+
+        if (mode === 'country') {
+            var club = normalizeColorValue(entity.club, 'No Club');
+            return { key: 'country|' + club, label: 'Country/Club: ' + club };
+        }
+
+        if (mode === 'class') {
+            var classInfo = getClassInfo(entity.class);
+            return { key: 'class|' + classInfo.id, label: 'Class: ' + classInfo.label };
+        }
+
+        if (mode === 'division') {
+            var divisionInfo = getDivisionInfo(entity.division);
+            var bowType = ColorBy.extractBowType(divisionInfo.description, divisionInfo.id);
+            return { key: 'division|' + bowType, label: 'Division (Bow): ' + bowType };
+        }
+
+        if (mode === 'event') {
+            var div = (entity.division == null ? '' : String(entity.division)).trim();
+            var cls = (entity.class == null ? '' : String(entity.class)).trim();
+            var key = normalizeColorValue(div + cls, 'No Event');
+            return { key: 'event|' + key, label: 'Event: ' + key };
+        }
+
+        return null;
+    }
+
+    function colorByAttrs(entity) {
+        var grouping = getColorGrouping(entity, state.colorBy);
+        if (!grouping) return { classAttr: '', styleAttr: '', titleAttr: '' };
+        var palette = ColorBy.getColorPalette(grouping.key);
+        return {
+            classAttr: ' colorized',
+            styleAttr: ' style="--group-color:' + palette.color + ';--group-bg:' + palette.bg + '"',
+            titleAttr: ' title="' + escapeHtml(grouping.label) + '"'
+        };
+    }
+
+    function updateColorByOptions() {
+        if (state.colorByOptionsMode === state.mode) return;
+        state.colorByOptionsMode = state.mode;
+        var options = state.mode === 'finals' ? FINALS_COLOR_OPTIONS : QUAL_COLOR_OPTIONS;
+        var validValues = options.map(function(opt) { return opt.value; });
+        if (validValues.indexOf(state.colorBy) === -1) {
+            state.colorBy = 'none';
+        }
+        $('#color-by').html(options.map(function(opt) {
+            return '<option value="' + opt.value + '"' + (opt.value === state.colorBy ? ' selected' : '') + '>' + escapeHtml(opt.label) + '</option>';
+        }).join(''));
     }
 
     function targetFace(label) {
@@ -48,9 +143,10 @@
                     toggleHtml = '<button type="button" class="retire-toggle" data-participant-id="' + archer.participantId + '"'
                         + (archer.retired ? ' data-retired="1">Un-forfeit</button>' : '>Forfeit</button>');
                 }
+                var colorAttrs = colorByAttrs(archer);
                 return '<div class="competitor' + problemClass + retiredClass + '" data-participant-id="' + archer.participantId + '">' + badgeHtml.edge +
                     '<div class="competitor-position">' + escapeHtml(archer.position) + '</div>' +
-                    '<div class="competitor-main"><strong>' + escapeHtml(archer.name) + '</strong>' + badgeHtml.inline + '<small>' + escapeHtml(archer.club) + ' · ' + archer.completedEnds + ' ends</small></div>' +
+                    '<div class="competitor-main' + colorAttrs.classAttr + '"' + colorAttrs.styleAttr + colorAttrs.titleAttr + '><strong>' + escapeHtml(archer.name) + '</strong>' + badgeHtml.inline + '<small>' + escapeHtml(archer.club) + ' · ' + archer.completedEnds + ' ends</small></div>' +
                     '<div class="competitor-actions"><div class="score-pair"><span><small>Last end</small><b>' + endPoints + '</b></span><span><small>Total</small><b>' + archer.totalPoints + '</b></span></div>' + toggleHtml + '</div></div>';
             }).join('');
             return '<article class="live-card qual-card"><header>' + targetFace(mat.target) + '<div><span class="eyebrow">Target / mat</span><h3>' + escapeHtml(mat.target) + '</h3><small>Pace: end ' + mat.expectedEnds + '</small></div></header><div class="competitors">' + archers + '</div></article>';
@@ -94,7 +190,8 @@
                 } else {
                     scores = '<div class="final-scores"><span><small>Total</small><b>' + side.score + '</b></span></div>';
                 }
-                return '<div class="final-side' + (winner ? ' winner' : '') + '"><div><strong>' + escapeHtml(side.name || 'Awaiting opponent') + '</strong><small>' + side.completedEnds + ' ends reported</small></div>' + scores + '</div>';
+                var colorAttrs = colorByAttrs(side);
+                return '<div class="final-side' + (winner ? ' winner' : '') + '"><div class="final-side-name' + colorAttrs.classAttr + '"' + colorAttrs.styleAttr + colorAttrs.titleAttr + '><strong>' + escapeHtml(side.name || 'Awaiting opponent') + '</strong><small>' + side.completedEnds + ' ends reported</small></div>' + scores + '</div>';
             }).join('');
             var canAct = match.canAdvance || match.canMarkBye;
             var actionLabel = match.status === 'bye' ? (match.canAdvance ? 'Mark bye & advance' : 'Mark bye') : 'Advance winner';
@@ -132,7 +229,8 @@
         $('#qualification-view').prop('hidden', isFinals);
         $('#finals-view').prop('hidden', !isFinals);
         $('.mode-button').removeClass('active').filter('[data-mode="' + state.mode + '"]').addClass('active');
-        $('.session-control').toggle(!isFinals);
+        $('label[for="session-select"]').toggle(!isFinals);
+        updateColorByOptions();
         var hasCards = $(isFinals ? '#finals-view' : '#qualification-view').children().length > 0;
         $('#empty-state').prop('hidden', hasCards);
         renderNotices();
@@ -337,6 +435,15 @@
     $(function() {
         $('.mode-button').on('click', function() { state.mode = $(this).data('mode'); updateVisibleView(); });
         $('#session-select').on('change', function() { loadSnapshot(true); });
+        $('#color-by').on('change', function() {
+            state.colorBy = $(this).val();
+            if (!state.snapshot) return;
+            if (state.mode === 'finals') {
+                renderFinals(state.snapshot.finals || []);
+            } else {
+                renderQualification(state.snapshot.qualification || []);
+            }
+        });
         $('#refresh-button').on('click', function() { loadSnapshot(true); });
         $(document).on('click', '.advance-button', function() { advanceMatch(this); });
         $(document).on('click', '.retire-toggle', function() { toggleArcherRetired(this); });

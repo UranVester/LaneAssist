@@ -19,14 +19,45 @@ $PAGE_TITLE = 'LaneAssist Live View';
 $IncludeJquery = true;
 $IncludeFA = true;
 $sessions = GetSessions('Q');
+
+$divisionMeta = array();
+$divRs = safe_r_sql("SELECT DivId, DivDescription FROM Divisions
+           WHERE DivTournament=" . StrSafe_DB($_SESSION['TourId']) . "
+           AND DivAthlete=1
+           ORDER BY DivViewOrder");
+while ($div = safe_fetch($divRs)) {
+    $divisionMeta[$div->DivId] = array(
+        'id' => $div->DivId,
+        'description' => $div->DivDescription
+    );
+}
+
+$classMeta = array();
+$clsRs = safe_r_sql("SELECT ClId, ClDescription FROM Classes
+           WHERE ClTournament=" . StrSafe_DB($_SESSION['TourId']) . "
+           AND ClAthlete=1
+           ORDER BY ClViewOrder");
+while ($cls = safe_fetch($clsRs)) {
+    $classMeta[$cls->ClId] = array(
+        'id' => $cls->ClId,
+        'description' => $cls->ClDescription
+    );
+}
+
 $styleVersion = filemtime(__DIR__ . '/css/style.css');
 $scriptVersion = filemtime(__DIR__ . '/js/app.js');
 $badgeRenderVersion = filemtime(dirname(__DIR__) . '/Common/js/badge-render.js');
+$colorByVersion = filemtime(dirname(__DIR__) . '/Common/js/color-by.js');
 $JS_SCRIPT = [
-    '<script>var ROOT_DIR=' . json_encode($CFG->ROOT_DIR, JSON_HEX_TAG | JSON_HEX_AMP) . ';</script>',
+    '<script>var ROOT_DIR=' . json_encode($CFG->ROOT_DIR, JSON_HEX_TAG | JSON_HEX_AMP) . ';
+        var DivisionMeta = ' . json_encode($divisionMeta, JSON_HEX_TAG | JSON_HEX_AMP) . ';
+        var ClassMeta = ' . json_encode($classMeta, JSON_HEX_TAG | JSON_HEX_AMP) . ';
+    </script>',
     '<link href="' . $CFG->ROOT_DIR . 'Modules/Custom/LaneAssist/LiveView/css/style.css?v=' . $styleVersion . '" rel="stylesheet" type="text/css">',
     '<script src="' . $CFG->ROOT_DIR . 'Modules/Custom/LaneAssist/Common/js/badge-render.js?v='
         . $badgeRenderVersion . '"></script>',
+    '<script src="' . $CFG->ROOT_DIR . 'Modules/Custom/LaneAssist/Common/js/color-by.js?v='
+        . $colorByVersion . '"></script>',
     '<script src="' . $CFG->ROOT_DIR . 'Modules/Custom/LaneAssist/LiveView/js/app.js?v=' . $scriptVersion . '"></script>',
 ];
 
@@ -47,6 +78,10 @@ include('Common/Templates/head.php');
             </div>
         </div>
         <div class="live-controls">
+            <label class="session-control" for="color-by">
+                <span>Color by</span>
+                <select id="color-by"></select>
+            </label>
             <label class="session-control" for="session-select">
                 <span><?php echo get_text('Session'); ?></span>
                 <select id="session-select">

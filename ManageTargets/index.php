@@ -161,6 +161,7 @@ $JS_SCRIPT = array(
     '<script src="' . $CFG->ROOT_DIR . 'Common/jQuery/jquery-ui.min.js"></script>',
     '<script src="' . $CFG->ROOT_DIR . 'Modules/Custom/LaneAssist/Common/js/jquery-ui-touch-bridge.js"></script>',
     '<script src="' . $CFG->ROOT_DIR . 'Modules/Custom/LaneAssist/Common/js/shared.js"></script>',
+    '<script src="' . $CFG->ROOT_DIR . 'Modules/Custom/LaneAssist/Common/js/color-by.js"></script>',
     '<script src="' . $CFG->ROOT_DIR . 'Modules/Custom/LaneAssist/ManageTargets/js/app.js"></script>',
 );
 
