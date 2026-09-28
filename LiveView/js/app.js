@@ -107,7 +107,107 @@
         return '<div class="target-illustration" aria-hidden="true"><span>' + escapeHtml(label || '-') + '</span></div>';
     }
 
+    function archerByPosition(archers, position) {
+        for (var i = 0; i < archers.length; i++) {
+            if ((archers[i].position || '').toUpperCase() === position) return archers[i];
+        }
+        return null;
+    }
+
+    function miniFaceStyleAttr(archer) {
+        return (archer && archer.targetFaceUrl)
+            ? ' style="background-image:url(&quot;' + escapeHtml(archer.targetFaceUrl) + '&quot;)"'
+            : '';
+    }
+
+    function miniSlotHtml(archer, position) {
+        return '<span class="mini-slot">' + escapeHtml(position) + '</span>';
+    }
+
+    // A "shared" face is one physical target face several archers shoot at once
+    // (same as ManageTargets' shared-abc/shared-split faces): one background
+    // image, one slot label per position, first archer with a resolved face
+    // image supplies the background for the whole group.
+    function miniSharedFace(archers, positions, extraClass) {
+        var faceArcher = null;
+        for (var i = 0; i < archers.length; i++) {
+            if (archers[i] && archers[i].targetFaceUrl) { faceArcher = archers[i]; break; }
+        }
+        var slots = positions.map(function(position) {
+            return miniSlotHtml(archerByPosition(archers, position), position);
+        }).join('');
+        return '<div class="mini-face mini-shared' + (extraClass ? ' ' + extraClass : '') + '"' + miniFaceStyleAttr(faceArcher) + '>' +
+            '<div class="mini-slots">' + slots + '</div></div>';
+    }
+
+    function miniIndividualFace(archer, positionClass) {
+        return '<div class="mini-face mini-individual' + (positionClass ? ' ' + positionClass : '') + '"' + miniFaceStyleAttr(archer) + '>' +
+            miniSlotHtml(archer, archer ? archer.position : '') + '</div>';
+    }
+
+    function outdoorPositionClass(letter, count) {
+        var l = (letter || '').toUpperCase();
+        if (count === 1) return 'mini-pos-center';
+        if (count === 2) return l === 'A' ? 'mini-pos-top-left' : 'mini-pos-top-right';
+        if (count === 3) {
+            if (l === 'B') return 'mini-pos-top-middle';
+            if (l === 'A') return 'mini-pos-bottom-left';
+            return 'mini-pos-bottom-right';
+        }
+        if (l === 'A') return 'mini-pos-top-left';
+        if (l === 'B') return 'mini-pos-top-right';
+        if (l === 'C') return 'mini-pos-bottom-left';
+        return 'mini-pos-bottom-right';
+    }
+
+    // Small preview of the physical target-face layout for this mat, mirroring
+    // ManageTargets' rendering per layout id: some layouts have several archers
+    // sharing one physical face (drawn once, large-ish); others give each
+    // archer their own face (drawn as separate small icons). That distinction
+    // is what identifies the target on the field, so it isn't simplified away.
+    function miniTargetLayout(mat, layoutId) {
+        var archers = mat.archers || [];
+        if (!archers.length) return '';
+
+        if (layoutId === 'layout_60cm_3_abc') {
+            return '<div class="mini-target-layout layout-abc">' + miniSharedFace(archers, ['A', 'B', 'C']) + '</div>';
+        }
+
+        if (layoutId === 'layout_60cm_4_split') {
+            return '<div class="mini-target-layout layout-split">' +
+                miniSharedFace(archers, ['A', 'C'], 'mini-split-left') +
+                miniSharedFace(archers, ['B', 'D'], 'mini-split-right') + '</div>';
+        }
+
+        if (layoutId === 'layout_40cm_4_quad') {
+            var quad = ['A', 'B', 'C', 'D'].map(function(position) { return archerByPosition(archers, position); });
+            return '<div class="mini-target-layout layout-quad">' +
+                quad.map(function(a) { return miniIndividualFace(a); }).join('') + '</div>';
+        }
+
+        if (layoutId === 'layout_40cm_6_triangle') {
+            var laneClasses = ['mini-pos-top-left', 'mini-pos-top-middle', 'mini-pos-bottom-left'];
+            var tri = ['A', 'B', 'C'].map(function(position) { return archerByPosition(archers, position); });
+            return '<div class="mini-target-layout layout-triangle">' +
+                tri.map(function(a, idx) { return miniIndividualFace(a, laneClasses[idx]); }).join('') + '</div>';
+        }
+
+        if (layoutId && layoutId.indexOf('layout_outdoor_mixed_') === 0) {
+            var hasLarge = archers.some(function(a) { return a.targetDiameter && a.targetDiameter >= 120; });
+            if (hasLarge) {
+                var positions = archers.map(function(a) { return a.position; });
+                return '<div class="mini-target-layout layout-outdoor-shared">' + miniSharedFace(archers, positions) + '</div>';
+            }
+            return '<div class="mini-target-layout layout-outdoor-individual outdoor-count-' + archers.length + '">' +
+                archers.map(function(a) { return miniIndividualFace(a, outdoorPositionClass(a.position, archers.length)); }).join('') + '</div>';
+        }
+
+        return '<div class="mini-target-layout layout-fallback">' +
+            archers.map(function(a) { return miniIndividualFace(a); }).join('') + '</div>';
+    }
+
     function renderQualification(mats) {
+        var layoutId = (state.snapshot && state.snapshot.layoutId) || '';
         // expectedEnds is the most-common completed-end count, not the max, so
         // it can stay 0 even once several archers have shot — it's the wrong
         // signal for "has anyone started." Use the literal signal instead.
@@ -144,12 +244,13 @@
                         + (archer.retired ? ' data-retired="1">Un-forfeit</button>' : '>Forfeit</button>');
                 }
                 var colorAttrs = colorByAttrs(archer);
+                var endsSuffix = archer.completedEnds === mat.expectedEnds ? '' : ' · ' + archer.completedEnds + ' ends';
                 return '<div class="competitor' + problemClass + retiredClass + '" data-participant-id="' + archer.participantId + '">' + badgeHtml.edge +
                     '<div class="competitor-position">' + escapeHtml(archer.position) + '</div>' +
-                    '<div class="competitor-main' + colorAttrs.classAttr + '"' + colorAttrs.styleAttr + colorAttrs.titleAttr + '><strong>' + escapeHtml(archer.name) + '</strong>' + badgeHtml.inline + '<small>' + escapeHtml(archer.club) + ' · ' + archer.completedEnds + ' ends</small></div>' +
+                    '<div class="competitor-main' + colorAttrs.classAttr + '"' + colorAttrs.styleAttr + colorAttrs.titleAttr + '><strong>' + escapeHtml(archer.name) + '</strong>' + badgeHtml.inline + '<small>' + escapeHtml(archer.club) + endsSuffix + '</small></div>' +
                     '<div class="competitor-actions"><div class="score-pair"><span><small>Last end</small><b>' + endPoints + '</b></span><span><small>Total</small><b>' + archer.totalPoints + '</b></span></div>' + toggleHtml + '</div></div>';
             }).join('');
-            return '<article class="live-card qual-card"><header>' + targetFace(mat.target) + '<div><span class="eyebrow">Target / mat</span><h3>' + escapeHtml(mat.target) + '</h3><small>Pace: end ' + mat.expectedEnds + '</small></div></header><div class="competitors">' + archers + '</div></article>';
+            return '<article class="live-card qual-card"><header>' + targetFace(mat.target) + '<div><span class="eyebrow">Target / mat</span><h3>' + escapeHtml(mat.target) + '</h3><small>Pace: end ' + mat.expectedEnds + '</small></div>' + miniTargetLayout(mat, layoutId) + '</header><div class="competitors">' + archers + '</div></article>';
         }).join('');
         $('#qualification-view').html(html);
     }

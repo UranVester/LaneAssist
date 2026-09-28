@@ -15,6 +15,10 @@ require_once('Common/Lib/ArrTargets.inc.php');
 require_once(dirname(__FILE__, 2) . '/Common/csrf.php');
 require_once(dirname(__FILE__, 2) . '/Common/live-view-logic.php');
 require_once(dirname(__FILE__, 2) . '/Common/badge-providers.php');
+if (!function_exists('getModuleParameter')) {
+    require_once(dirname(__FILE__, 5) . '/Common/Lib/Fun_Modules.php');
+}
+require_once(dirname(__FILE__, 2) . '/Common/target-layout-info.php');
 
 $action = $_REQUEST['action'] ?? 'snapshot';
 if ($action === 'advance') {
@@ -33,6 +37,8 @@ if ($action === 'advance') {
 }
 
 function qualificationSnapshot($session) {
+    global $CFG;
+
     $distanceInfo = [];
     $distanceRs = safe_r_sql("SELECT DiDistance, DiEnds, DiArrows
         FROM DistanceInformation
@@ -46,18 +52,28 @@ function qualificationSnapshot($session) {
     }
 
     $sql = "SELECT EnId, EnFirstName, EnName, CoCode, EnClass, EnDivision, EnStatus,
-            QuTarget, QuLetter, QuScore,
+            QuTarget, QuLetter, QuScore, EnTargetFace,
+            tf.TfT1 as TargetFaceId, tf.TfW1 as TargetDiameter,
             QuD1Arrowstring, QuD2Arrowstring, QuD3Arrowstring, QuD4Arrowstring,
             QuD5Arrowstring, QuD6Arrowstring, QuD7Arrowstring, QuD8Arrowstring
         FROM Qualifications
         INNER JOIN Entries ON EnId=QuId AND EnTournament=" . StrSafe_DB($_SESSION['TourId']) . "
         LEFT JOIN Countries ON CoId=EnCountry
+        LEFT JOIN TargetFaces tf ON EnTournament = tf.TfTournament AND EnTargetFace = tf.TfId
         WHERE QuSession=" . StrSafe_DB($session) . " AND EnAthlete=1 AND (EnStatus<=1 OR EnStatus=6)
           AND QuTarget<>'' AND QuTarget<>'0'
         ORDER BY QuTarget, QuLetter";
     $rs = safe_r_sql($sql);
     $mats = [];
+    $targetFaceIds = [];
+    $targetDiameters = [];
     while ($row = safe_fetch($rs)) {
+        if ($row->TargetFaceId) {
+            $targetFaceIds[$row->TargetFaceId] = true;
+            if ($row->TargetDiameter) {
+                $targetDiameters[$row->TargetFaceId] = intval($row->TargetDiameter);
+            }
+        }
         $latestDistance = 0;
         $arrowString = '';
         $arrowsShot = 0;
@@ -94,6 +110,7 @@ function qualificationSnapshot($session) {
             'position' => trim((string)$row->QuLetter),
             'class' => trim((string)$row->EnClass),
             'division' => trim((string)$row->EnDivision),
+            'targetFaceId' => $row->TargetFaceId,
             'completedEnds' => laneAssistCompletedEnds($arrowString, $arrowsPerEnd),
             'completedTotalEnds' => $completedTotalEnds,
             'totalEnds' => $totalEnds,
@@ -105,6 +122,31 @@ function qualificationSnapshot($session) {
             'totalPoints' => intval($row->QuScore),
             'retired' => intval($row->EnStatus) === 6,
         ];
+    }
+
+    $targetFaceImages = [];
+    if (!empty($targetFaceIds)) {
+        $tfSql = "SELECT TarId, TarDescr, TarFullSize FROM Targets WHERE TarId IN ("
+            . implode(',', array_map('intval', array_keys($targetFaceIds))) . ")";
+        $tfRs = safe_r_sql($tfSql);
+        while ($tfRow = safe_fetch($tfRs)) {
+            $imgPath = $CFG->DOCUMENT_PATH . 'Common/Images/Targets/' . $tfRow->TarId . '.svg';
+            $imgUrl = $CFG->ROOT_DIR . 'Common/Images/Targets/' . $tfRow->TarId . '.svg';
+
+            if (!file_exists($imgPath)) {
+                $imgPath = $CFG->DOCUMENT_PATH . 'Common/Images/Targets/' . $tfRow->TarId . '.svgz';
+                $imgUrl = $CFG->ROOT_DIR . 'Common/Images/Targets/' . $tfRow->TarId . '.svgz';
+            }
+
+            if (file_exists($imgPath)) {
+                $targetFaceImages[$tfRow->TarId] = [
+                    'id' => $tfRow->TarId,
+                    'description' => $tfRow->TarDescr,
+                    'diameter' => $targetDiameters[$tfRow->TarId] ?? null,
+                    'url' => $imgUrl,
+                ];
+            }
+        }
     }
 
     $allArchers = [];
@@ -125,6 +167,8 @@ function qualificationSnapshot($session) {
             // the replacement or they would be discarded again.
             $archer = $paceByParticipant[$archer['participantId']];
             $archer['badges'] = $badges[$archer['participantId']] ?? [];
+            $archer['targetFaceUrl'] = $targetFaceImages[$archer['targetFaceId']]['url'] ?? null;
+            $archer['targetDiameter'] = $targetFaceImages[$archer['targetFaceId']]['diameter'] ?? null;
         }
         unset($archer);
     }
@@ -378,6 +422,7 @@ function liveSnapshot() {
         'finals' => $finalBlock['matches'], 'finalsSlot' => $finalBlock['slot'],
         'finalsProgress' => laneAssistFinalsProgress($finalBlock['matches']),
         'finalsInitialized' => finalsBracketsInitialized(),
+        'layoutId' => getSavedTournamentLayoutPreference(intval($_SESSION['TourId'])),
         'updatedAt' => date('c'),
     ]);
 }
