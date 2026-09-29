@@ -1,7 +1,7 @@
 (function($) {
     'use strict';
 
-    var state = { mode: 'qualification', initialModeResolved: false, loading: false, refreshPending: false, bulkAdvancing: false, timer: null, actionMessage: '', snapshot: null, qualificationNotice: '', finalsNotice: '', qualificationForfeitEligible: [], colorBy: 'none' };
+    var state = { mode: 'qualification', initialModeResolved: false, loading: false, refreshPending: false, bulkAdvancing: false, timer: null, actionMessage: '', snapshot: null, qualificationNotice: '', finalsNotice: '', qualificationForfeitEligible: [], colorBy: 'none', selectedRoundSlot: null, hasSelectedRound: false, finals: [] };
     var apiUrl = ROOT_DIR + 'Modules/Custom/LaneAssist/LiveView/api.php';
     var divisionMetaMap = (typeof DivisionMeta !== 'undefined' && DivisionMeta) ? DivisionMeta : {};
     var classMetaMap = (typeof ClassMeta !== 'undefined' && ClassMeta) ? ClassMeta : {};
@@ -190,6 +190,58 @@
         return 'Current finals: ' + scopes.join(', ') + (time ? ' · ' + time : '');
     }
 
+    function currentFinalRound(rounds) {
+        var list = rounds || [];
+        for (var i = 0; i < list.length; i++) {
+            if (list[i].isCurrent) return list[i];
+        }
+        return null;
+    }
+
+    function roundOptionLabel(round) {
+        var time = round.slot
+            ? new Date(round.slot.replace(' ', 'T')).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
+            : 'Unscheduled';
+        if (!round.matches.length) return time;
+        var scopes = [];
+        round.matches.forEach(function(match) {
+            var label = phaseLabel(match.phase) + ' ' + match.event;
+            if (scopes.indexOf(label) === -1) scopes.push(label);
+        });
+        return scopes.join(', ') + ' · ' + time;
+    }
+
+    function updateRoundSelect(rounds) {
+        var html = rounds.map(function(round) {
+            var label = roundOptionLabel(round) + (round.isCurrent ? ' (current)' : '');
+            var selected = round.slot === state.selectedRoundSlot ? ' selected' : '';
+            return '<option value="' + escapeHtml(round.slot) + '"' + selected + '>' + escapeHtml(label) + '</option>';
+        }).join('');
+        $('#round-select').html(html);
+        var current = currentFinalRound(rounds);
+        $('#round-goto-current').prop('disabled', !current || current.slot === state.selectedRoundSlot);
+    }
+
+    // Defaults the browsed round to whichever one the server flags current,
+    // but only the first time rounds are seen - after that it stays wherever
+    // the user last pointed it, even once that round finishes advancing.
+    function applySelectedRound() {
+        var rounds = (state.snapshot && state.snapshot.finalsRounds) || [];
+        var current = currentFinalRound(rounds);
+        if (!state.hasSelectedRound && current) {
+            state.selectedRoundSlot = current.slot;
+            state.hasSelectedRound = true;
+        }
+        var selected = null;
+        for (var i = 0; i < rounds.length; i++) {
+            if (rounds[i].slot === state.selectedRoundSlot) { selected = rounds[i]; break; }
+        }
+        if (!selected) selected = current;
+        state.finals = selected ? selected.matches : [];
+        updateRoundSelect(rounds);
+        renderFinals(state.finals);
+    }
+
     function renderFinals(matches) {
         var byeCount = matches.filter(function(match) { return match.status === 'bye' && match.canMarkBye; }).length;
         $('#final-count').text(matches.length);
@@ -250,6 +302,8 @@
         $('#finals-view').prop('hidden', !isFinals);
         $('.mode-button').removeClass('active').filter('[data-mode="' + state.mode + '"]').addClass('active');
         $('label[for="session-select"]').toggle(!isFinals);
+        var rounds = (state.snapshot && state.snapshot.finalsRounds) || [];
+        $('#round-control').prop('hidden', !isFinals || rounds.length < 2);
         updateColorByOptions();
         var hasCards = $(isFinals ? '#finals-view' : '#qualification-view').children().length > 0;
         $('#empty-state').prop('hidden', hasCards);
@@ -281,10 +335,12 @@
             }
             state.snapshot = data;
             renderQualification(data.qualification || []);
-            renderFinals(data.finals || []);
+            applySelectedRound();
+            var current = currentFinalRound(data.finalsRounds || []);
+            var currentMatches = current ? current.matches : [];
             var behind = (data.qualification || []).reduce(function(total, mat) { return total + mat.archers.filter(function(archer) { return archer.isBehind; }).length; }, 0);
-            var problems = (data.finals || []).filter(function(match) { return ['unreported', 'uneven', 'partial'].indexOf(match.status) !== -1; }).length;
-            $('#live-summary').text(finalBlockLabel(data.finals || [], data.finalsSlot) + ' · ' + behind + ' qualification archer' + (behind === 1 ? '' : 's') + ' behind · ' + problems + ' final match' + (problems === 1 ? '' : 'es') + ' need attention');
+            var problems = currentMatches.filter(function(match) { return ['unreported', 'uneven', 'partial'].indexOf(match.status) !== -1; }).length;
+            $('#live-summary').text(finalBlockLabel(currentMatches, current ? current.slot : '') + ' · ' + behind + ' qualification archer' + (behind === 1 ? '' : 's') + ' behind · ' + problems + ' final match' + (problems === 1 ? '' : 'es') + ' need attention');
             $('#last-updated').text('Updated ' + new Date(data.updatedAt).toLocaleTimeString());
             if (!state.initialModeResolved) {
                 state.mode = data.finalsInitialized && data.qualificationProgress && data.qualificationProgress.complete
@@ -365,7 +421,7 @@
 
     function advanceAllByes(button) {
         if (state.bulkAdvancing || !state.snapshot) return;
-        var byes = (state.snapshot.finals || []).filter(function(match) {
+        var byes = (state.finals || []).filter(function(match) {
             return match.status === 'bye' && match.canMarkBye;
         });
         if (!byes.length) return;
@@ -455,11 +511,23 @@
     $(function() {
         $('.mode-button').on('click', function() { state.mode = $(this).data('mode'); updateVisibleView(); });
         $('#session-select').on('change', function() { loadSnapshot(true); });
+        $('#round-select').on('change', function() {
+            state.selectedRoundSlot = $(this).val();
+            applySelectedRound();
+            updateVisibleView();
+        });
+        $('#round-goto-current').on('click', function() {
+            var current = currentFinalRound((state.snapshot && state.snapshot.finalsRounds) || []);
+            if (!current) return;
+            state.selectedRoundSlot = current.slot;
+            applySelectedRound();
+            updateVisibleView();
+        });
         $('#color-by').on('change', function() {
             state.colorBy = $(this).val();
             if (!state.snapshot) return;
             if (state.mode === 'finals') {
-                renderFinals(state.snapshot.finals || []);
+                renderFinals(state.finals || []);
             } else {
                 renderQualification(state.snapshot.qualification || []);
             }

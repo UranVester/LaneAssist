@@ -332,6 +332,56 @@ function laneAssistSelectCurrentFinalMatches(array $matches) {
 }
 
 /**
+ * Groups all finals matches into per-scheduled-slot "rounds" for browsing,
+ * chronologically ordered with any leftover unscheduled matches last. The
+ * round that matches laneAssistSelectCurrentFinalMatches()'s slot is
+ * replaced wholesale by its own match list (rather than the raw matches at
+ * that slot), so its unscheduled-bye folding survives unchanged; those
+ * folded-in matches are excluded from whichever raw slot they actually
+ * belong to so they don't also appear a second time in another round.
+ * When no scheduled slot exists at all, laneAssistSelectCurrentFinalMatches()
+ * has nothing to report (its 'matches' is always empty in that case), so the
+ * raw '' bucket is left untouched and simply flagged current instead.
+ */
+function laneAssistGroupFinalRounds(array $matches) {
+    $identity = function($match) {
+        return intval($match['teamEvent'] ?? 0) . '|' . ($match['event'] ?? '') . '|' . intval($match['matchNo'] ?? 0);
+    };
+
+    $current = laneAssistSelectCurrentFinalMatches($matches);
+    $currentKeys = [];
+    foreach ($current['matches'] as $match) {
+        $currentKeys[$identity($match)] = true;
+    }
+
+    $buckets = [];
+    foreach ($matches as $match) {
+        if (isset($currentKeys[$identity($match)])) {
+            continue;
+        }
+        $slot = trim((string)($match['scheduledSlot'] ?? ''));
+        $buckets[$slot][] = $match;
+    }
+    if ($current['slot'] !== '') {
+        $buckets[$current['slot']] = $current['matches'];
+    }
+
+    $slots = array_keys($buckets);
+    usort($slots, function($a, $b) {
+        if ($a === $b) return 0;
+        if ($a === '') return 1;
+        if ($b === '') return -1;
+        return strcmp($a, $b);
+    });
+
+    $rounds = [];
+    foreach ($slots as $slot) {
+        $rounds[] = ['slot' => $slot, 'matches' => $buckets[$slot], 'isCurrent' => $slot === $current['slot']];
+    }
+    return $rounds;
+}
+
+/**
  * Whether this archer has any recorded arrows in this session, across all
  * distances. Enforced server-side so the "disable" action stays limited to
  * genuine no-shows even if a stale client sends a stale request.

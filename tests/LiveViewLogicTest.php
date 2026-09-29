@@ -299,4 +299,60 @@ final class LiveViewLogicTest extends TestCase
         $this->assertSame('2026-08-30 16:00:00', $result['slot']);
         $this->assertSame([20, 18], array_column($result['matches'], 'matchNo'));
     }
+
+    public function testGroupFinalRoundsOrdersChronologicallyAndFoldsUnscheduledByesIntoCurrentOnly(): void
+    {
+        $matches = [
+            ['event' => '60R', 'teamEvent' => 0, 'phase' => 8, 'matchNo' => 16, 'scheduledSlot' => '', 'status' => 'bye', 'advanced' => false],
+            ['event' => '60R', 'teamEvent' => 0, 'phase' => 8, 'matchNo' => 18, 'scheduledSlot' => '2026-08-30 16:00:00', 'status' => 'unreported', 'advanced' => false],
+            ['event' => '60R', 'teamEvent' => 0, 'phase' => 4, 'matchNo' => 8, 'scheduledSlot' => '2026-08-30 16:30:00', 'status' => 'bye', 'advanced' => false],
+            ['event' => '40B', 'teamEvent' => 0, 'phase' => 8, 'matchNo' => 16, 'scheduledSlot' => '', 'status' => 'bye', 'advanced' => false],
+            ['event' => '50C', 'teamEvent' => 0, 'phase' => 8, 'matchNo' => 24, 'scheduledSlot' => '', 'status' => 'bye', 'advanced' => false],
+        ];
+
+        $result = laneAssistGroupFinalRounds($matches);
+
+        $this->assertCount(2, $result);
+        $this->assertSame('2026-08-30 16:00:00', $result[0]['slot']);
+        $this->assertTrue($result[0]['isCurrent']);
+        $this->assertSame([16, 18, 16, 24], array_column($result[0]['matches'], 'matchNo'));
+        $this->assertSame('2026-08-30 16:30:00', $result[1]['slot']);
+        $this->assertFalse($result[1]['isCurrent']);
+        $this->assertSame([8], array_column($result[1]['matches'], 'matchNo'));
+    }
+
+    public function testGroupFinalRoundsKeepsGenuinelyUnscheduledMatchesInTheirOwnRoundWhenNotPartOfCurrent(): void
+    {
+        // The 40B match is live (not a bye), so it's never folded into the
+        // current block - it must still surface somewhere, as its own
+        // "Unscheduled" round, rather than vanishing or duplicating.
+        $matches = [
+            ['event' => '60R', 'teamEvent' => 0, 'phase' => 8, 'matchNo' => 8, 'scheduledSlot' => '2026-08-30 16:00:00', 'status' => 'bye', 'advanced' => false],
+            ['event' => '40B', 'teamEvent' => 0, 'phase' => 4, 'matchNo' => 4, 'scheduledSlot' => '', 'status' => 'live', 'advanced' => false],
+        ];
+
+        $result = laneAssistGroupFinalRounds($matches);
+
+        $this->assertCount(2, $result);
+        $this->assertSame('2026-08-30 16:00:00', $result[0]['slot']);
+        $this->assertTrue($result[0]['isCurrent']);
+        $this->assertSame([8], array_column($result[0]['matches'], 'matchNo'));
+        $this->assertSame('', $result[1]['slot']);
+        $this->assertFalse($result[1]['isCurrent']);
+        $this->assertSame([4], array_column($result[1]['matches'], 'matchNo'));
+    }
+
+    public function testGroupFinalRoundsFlagsTheOnlyUnscheduledRoundCurrentWhenNoSlotHasEverBeenScheduled(): void
+    {
+        $matches = [
+            ['event' => '60R', 'teamEvent' => 0, 'phase' => 8, 'matchNo' => 16, 'scheduledSlot' => '', 'status' => 'bye', 'advanced' => false],
+        ];
+
+        $result = laneAssistGroupFinalRounds($matches);
+
+        $this->assertCount(1, $result);
+        $this->assertSame('', $result[0]['slot']);
+        $this->assertTrue($result[0]['isCurrent']);
+        $this->assertSame([16], array_column($result[0]['matches'], 'matchNo'));
+    }
 }

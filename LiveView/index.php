@@ -92,6 +92,13 @@ include('Common/Templates/head.php');
                     <?php endforeach; ?>
                 </select>
             </label>
+            <div class="session-control round-control" id="round-control" hidden>
+                <label for="round-select">
+                    <span>Round</span>
+                    <select id="round-select"></select>
+                </label>
+                <button type="button" id="round-goto-current" class="goto-current-button" title="Go to current round">Go to current</button>
+            </div>
             <div class="mode-switch" role="group" aria-label="Competition phase">
                 <button type="button" class="mode-button active" data-mode="qualification">Qualification</button>
                 <button type="button" class="mode-button" data-mode="finals">Finals <span id="final-count" class="count-badge">0</span></button>

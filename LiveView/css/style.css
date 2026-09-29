@@ -28,6 +28,11 @@
 .session-control span { color: var(--live-muted); font-size: 12px; font-weight: bold; text-transform: uppercase; }
 .session-control select { min-height: 36px; max-width: 220px; }
 .icon-button { width: 38px; padding: 0; font-size: 16px; }
+.round-control { flex-direction: column; align-items: stretch; gap: 4px; }
+.round-control label { display: flex; align-items: center; gap: 8px; }
+.round-control select { min-height: 36px; max-width: 260px; }
+.goto-current-button { align-self: flex-start; min-height: 26px; padding: 3px 10px; border: 1px solid #aab6c0; border-radius: 4px; background: #fff; color: var(--live-muted); font-size: 11px; cursor: pointer; }
+.goto-current-button:disabled { opacity: .5; cursor: default; }
 .status-strip { display: flex; align-items: center; flex-wrap: wrap; gap: 18px; padding: 10px 16px; border: 1px solid var(--live-line); border-top: 0; background: #f9fbfc; color: var(--live-muted); font-size: 12px; }
 .status-strip span:last-child { margin-left: auto; }
 .status-dot { display: inline-block; width: 9px; height: 9px; margin-right: 5px; border-radius: 50%; background: var(--live-green); }
@@ -102,6 +107,8 @@
     .mode-button { flex: 1; }
     .session-control { order: 3; width: 100%; }
     .session-control select { flex: 1; max-width: none; }
+    .round-control { order: 4; }
+    .round-control select { max-width: none; }
     .status-strip span:last-child { width: 100%; margin-left: 0; }
     .bye-notice { align-items: stretch; flex-direction: column; }
     .live-grid { grid-template-columns: minmax(0, 1fr); }

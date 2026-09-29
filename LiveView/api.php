@@ -438,15 +438,6 @@ function allFinalMatchesSnapshot() {
     return $visibleMatches;
 }
 
-function currentFinalBlockSnapshot() {
-    return laneAssistSelectCurrentFinalMatches(allFinalMatchesSnapshot());
-}
-
-function finalsSnapshot() {
-    $block = currentFinalBlockSnapshot();
-    return $block['matches'];
-}
-
 function finalsBracketsInitialized() {
     $tourId = StrSafe_DB($_SESSION['TourId']);
     $individual = safe_fetch(safe_r_sql("SELECT 1 Initialized FROM Finals WHERE FinTournament=$tourId LIMIT 1"));
@@ -459,13 +450,20 @@ function finalsBracketsInitialized() {
 function liveSnapshot() {
     $session = max(1, intval($_REQUEST['session'] ?? 1));
     $qualification = qualificationSnapshot($session);
-    $finalBlock = currentFinalBlockSnapshot();
+    $finalRounds = laneAssistGroupFinalRounds(allFinalMatchesSnapshot());
+    $currentRoundMatches = [];
+    foreach ($finalRounds as $round) {
+        if ($round['isCurrent']) {
+            $currentRoundMatches = $round['matches'];
+            break;
+        }
+    }
     echo json_encode([
         'error' => 0, 'session' => $session,
         'qualification' => $qualification,
         'qualificationProgress' => laneAssistAttachDistanceProgress(laneAssistQualificationProgress($qualification), $qualification),
-        'finals' => $finalBlock['matches'], 'finalsSlot' => $finalBlock['slot'],
-        'finalsProgress' => laneAssistFinalsProgress($finalBlock['matches']),
+        'finalsRounds' => $finalRounds,
+        'finalsProgress' => laneAssistFinalsProgress($currentRoundMatches),
         'finalsInitialized' => finalsBracketsInitialized(),
         'updatedAt' => date('c'),
     ]);
@@ -481,7 +479,7 @@ function advanceLiveMatch() {
     }
 
     $eligibleMatch = null;
-    foreach (finalsSnapshot() as $match) {
+    foreach (allFinalMatchesSnapshot() as $match) {
         if ($match['teamEvent'] === $teamEvent && $match['event'] === $event && $match['matchNo'] === $matchNo) {
             $eligibleMatch = $match;
             break;
