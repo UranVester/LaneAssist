@@ -220,6 +220,25 @@
         $('#round-select').html(html);
         var current = currentFinalRound(rounds);
         $('#round-goto-current').prop('disabled', !current || current.slot === state.selectedRoundSlot);
+        var index = -1;
+        for (var i = 0; i < rounds.length; i++) {
+            if (rounds[i].slot === state.selectedRoundSlot) { index = i; break; }
+        }
+        $('#round-prev').prop('disabled', index <= 0);
+        $('#round-next').prop('disabled', index === -1 || index >= rounds.length - 1);
+    }
+
+    function stepRound(delta) {
+        var rounds = (state.snapshot && state.snapshot.finalsRounds) || [];
+        var index = -1;
+        for (var i = 0; i < rounds.length; i++) {
+            if (rounds[i].slot === state.selectedRoundSlot) { index = i; break; }
+        }
+        var target = rounds[index + delta];
+        if (!target) return;
+        state.selectedRoundSlot = target.slot;
+        applySelectedRound();
+        updateVisibleView();
     }
 
     // Defaults the browsed round to whichever one the server flags current,
@@ -523,6 +542,8 @@
             applySelectedRound();
             updateVisibleView();
         });
+        $('#round-prev').on('click', function() { stepRound(-1); });
+        $('#round-next').on('click', function() { stepRound(1); });
         $('#color-by').on('change', function() {
             state.colorBy = $(this).val();
             if (!state.snapshot) return;

@@ -97,7 +97,11 @@ include('Common/Templates/head.php');
                     <span>Round</span>
                     <select id="round-select"></select>
                 </label>
-                <button type="button" id="round-goto-current" class="goto-current-button" title="Go to current round">Go to current</button>
+                <div class="round-nav">
+                    <button type="button" id="round-prev" class="goto-current-button" title="Previous round">&laquo; Prev</button>
+                    <button type="button" id="round-goto-current" class="goto-current-button" title="Go to current round">Go to current</button>
+                    <button type="button" id="round-next" class="goto-current-button" title="Next round">Next &raquo;</button>
+                </div>
             </div>
             <div class="mode-switch" role="group" aria-label="Competition phase">
                 <button type="button" class="mode-button active" data-mode="qualification">Qualification</button>
