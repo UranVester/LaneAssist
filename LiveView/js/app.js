@@ -156,7 +156,10 @@
                     '<div class="competitor-main' + colorAttrs.classAttr + '"' + colorAttrs.styleAttr + colorAttrs.titleAttr + '><strong>' + escapeHtml(archer.name) + '</strong>' + badgeHtml.inline + '<small>' + escapeHtml(archer.club) + endsSuffix + '</small></div>' +
                     '<div class="competitor-actions"><div class="score-pair"><span><small>Last end</small><b>' + endPoints + '</b></span><span><small>Total</small><b>' + archer.totalPoints + '</b></span></div>' + toggleHtml + '</div></div>';
             }).join('');
-            return '<article class="live-card qual-card"><header>' + targetFace(mat.target) + '<div><span class="eyebrow">Target / mat</span><h3>' + escapeHtml(mat.target) + '</h3><small>Pace: end ' + mat.expectedEnds + '</small></div></header><div class="competitors">' + archers + '</div></article>';
+            var paceLabel = mat.hasMultipleDistances
+                ? 'Pace: distance ' + mat.expectedDistance + ' · end ' + mat.expectedEnds
+                : 'Pace: end ' + mat.expectedEnds;
+            return '<article class="live-card qual-card"><header>' + targetFace(mat.target) + '<div><span class="eyebrow">Target / mat</span><h3>' + escapeHtml(mat.target) + '</h3><small>' + paceLabel + '</small></div></header><div class="competitors">' + archers + '</div></article>';
         }).join('');
         $('#qualification-view').html(html);
     }

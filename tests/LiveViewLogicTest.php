@@ -75,6 +75,29 @@ final class LiveViewLogicTest extends TestCase
         $this->assertFalse($result['archers'][2]['isAhead']);
     }
 
+    public function testQualificationLagReportsTheMostCommonDistanceSoAnEndNumberIsUnambiguous(): void
+    {
+        // Everyone has moved on to distance 2, end 10 there — without the
+        // distance, "end 10" reads as the overall end count (would be 20).
+        $result = laneAssistMarkQualificationLag([
+            ['id' => 1, 'completedEnds' => 10, 'distance' => 2],
+            ['id' => 2, 'completedEnds' => 10, 'distance' => 2],
+            ['id' => 3, 'completedEnds' => 1, 'distance' => 2],
+        ]);
+
+        $this->assertSame(2, $result['expectedDistance']);
+    }
+
+    public function testQualificationLagDefaultsMissingOrZeroDistanceToOne(): void
+    {
+        $result = laneAssistMarkQualificationLag([
+            ['id' => 1, 'completedEnds' => 4],
+            ['id' => 2, 'completedEnds' => 4, 'distance' => 0],
+        ]);
+
+        $this->assertSame(1, $result['expectedDistance']);
+    }
+
     public function testQualificationProgressReportsCurrentEndAndArrowTotal(): void
     {
         $result = laneAssistQualificationProgress([['archers' => [

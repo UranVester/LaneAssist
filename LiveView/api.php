@@ -107,6 +107,7 @@ function qualificationSnapshot($session) {
             'class' => trim((string)$row->EnClass),
             'division' => trim((string)$row->EnDivision),
             'targetFaceId' => $row->TargetFaceId,
+            'distance' => $latestDistance,
             'completedEnds' => laneAssistCompletedEnds($arrowString, $arrowsPerEnd),
             'completedTotalEnds' => $completedTotalEnds,
             'totalEnds' => $totalEnds,
@@ -156,8 +157,11 @@ function qualificationSnapshot($session) {
         $paceByParticipant[$archer['participantId']] = $archer;
     }
     $badges = laneAssistCollectBadges($allArchers, laneAssistLiveBadgeContext($session));
+    $hasMultipleDistances = count($distanceInfo) > 1;
     foreach ($mats as &$mat) {
         $mat['expectedEnds'] = $pace['expectedEnds'];
+        $mat['expectedDistance'] = $pace['expectedDistance'];
+        $mat['hasMultipleDistances'] = $hasMultipleDistances;
         foreach ($mat['archers'] as &$archer) {
             // The pace pass returns rebuilt archer arrays, so read badges after
             // the replacement or they would be discarded again.

@@ -69,12 +69,16 @@ function laneAssistFinalSetPoints($arrowString, $arrowsPerEnd, callable $decodeA
 
 function laneAssistMarkQualificationLag(array $archers) {
     $counts = [];
+    $distanceCounts = [];
     foreach ($archers as $archer) {
         if (!empty($archer['retired'])) {
             continue;
         }
         $ends = intval($archer['completedEnds'] ?? 0);
         $counts[$ends] = ($counts[$ends] ?? 0) + 1;
+
+        $distance = max(1, intval($archer['distance'] ?? 1));
+        $distanceCounts[$distance] = ($distanceCounts[$distance] ?? 0) + 1;
     }
 
     $expectedEnds = 0;
@@ -83,6 +87,17 @@ function laneAssistMarkQualificationLag(array $archers) {
         if ($count > $largestGroup || ($count === $largestGroup && intval($ends) > $expectedEnds)) {
             $expectedEnds = intval($ends);
             $largestGroup = $count;
+        }
+    }
+
+    // Same most-common-wins rule as $expectedEnds, so the header's "distance"
+    // and "end" agree on which archers they were read from.
+    $expectedDistance = 1;
+    $largestDistanceGroup = 0;
+    foreach ($distanceCounts as $distance => $count) {
+        if ($count > $largestDistanceGroup || ($count === $largestDistanceGroup && intval($distance) > $expectedDistance)) {
+            $expectedDistance = intval($distance);
+            $largestDistanceGroup = $count;
         }
     }
 
@@ -97,7 +112,7 @@ function laneAssistMarkQualificationLag(array $archers) {
     }
     unset($archer);
 
-    return ['expectedEnds' => $expectedEnds, 'archers' => $archers];
+    return ['expectedEnds' => $expectedEnds, 'expectedDistance' => $expectedDistance, 'archers' => $archers];
 }
 
 function laneAssistMostCommonProgress(array $values) {
