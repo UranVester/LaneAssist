@@ -113,6 +113,12 @@
             : '';
     }
 
+    function clubLogoImgHtml(archer) {
+        return (archer && archer.clubLogoUrl)
+            ? '<img class="club-logo" src="' + escapeHtml(archer.clubLogoUrl) + '" alt="">'
+            : '';
+    }
+
     function renderQualification(mats) {
         // expectedEnds is the most-common completed-end count, not the max, so
         // it can stay 0 even once several archers have shot — it's the wrong
@@ -151,7 +157,7 @@
                 }
                 var colorAttrs = colorByAttrs(archer);
                 var endsSuffix = archer.completedEnds === mat.expectedEnds ? '' : ' · ' + archer.completedEnds + ' ends';
-                var clubEventLabel = escapeHtml(archer.club) + (archer.event ? ' · ' + escapeHtml(archer.event) : '');
+                var clubEventLabel = clubLogoImgHtml(archer) + escapeHtml(archer.club) + (archer.event ? ' · ' + escapeHtml(archer.event) : '');
                 return '<div class="competitor' + problemClass + retiredClass + '" data-participant-id="' + archer.participantId + '">' + badgeHtml.edge +
                     '<div class="competitor-position"><span class="position-label">' + escapeHtml(archer.position) + '</span><span class="position-face"' + positionFaceStyleAttr(archer) + '></span></div>' +
                     '<div class="competitor-main' + colorAttrs.classAttr + '"' + colorAttrs.styleAttr + colorAttrs.titleAttr + '><strong>' + escapeHtml(archer.name) + '</strong>' + badgeHtml.inline + '<small>' + clubEventLabel + endsSuffix + '</small></div>' +

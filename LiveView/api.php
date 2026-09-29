@@ -151,6 +151,45 @@ function qualificationSnapshot($session) {
         }
     }
 
+    $clubCodes = [];
+    foreach ($mats as $mat) {
+        foreach ($mat['archers'] as $archer) {
+            if ($archer['club'] !== '') {
+                $clubCodes[$archer['club']] = true;
+            }
+        }
+    }
+
+    $clubLogoUrls = [];
+    if (!empty($clubCodes)) {
+        $flSql = "SELECT FlCode, FlJPG, UNIX_TIMESTAMP(FlEntered) as FlModified
+            FROM Flags
+            WHERE FlCode IN (" . implode(',', array_map('StrSafe_DB', array_keys($clubCodes))) . ")
+              AND FlTournament IN (-1, " . StrSafe_DB($_SESSION['TourId']) . ") AND FlJPG<>''
+            ORDER BY FlTournament DESC";
+        $flRs = safe_r_sql($flSql);
+        // Tournament-specific rows sort before the shared -1 fallback, and only
+        // the first row seen per code is kept, so an override always wins.
+        $tourCodeSafe = $_SESSION['TourCodeSafe'] ?? preg_replace('/[^a-z0-9_.-]+/sim', '', (string)($_SESSION['TourCode'] ?? ''));
+        while ($flRow = safe_fetch($flRs)) {
+            if (isset($clubLogoUrls[$flRow->FlCode])) {
+                continue;
+            }
+            $cacheName = 'TV/Photos/' . $tourCodeSafe . '-Fl-' . $flRow->FlCode . '.jpg';
+            $cachePath = $CFG->DOCUMENT_PATH . $cacheName;
+            if (!file_exists($cachePath) || filemtime($cachePath) < intval($flRow->FlModified)) {
+                $image = @imagecreatefromstring(base64_decode($flRow->FlJPG));
+                if ($image) {
+                    @imagejpeg($image, $cachePath, 95);
+                    imagedestroy($image);
+                }
+            }
+            if (file_exists($cachePath)) {
+                $clubLogoUrls[$flRow->FlCode] = $CFG->ROOT_DIR . $cacheName;
+            }
+        }
+    }
+
     $allArchers = [];
     foreach ($mats as $mat) {
         $allArchers = array_merge($allArchers, $mat['archers']);
@@ -174,6 +213,7 @@ function qualificationSnapshot($session) {
             $archer['badges'] = $badges[$archer['participantId']] ?? [];
             $archer['targetFaceUrl'] = $targetFaceImages[$archer['targetFaceId']]['url'] ?? null;
             $archer['targetDiameter'] = $targetFaceImages[$archer['targetFaceId']]['diameter'] ?? null;
+            $archer['clubLogoUrl'] = $clubLogoUrls[$archer['club']] ?? null;
         }
         unset($archer);
     }

@@ -61,6 +61,7 @@
 .position-face { width: 24px; height: 24px; background-color: #eef1f4; background-size: contain; background-repeat: no-repeat; background-position: center; border: 1px solid var(--live-line); border-radius: 4px; }
 .competitor-main, .final-side > div:first-child { min-width: 0; }
 .competitor-main strong, .competitor-main small, .final-side strong, .final-side small { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.club-logo { width: 14px; height: 14px; margin-right: 4px; vertical-align: middle; object-fit: contain; border-radius: 2px; }
 .competitor-actions { display: flex; align-items: center; gap: 8px; }
 .retire-toggle { padding: 4px 8px; border: 1px solid #aab6c0; border-radius: 4px; background: #fff; color: var(--live-muted); font-size: 11px; cursor: pointer; }
 .competitor.retired .retire-toggle { border-color: var(--live-green); color: var(--live-green); }
