@@ -418,7 +418,7 @@ function liveSnapshot() {
     echo json_encode([
         'error' => 0, 'session' => $session,
         'qualification' => $qualification,
-        'qualificationProgress' => laneAssistQualificationProgress($qualification),
+        'qualificationProgress' => laneAssistAttachDistanceProgress(laneAssistQualificationProgress($qualification), $qualification),
         'finals' => $finalBlock['matches'], 'finalsSlot' => $finalBlock['slot'],
         'finalsProgress' => laneAssistFinalsProgress($finalBlock['matches']),
         'finalsInitialized' => finalsBracketsInitialized(),

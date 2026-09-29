@@ -98,6 +98,27 @@ final class LiveViewLogicTest extends TestCase
         $this->assertSame(1, $result['expectedDistance']);
     }
 
+    public function testQualificationProgressGetsDistanceContextFromTheFirstMat(): void
+    {
+        // Mirrors the mat cards' "distance N · end M" so the page header and
+        // the cards agree on how the cumulative end count breaks down.
+        $result = laneAssistAttachDistanceProgress(['end' => 20, 'totalEnds' => 24], [
+            ['expectedDistance' => 2, 'expectedEnds' => 10, 'hasMultipleDistances' => true],
+        ]);
+
+        $this->assertSame(20, $result['end']);
+        $this->assertTrue($result['hasMultipleDistances']);
+        $this->assertSame(2, $result['expectedDistance']);
+        $this->assertSame(10, $result['currentDistanceEnd']);
+    }
+
+    public function testQualificationProgressDistanceContextIsUntouchedWithoutMats(): void
+    {
+        $result = laneAssistAttachDistanceProgress(['end' => 0], []);
+
+        $this->assertArrayNotHasKey('hasMultipleDistances', $result);
+    }
+
     public function testQualificationProgressReportsCurrentEndAndArrowTotal(): void
     {
         $result = laneAssistQualificationProgress([['archers' => [

@@ -222,6 +222,9 @@
         var value = state.mode === 'finals' && progress.complete
             ? 'Finals complete'
             : (end ? 'End ' + end + (totalEnds ? ' / ' + totalEnds : '') : 'Not started');
+        if (state.mode === 'qualification' && progress.hasMultipleDistances) {
+            value += '<small>Distance ' + progress.expectedDistance + ' · end ' + progress.currentDistanceEnd + '</small>';
+        }
         if (state.mode === 'qualification' && Number(progress.totalArrows)) {
             value += '<small>' + Number(progress.arrowsShot || 0) + ' / ' + Number(progress.totalArrows) + ' arrows</small>';
         }

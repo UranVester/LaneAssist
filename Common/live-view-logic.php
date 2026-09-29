@@ -159,6 +159,23 @@ function laneAssistQualificationProgress(array $mats) {
     ];
 }
 
+/**
+ * The per-mat pace fields (expectedDistance/expectedEnds/hasMultipleDistances)
+ * are identical on every mat, so the first one speaks for the whole session.
+ * Folded into qualificationProgress so the page header can show the same
+ * "distance N end M" breakdown as the mat cards, alongside its own
+ * unambiguous cumulative end count.
+ */
+function laneAssistAttachDistanceProgress(array $progress, array $mats) {
+    if (empty($mats)) {
+        return $progress;
+    }
+    $progress['hasMultipleDistances'] = !empty($mats[0]['hasMultipleDistances']);
+    $progress['expectedDistance'] = intval($mats[0]['expectedDistance'] ?? 1);
+    $progress['currentDistanceEnd'] = intval($mats[0]['expectedEnds'] ?? 0);
+    return $progress;
+}
+
 function laneAssistFinalsProgress(array $matches) {
     $active = array_values(array_filter($matches, function($match) {
         return empty($match['advanced']) && !in_array($match['status'] ?? '', ['bye', 'complete'], true);
