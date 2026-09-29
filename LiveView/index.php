@@ -99,7 +99,7 @@ include('Common/Templates/head.php');
                 </label>
                 <div class="round-nav">
                     <button type="button" id="round-prev" class="goto-current-button" title="Previous round">&laquo; Prev</button>
-                    <button type="button" id="round-goto-current" class="goto-current-button" title="Go to current round">Go to current</button>
+                    <button type="button" id="round-goto-current" class="goto-current-button current-action" title="Go to current round">Go to current</button>
                     <button type="button" id="round-next" class="goto-current-button" title="Next round">Next &raquo;</button>
                 </div>
             </div>
