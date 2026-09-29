@@ -151,9 +151,10 @@
                 }
                 var colorAttrs = colorByAttrs(archer);
                 var endsSuffix = archer.completedEnds === mat.expectedEnds ? '' : ' · ' + archer.completedEnds + ' ends';
+                var clubEventLabel = escapeHtml(archer.club) + (archer.event ? ' · ' + escapeHtml(archer.event) : '');
                 return '<div class="competitor' + problemClass + retiredClass + '" data-participant-id="' + archer.participantId + '">' + badgeHtml.edge +
                     '<div class="competitor-position"><span class="position-label">' + escapeHtml(archer.position) + '</span><span class="position-face"' + positionFaceStyleAttr(archer) + '></span></div>' +
-                    '<div class="competitor-main' + colorAttrs.classAttr + '"' + colorAttrs.styleAttr + colorAttrs.titleAttr + '><strong>' + escapeHtml(archer.name) + '</strong>' + badgeHtml.inline + '<small>' + escapeHtml(archer.club) + endsSuffix + '</small></div>' +
+                    '<div class="competitor-main' + colorAttrs.classAttr + '"' + colorAttrs.styleAttr + colorAttrs.titleAttr + '><strong>' + escapeHtml(archer.name) + '</strong>' + badgeHtml.inline + '<small>' + clubEventLabel + endsSuffix + '</small></div>' +
                     '<div class="competitor-actions"><div class="score-pair"><span><small>Last end</small><b>' + endPoints + '</b></span><span><small>Total</small><b>' + archer.totalPoints + '</b></span></div>' + toggleHtml + '</div></div>';
             }).join('');
             var paceLabel = mat.hasMultipleDistances

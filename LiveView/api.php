@@ -48,7 +48,7 @@ function qualificationSnapshot($session) {
     }
 
     $sql = "SELECT EnId, EnFirstName, EnName, CoCode, EnClass, EnDivision, EnStatus,
-            QuTarget, QuLetter, QuScore, EnTargetFace,
+            QuTarget, QuLetter, QuScore, EnTargetFace, ev.EvCode as EventCode,
             tf.TfT1 as TargetFaceId, tf.TfW1 as TargetDiameter,
             QuD1Arrowstring, QuD2Arrowstring, QuD3Arrowstring, QuD4Arrowstring,
             QuD5Arrowstring, QuD6Arrowstring, QuD7Arrowstring, QuD8Arrowstring
@@ -56,6 +56,10 @@ function qualificationSnapshot($session) {
         INNER JOIN Entries ON EnId=QuId AND EnTournament=" . StrSafe_DB($_SESSION['TourId']) . "
         LEFT JOIN Countries ON CoId=EnCountry
         LEFT JOIN TargetFaces tf ON EnTournament = tf.TfTournament AND EnTargetFace = tf.TfId
+        LEFT JOIN EventClass ec ON ec.EcTournament=EnTournament AND ec.EcTeamEvent=0
+            AND ec.EcDivision=EnDivision AND ec.EcClass=EnClass
+            AND IF(ec.EcSubClass='', 1, ec.EcSubClass=EnSubClass)
+        LEFT JOIN Events ev ON ev.EvTournament=ec.EcTournament AND ev.EvCode=ec.EcCode AND ev.EvTeamEvent=0
         WHERE QuSession=" . StrSafe_DB($session) . " AND EnAthlete=1 AND (EnStatus<=1 OR EnStatus=6)
           AND QuTarget<>'' AND QuTarget<>'0'
         ORDER BY QuTarget, QuLetter";
@@ -103,6 +107,7 @@ function qualificationSnapshot($session) {
             'lastName' => trim((string)$row->EnName),
             'name' => trim((string)$row->EnName . ' ' . (string)$row->EnFirstName),
             'club' => trim((string)$row->CoCode),
+            'event' => trim((string)$row->EventCode),
             'position' => trim((string)$row->QuLetter),
             'class' => trim((string)$row->EnClass),
             'division' => trim((string)$row->EnDivision),
