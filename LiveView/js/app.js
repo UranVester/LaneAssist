@@ -208,7 +208,12 @@
             var label = phaseLabel(match.phase) + ' ' + match.event;
             if (scopes.indexOf(label) === -1) scopes.push(label);
         });
-        return scopes.join(', ') + ' · ' + time;
+        // Capped so a round bundling many events/phases can't blow up the
+        // option's rendered width - the native dropdown sizes every row to
+        // the widest option, so one long label wastes space on every other row.
+        var shown = scopes.slice(0, 2).join(', ');
+        var extra = scopes.length > 2 ? ' +' + (scopes.length - 2) + ' more' : '';
+        return shown + extra + ' · ' + time;
     }
 
     function updateRoundSelect(rounds) {
