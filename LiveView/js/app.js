@@ -1,7 +1,7 @@
 (function($) {
     'use strict';
 
-    var state = { mode: 'qualification', initialModeResolved: false, loading: false, refreshPending: false, bulkAdvancing: false, timer: null, actionMessage: '', snapshot: null, qualificationNotice: '', finalsNotice: '', qualificationForfeitEligible: [], colorBy: 'none', selectedRoundSlot: null, hasSelectedRound: false, finals: [] };
+    var state = { mode: 'qualification', initialModeResolved: false, loading: false, refreshPending: false, bulkAdvancing: false, timer: null, actionMessage: '', snapshot: null, qualificationNotice: '', finalsNotice: '', qualificationForfeitEligible: [], colorBy: 'none', selectedRoundSlot: null, hasSelectedRound: false, finals: [], statusSnapshot: null, statusLoading: false };
     var apiUrl = ROOT_DIR + 'Modules/Custom/LaneAssist/LiveView/api.php';
     var divisionMetaMap = (typeof DivisionMeta !== 'undefined' && DivisionMeta) ? DivisionMeta : {};
     var classMetaMap = (typeof ClassMeta !== 'undefined' && ClassMeta) ? ClassMeta : {};
@@ -322,15 +322,22 @@
 
     function updateVisibleView() {
         var isFinals = state.mode === 'finals';
-        $('#qualification-view').prop('hidden', isFinals);
+        var isStatus = state.mode === 'status';
+        $('#qualification-view').prop('hidden', isFinals || isStatus);
         $('#finals-view').prop('hidden', !isFinals);
+        $('#status-view').prop('hidden', !isStatus);
         $('.mode-button').removeClass('active').filter('[data-mode="' + state.mode + '"]').addClass('active');
-        $('label[for="session-select"]').toggle(!isFinals);
+        $('label[for="session-select"]').toggle(!isFinals && !isStatus);
+        $('label[for="color-by"]').toggle(!isStatus);
         var rounds = (state.snapshot && state.snapshot.finalsRounds) || [];
         $('#round-control').prop('hidden', !isFinals || rounds.length < 2);
         updateColorByOptions();
-        var hasCards = $(isFinals ? '#finals-view' : '#qualification-view').children().length > 0;
-        $('#empty-state').prop('hidden', hasCards);
+        if (isStatus) {
+            $('#empty-state').prop('hidden', true);
+        } else {
+            var hasCards = $(isFinals ? '#finals-view' : '#qualification-view').children().length > 0;
+            $('#empty-state').prop('hidden', hasCards);
+        }
         renderNotices();
         updateProgress();
     }
@@ -383,6 +390,107 @@
                 state.refreshPending = false;
                 window.setTimeout(function() { loadSnapshot(true); }, 0);
             }
+        });
+    }
+
+    function loadStatusSnapshot() {
+        if (state.statusLoading) {
+            return;
+        }
+        state.statusLoading = true;
+        $.getJSON('api.php', { action: 'statusSnapshot' })
+            .done(function(response) {
+                if (response && response.error === 0) {
+                    state.statusSnapshot = response;
+                    renderStatusView();
+                }
+            })
+            .always(function() {
+                state.statusLoading = false;
+            });
+    }
+
+    function renderStatusView() {
+        var $view = $('#status-view');
+        $view.empty();
+
+        if (!state.statusSnapshot) {
+            return;
+        }
+
+        var stageLabels = { planning: 'Planning', qualification: 'Qualification', finals: 'Finals', over: 'Over' };
+        var $stageCard = $('<div class="live-card"></div>');
+        $stageCard.append('<header><h3>Stage: ' + escapeHtml(stageLabels[state.statusSnapshot.stage] || state.statusSnapshot.stage) + '</h3></header>');
+        $view.append($stageCard);
+
+        var items = (state.statusSnapshot.items || []).concat(computeUnplayableFinalsItems(state.statusSnapshot.finalsRows || []));
+
+        var issueCount = 0;
+        items.forEach(function(item) {
+            if (item.severity === 'warning' || item.severity === 'danger') {
+                issueCount++;
+            }
+
+            var $card = $('<div class="live-card status-item status-item-' + escapeHtml(item.severity) + '"></div>');
+            var $header = $('<header></header>');
+            $header.append('<span class="status-dot ' + (item.severity === 'info' ? '' : escapeHtml(item.severity)) + '"></span>');
+            $header.append('<div><strong>' + escapeHtml(item.title) + '</strong><br><small>' + escapeHtml(item.detail) + '</small></div>');
+            $card.append($header);
+
+            if (item.link) {
+                $card.append('<footer><a href="' + item.link + '">Open</a></footer>');
+            } else if (item.fix) {
+                var $fixButton = $('<button type="button" class="advance-button">Fix</button>');
+                $fixButton.on('click', function() {
+                    applyStatusFix(item);
+                });
+                $card.append($('<footer></footer>').append($fixButton));
+            }
+
+            $view.append($card);
+        });
+
+        $('#status-issue-count').text(issueCount).attr('hidden', issueCount === 0);
+    }
+
+    function computeUnplayableFinalsItems(finalsRows) {
+        var pairs = {};
+        finalsRows.forEach(function(row) {
+            var pairNo = Math.floor((row.matchNo || 0) / 2);
+            var key = row.teamEvent + '|' + row.event + '|' + row.group + '|' + row.phase + '|' + pairNo;
+            (pairs[key] = pairs[key] || []).push(row);
+        });
+
+        var items = [];
+        Object.keys(pairs).forEach(function(key) {
+            var pairRows = pairs[key];
+            if (!window.LaneAssist.finalsPlayability.isPairPlayable(pairRows)) {
+                var sample = pairRows[0];
+                items.push({
+                    key: 'unplayable_' + key,
+                    severity: 'warning',
+                    title: 'Unplayable finals',
+                    detail: 'Event ' + sample.event + ': a scheduled match cannot be filled from the projected field',
+                    link: ROOT_DIR + 'Modules/Custom/LaneAssist/ManageFinals/index.php',
+                    fix: null,
+                });
+            }
+        });
+        return items;
+    }
+
+    function applyStatusFix(item) {
+        if (!window.confirm(item.detail + '?')) {
+            return;
+        }
+        $.ajax({
+            url: 'api.php',
+            method: 'POST',
+            data: $.extend({ action: item.fix.action }, item.fix.params),
+        }).done(function() {
+            loadStatusSnapshot();
+        }).fail(function() {
+            window.alert('The fix could not be applied.');
         });
     }
 
@@ -533,7 +641,13 @@
     }
 
     $(function() {
-        $('.mode-button').on('click', function() { state.mode = $(this).data('mode'); updateVisibleView(); });
+        $('.mode-button').on('click', function() {
+            state.mode = $(this).data('mode');
+            updateVisibleView();
+            if (state.mode === 'status') {
+                loadStatusSnapshot();
+            }
+        });
         $('#session-select').on('change', function() { loadSnapshot(true); });
         $('#round-select').on('change', function() {
             state.selectedRoundSlot = $(this).val();
@@ -558,7 +672,13 @@
                 renderQualification(state.snapshot.qualification || []);
             }
         });
-        $('#refresh-button').on('click', function() { loadSnapshot(true); });
+        $('#refresh-button').on('click', function() {
+            if (state.mode === 'status') {
+                loadStatusSnapshot();
+            } else {
+                loadSnapshot(true);
+            }
+        });
         $(document).on('click', '.advance-button', function() { advanceMatch(this); });
         $(document).on('click', '.retire-toggle', function() { toggleArcherRetired(this); });
         $(document).on('click', '#advance-all-byes', function(event) { event.stopPropagation(); advanceAllByes(this); });

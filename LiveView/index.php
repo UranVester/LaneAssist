@@ -58,6 +58,7 @@ $JS_SCRIPT = [
         . $badgeRenderVersion . '"></script>',
     '<script src="' . $CFG->ROOT_DIR . 'Modules/Custom/LaneAssist/Common/js/color-by.js?v='
         . $colorByVersion . '"></script>',
+    '<script src="' . $CFG->ROOT_DIR . 'Modules/Custom/LaneAssist/Common/js/finals-playability.js"></script>',
     '<script src="' . $CFG->ROOT_DIR . 'Modules/Custom/LaneAssist/LiveView/js/app.js?v=' . $scriptVersion . '"></script>',
 ];
 
