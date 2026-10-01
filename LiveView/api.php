@@ -893,6 +893,10 @@ function statusChecklistItems() {
 }
 
 function applySessionDefaults() {
+    if (IsBlocked(BIT_BLOCK_TOURDATA)) {
+        echo json_encode(['error' => 1, 'message' => 'Tournament data is locked']);
+        return;
+    }
     $sessionId = trim((string)($_POST['sessionId'] ?? ''));
     if ($sessionId === '' || !preg_match('/^\d+_[QEF]$/', $sessionId)) {
         echo json_encode(['error' => 1, 'message' => 'Invalid session']);
