@@ -23,30 +23,33 @@ final class StatusWriteActionsIntegrationTest extends LaneAssistDbTestCase
     {
         parent::setUpBeforeClass();
 
-        if (function_exists('applySessionDefaultsForTest')) {
-            return;
+        if (!function_exists('applySessionDefaultsForTest')) {
+            $root = dirname(__DIR__, 4);
+            $previousCwd = getcwd();
+            // Common/Fun_Sessions.inc.php require_once()s Common/Lib/Fun_Phases.inc.php
+            // using a path relative to the IANSEO root (not __DIR__), so it only
+            // resolves when the working directory actually is that root.
+            chdir($root);
+            try {
+                require_once $root . '/Common/Lib/ArrTargets.inc.php';
+                require_once $root . '/Common/Lib/Fun_Phases.inc.php';
+                require_once $root . '/Common/Fun_Sessions.inc.php';
+            } finally {
+                chdir($previousCwd);
+            }
+
+            require_once dirname(__DIR__) . '/Common/live-view-logic.php';
+            require_once dirname(__DIR__) . '/Common/status-logic.php';
+            if (!defined('LANEASSIST_LIVEVIEW_API_TEST_MODE')) {
+                define('LANEASSIST_LIVEVIEW_API_TEST_MODE', true);
+            }
+            require_once dirname(__DIR__) . '/LiveView/api.php';
         }
 
-        $root = dirname(__DIR__, 4);
-        $previousCwd = getcwd();
-        // Common/Fun_Sessions.inc.php require_once()s Common/Lib/Fun_Phases.inc.php
-        // using a path relative to the IANSEO root (not __DIR__), so it only
-        // resolves when the working directory actually is that root.
-        chdir($root);
-        try {
-            require_once $root . '/Common/Lib/ArrTargets.inc.php';
-            require_once $root . '/Common/Lib/Fun_Phases.inc.php';
-            require_once $root . '/Common/Fun_Sessions.inc.php';
-        } finally {
-            chdir($previousCwd);
-        }
-
-        require_once dirname(__DIR__) . '/Common/live-view-logic.php';
-        require_once dirname(__DIR__) . '/Common/status-logic.php';
-        if (!defined('LANEASSIST_LIVEVIEW_API_TEST_MODE')) {
-            define('LANEASSIST_LIVEVIEW_API_TEST_MODE', true);
-        }
-        require_once dirname(__DIR__) . '/LiveView/api.php';
+        // Seeded once per class (not per test method): both session-time tests
+        // below share this single sentinel Tournament row, and seeding it twice
+        // under the same PK would crash safe_w_sql() (safe_error() exit()s).
+        self::seedRow('Tournament', ['ToId' => self::SENTINEL, 'ToWhenFrom' => '2026-08-30']);
     }
 
     protected static function cleanupSentinel(): void
@@ -58,11 +61,19 @@ final class StatusWriteActionsIntegrationTest extends LaneAssistDbTestCase
         // crashed mid-test, and again in tearDownAfterClass).
         safe_w_sql('DELETE FROM Session WHERE SesTournament=' . StrSafe_DB(self::SENTINEL)
             . " AND SesType='Q' AND SesOrder IN (1, 2)");
+        // Tournament (ToId IS the sentinel) and the global Flags rows this
+        // suite seeds at FlTournament=-1 aren't covered by the generic
+        // $tables-driven cleanup either -- that only deletes rows scoped by a
+        // *Tournament column equal to the sentinel, and these two cases don't
+        // fit that shape (Tournament's own PK, and global rows that are never
+        // tournament-scoped at all).
+        safe_w_sql('DELETE FROM Tournament WHERE ToId=' . StrSafe_DB(self::SENTINEL));
+        safe_w_sql("DELETE FROM Flags WHERE FlTournament=" . StrSafe_DB(self::SENTINEL)
+            . " OR (FlTournament=-1 AND FlCode IN ('ZZZ','YYY'))");
     }
 
     public function testApplySessionDefaultsSetsSessionTimeFromTournamentStart(): void
     {
-        self::seedRow('Tournament', ['ToId' => self::SENTINEL, 'ToWhenFrom' => '2026-08-30']);
         self::seedRow('Session', [
             'SesTournament' => self::SENTINEL, 'SesType' => 'Q',
             'SesOrder' => 1, 'SesDtStart' => '0000-00-00 00:00:00', 'SesDtEnd' => '0000-00-00 00:00:00',
@@ -77,7 +88,6 @@ final class StatusWriteActionsIntegrationTest extends LaneAssistDbTestCase
 
     public function testApplySessionDefaultsIsIdempotent(): void
     {
-        self::seedRow('Tournament', ['ToId' => self::SENTINEL, 'ToWhenFrom' => '2026-08-30']);
         self::seedRow('Session', [
             'SesTournament' => self::SENTINEL, 'SesType' => 'Q',
             'SesOrder' => 2, 'SesDtStart' => '0000-00-00 00:00:00', 'SesDtEnd' => '0000-00-00 00:00:00',
