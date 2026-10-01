@@ -76,6 +76,19 @@ abstract class LaneAssistDbTestCase extends TestCase
         }
         mysqli_close($probe);
 
+        // Common/Globals.inc.php defines the real get_text(), but it also
+        // session_start()s and sends headers/redirects as a side effect of
+        // being included -- not safe to require in a test process. Several
+        // core functions these tests exercise indirectly (e.g.
+        // GetSessionsTypes() in Common/Fun_Sessions.inc.php) call get_text()
+        // just to localize a label we don't assert on, so a passthrough stub
+        // is enough here.
+        if (!function_exists('get_text')) {
+            function get_text($text, $module = 'Common', $a = null, $translate = false, $force = false, $ForceLang = '', $Verbose = true) {
+                return (string)$text;
+            }
+        }
+
         $_SESSION['TourId'] = static::SENTINEL;
         static::cleanupSentinel();
     }
