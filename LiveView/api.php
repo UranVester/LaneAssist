@@ -699,6 +699,9 @@ function statusFinalsAreComplete() {
         if (!empty($match['canAdvance']) || !empty($match['canMarkBye'])) {
             return false;
         }
+        if (!in_array($match['status'], ['complete', 'advanced'], true)) {
+            return false;
+        }
     }
     return true;
 }
