@@ -456,7 +456,7 @@
     }
 
     function applyStatusFix(item) {
-        if (!window.confirm(item.detail + '?')) {
+        if (!window.confirm((item.fix.confirm || item.detail) + '?')) {
             return;
         }
         $.ajax({
