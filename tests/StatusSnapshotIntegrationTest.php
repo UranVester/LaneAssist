@@ -41,7 +41,16 @@ final class StatusSnapshotIntegrationTest extends LaneAssistDbTestCase
         safe_w_sql('DELETE FROM Qualifications WHERE QuId IN ('
             . StrSafe_DB(self::WITHDRAWN_ENTRY_ID) . ',' . StrSafe_DB(self::NON_ATHLETE_ENTRY_ID)
             . ',' . StrSafe_DB(self::SESSION_ZERO_ENTRY_ID) . ')');
-        safe_w_sql('DELETE FROM Session WHERE SesTournament=' . StrSafe_DB(self::SENTINEL) . " AND SesType='Q' AND SesOrder IN (1, 2)");
+        safe_w_sql('DELETE FROM Session WHERE SesTournament=' . StrSafe_DB(self::SENTINEL)
+            . " AND SesType IN ('Q','F') AND SesOrder IN (1, 2, 3, 4, 5)");
+        // Countries is per-tournament reference data (has its own CoTournament
+        // column), unlike Grids -- safe to seed/delete scoped to the sentinel.
+        safe_w_sql('DELETE FROM Countries WHERE CoTournament=' . StrSafe_DB(self::SENTINEL));
+        // The club-logo tests below seed one FITA-style global (FlTournament=-1)
+        // row under a code only this suite uses, so it isn't covered by the
+        // generic $tables cleanup (which never touches global Flags rows).
+        safe_w_sql("DELETE FROM Flags WHERE FlTournament=" . StrSafe_DB(self::SENTINEL)
+            . " OR (FlTournament=-1 AND FlCode='FIX')");
     }
 
     public static function setUpBeforeClass(): void
@@ -201,5 +210,106 @@ final class StatusSnapshotIntegrationTest extends LaneAssistDbTestCase
             }
             $this->assertNull($match, "$key must not appear: only a non-athlete and a session-0 entry are present");
         }
+    }
+
+    public function testSessionsWithoutTimesIgnoresNonQualificationSessionAtSameOrder(): void
+    {
+        // Regression: GetSessions() with no type filter returned this
+        // Final-type row and a correctly-timed Qualification row at the
+        // same SesOrder together, so the pair got flagged as "no time set"
+        // even though the Qualification session the user actually sees has
+        // a real start time. statusChecklistItems() must scope to 'Q' only.
+        self::seedRow('Session', [
+            'SesTournament' => self::SENTINEL, 'SesType' => 'Q',
+            'SesOrder' => 3, 'SesDtStart' => '2026-08-30 09:00:00', 'SesDtEnd' => '2026-08-30 12:00:00',
+        ]);
+        self::seedRow('Session', [
+            'SesTournament' => self::SENTINEL, 'SesType' => 'F',
+            'SesOrder' => 3, 'SesDtStart' => '0000-00-00 00:00:00', 'SesDtEnd' => '0000-00-00 00:00:00',
+        ]);
+
+        $items = statusChecklistItems();
+        $match = null;
+        foreach ($items as $item) {
+            if ($item['key'] === 'sessionsWithoutTimes') {
+                $match = $item;
+                break;
+            }
+        }
+
+        $this->assertNull($match, 'A same-order Final session must not make a correctly-timed Qualification session get flagged');
+    }
+
+    public function testSessionsWithoutTimesCollapsesAllFlaggedSessionsIntoOneBulkFix(): void
+    {
+        self::seedRow('Session', [
+            'SesTournament' => self::SENTINEL, 'SesType' => 'Q',
+            'SesOrder' => 4, 'SesDtStart' => '0000-00-00 00:00:00', 'SesDtEnd' => '0000-00-00 00:00:00',
+        ]);
+        self::seedRow('Session', [
+            'SesTournament' => self::SENTINEL, 'SesType' => 'Q',
+            'SesOrder' => 5, 'SesDtStart' => '0000-00-00 00:00:00', 'SesDtEnd' => '0000-00-00 00:00:00',
+        ]);
+
+        $items = statusChecklistItems();
+        $match = null;
+        foreach ($items as $item) {
+            if ($item['key'] === 'sessionsWithoutTimes') {
+                $match = $item;
+                break;
+            }
+        }
+
+        $this->assertNotNull($match, 'One collapsed card must cover every flagged session');
+        $this->assertStringContainsString('4', $match['detail']);
+        $this->assertStringContainsString('5', $match['detail']);
+        $this->assertSame('applySessionDefaults', $match['fix']['action']);
+        $this->assertSame(['4_Q', '5_Q'], $match['fix']['params']['sessionId']);
+    }
+
+    public function testClubLogosSplitIntoFixableAndMissingCards(): void
+    {
+        self::seedRow('Countries', [
+            'CoId' => 999901, 'CoTournament' => self::SENTINEL,
+            'CoIocCode' => 'FIX', 'CoCode' => 'FIX', 'CoName' => 'Fixable',
+        ]);
+        self::seedRow('Countries', [
+            'CoId' => 999902, 'CoTournament' => self::SENTINEL,
+            'CoIocCode' => 'MIS', 'CoCode' => 'MIS', 'CoName' => 'Missing',
+        ]);
+        self::seedRow('Entries', [
+            'EnId' => 999901, 'EnTournament' => self::SENTINEL, 'EnCountry' => 999901,
+            'EnDivision' => 'R', 'EnClass' => 'XZ', 'EnCode' => 'F1',
+            'EnName' => 'T', 'EnFirstName' => 'T', 'EnAthlete' => 1,
+        ]);
+        self::seedRow('Entries', [
+            'EnId' => 999902, 'EnTournament' => self::SENTINEL, 'EnCountry' => 999902,
+            'EnDivision' => 'R', 'EnClass' => 'XZ', 'EnCode' => 'F2',
+            'EnName' => 'T', 'EnFirstName' => 'T', 'EnAthlete' => 1,
+        ]);
+        // FIX has a global (FlTournament=-1) logo available to pull in; MIS has none anywhere.
+        self::seedRow('Flags', ['FlCode' => 'FIX', 'FlTournament' => -1, 'FlJPG' => 'f.jpg', 'FlSVG' => '']);
+
+        $items = statusChecklistItems();
+        $fixable = null;
+        $missing = null;
+        foreach ($items as $item) {
+            if ($item['key'] === 'clubLogosFixable') {
+                $fixable = $item;
+            }
+            if ($item['key'] === 'clubLogosMissing') {
+                $missing = $item;
+            }
+        }
+
+        $this->assertNotNull($fixable, 'A single bulk-fixable card must list FIX');
+        $this->assertStringContainsString('FIX', $fixable['detail']);
+        $this->assertSame('pullClubLogo', $fixable['fix']['action']);
+        $this->assertSame(['FIX'], $fixable['fix']['params']['clubCode']);
+
+        $this->assertNotNull($missing, 'A single missing-logos card must list MIS and link to Countries.php');
+        $this->assertStringContainsString('MIS', $missing['detail']);
+        $this->assertStringEndsWith('Tournament/Countries.php', $missing['link']);
+        $this->assertNull($missing['fix']);
     }
 }

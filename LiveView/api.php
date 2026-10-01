@@ -763,6 +763,8 @@ function statusChecklistItems() {
             $scheduledByEvent[$row['teamEvent'] . '|' . $row['event']] = true;
         }
     }
+    $standardCapacities = array_map('numQualifiedByPhase', getStandardPhases());
+    $finalsPlanningRows = [];
     while ($ev = safe_fetch($evRs)) {
         $teamEvent = intval($ev->EvTeamEvent);
         $mixedTeam = intval($ev->EvMixedTeam) === 1;
@@ -778,21 +780,30 @@ function statusChecklistItems() {
             'rawEntrantCount' => getRawFinalistDemand($ev->EvCode, $teamEvent),
             'hasAnyScheduled' => !empty($scheduledByEvent[$eventKey]),
             'expectedSize' => $expectedSize,
+            'standardCapacities' => $standardCapacities,
         ]);
 
         $listPage = $teamEvent === 0
             ? 'Final/Individual/ListEvents.php'
             : 'Final/Team/ListEvents.php';
         foreach ($issues as $issue) {
-            $items[] = [
-                'key' => 'finalsPlanning_' . $eventKey . '_' . $issue['type'],
-                'severity' => $issue['severity'],
-                'title' => 'Per-event finals planning',
-                'detail' => $issue['message'],
+            $finalsPlanningRows[] = [
+                'text' => $issue['message'],
                 'link' => $rootDir . ($issue['type'] === 'not_scheduled' ? 'Modules/Custom/LaneAssist/ManageFinals/index.php' : $listPage),
-                'fix' => null,
             ];
         }
+    }
+    if (!empty($finalsPlanningRows)) {
+        $count = count($finalsPlanningRows);
+        $items[] = [
+            'key' => 'finalsPlanning',
+            'severity' => 'warning',
+            'title' => 'Per-event finals planning',
+            'detail' => $count . ' finals planning issue' . ($count === 1 ? '' : 's'),
+            'link' => null,
+            'fix' => null,
+            'rows' => $finalsPlanningRows,
+        ];
     }
 
     // 4. Finals validation errors (phase order / target conflicts)
@@ -808,24 +819,35 @@ function statusChecklistItems() {
     }
 
     // 6. Sessions without times
+    // Scoped to Qualification sessions only: Session's real primary key is
+    // (SesTournament, SesOrder, SesType), so an Elimination/Final session can
+    // legitimately share a SesOrder with a real, correctly-timed Qualification
+    // session. An unscoped GetSessions() picked up that E/F row and flagged
+    // the pair as "no time set" even though the Qualification session the
+    // user actually sees has a real start time.
     $sessions = [];
-    foreach (GetSessions() as $session) {
+    foreach (GetSessions('Q') as $session) {
         $sessions[] = [
             'sessionOrder' => intval($session->SesOrder),
             'sessionId' => (string)$session->Id,
             'dtStart' => (string)$session->SesDtStart,
         ];
     }
-    foreach (laneAssistDetectSessionsWithoutTimes($sessions) as $issue) {
+    $sessionIssues = laneAssistDetectSessionsWithoutTimes($sessions);
+    if (!empty($sessionIssues)) {
+        $orders = array_map(fn($issue) => $issue['sessionOrder'], $sessionIssues);
+        sort($orders);
+        $multiple = count($orders) > 1;
         $items[] = [
-            'key' => 'sessionTime_' . $issue['sessionId'],
+            'key' => 'sessionsWithoutTimes',
             'severity' => 'warning',
             'title' => 'Sessions without times',
-            'detail' => "Session {$issue['sessionOrder']} has no time set",
+            'detail' => 'Session' . ($multiple ? 's ' : ' ') . implode(', ', $orders) . ($multiple ? ' have' : ' has') . ' no time set',
             'link' => null,
             'fix' => [
-                'action' => 'applySessionDefaults', 'params' => ['sessionId' => $issue['sessionId']],
-                'confirm' => "Set this session to the tournament's start date, 09:00-12:00",
+                'action' => 'applySessionDefaults',
+                'params' => ['sessionId' => array_map(fn($issue) => $issue['sessionId'], $sessionIssues)],
+                'confirm' => 'Set ' . ($multiple ? 'these sessions' : 'this session') . " to the tournament's start date, 09:00-12:00",
             ],
         ];
     }
@@ -844,6 +866,7 @@ function statusChecklistItems() {
             $tournamentFlags[(string)$flag->FlCode] = true;
         }
     }
+    $clubIssues = [];
     while ($club = safe_fetch($clubRs)) {
         $code = (string)$club->Code;
         if ($code === '') {
@@ -853,28 +876,34 @@ function statusChecklistItems() {
         if ($classification === null) {
             continue;
         }
-        if ($classification['type'] === 'linkable') {
-            $items[] = [
-                'key' => 'clubLogo_' . $code,
-                'severity' => 'info',
-                'title' => 'Clubs missing logos',
-                'detail' => "Club {$code}'s logo is available but not linked to this tournament",
-                'link' => null,
-                'fix' => [
-                    'action' => 'pullClubLogo', 'params' => ['clubCode' => $code],
-                    'confirm' => "Copy club {$code}'s logo from another tournament's record of this club code into this tournament",
-                ],
-            ];
-        } else {
-            $items[] = [
-                'key' => 'clubLogo_' . $code,
-                'severity' => 'info',
-                'title' => 'Clubs missing logos',
-                'detail' => "Club {$code} has no logo on file anywhere",
-                'link' => null,
-                'fix' => null,
-            ];
-        }
+        $clubIssues[] = $classification;
+    }
+    $clubLogoGroups = laneAssistGroupClubLogoIssues($clubIssues);
+    if (!empty($clubLogoGroups['fixable'])) {
+        $fixable = $clubLogoGroups['fixable'];
+        $items[] = [
+            'key' => 'clubLogosFixable',
+            'severity' => 'info',
+            'title' => 'Clubs missing logos',
+            'detail' => count($fixable) . ' club logo' . (count($fixable) === 1 ? '' : 's')
+                . ' missing that can be found: ' . implode(', ', $fixable),
+            'link' => null,
+            'fix' => [
+                'action' => 'pullClubLogo', 'params' => ['clubCode' => $fixable],
+                'confirm' => "Copy " . (count($fixable) === 1 ? 'this logo' : 'these logos')
+                    . " from another tournament's record of the same club code into this tournament",
+            ],
+        ];
+    }
+    if (!empty($clubLogoGroups['missing'])) {
+        $items[] = [
+            'key' => 'clubLogosMissing',
+            'severity' => 'info',
+            'title' => 'Clubs missing logos',
+            'detail' => 'Clubs missing logos: ' . implode(', ', $clubLogoGroups['missing']),
+            'link' => $rootDir . 'Tournament/Countries.php',
+            'fix' => null,
+        ];
     }
 
     return $items;
@@ -885,16 +914,29 @@ function applySessionDefaults() {
         echo json_encode(['error' => 1, 'message' => 'Tournament data is locked']);
         return;
     }
-    $sessionId = trim((string)($_POST['sessionId'] ?? ''));
-    if ($sessionId === '' || !preg_match('/^\d+_[QEF]$/', $sessionId)) {
-        echo json_encode(['error' => 1, 'message' => 'Invalid session']);
+    // sessionId may be a single composite id or (for the collapsed "fix all"
+    // button) an array of them -- jQuery's default $.ajax serialization
+    // already sends an array value as sessionId[], which PHP parses back
+    // into a real array here with no client-side change needed.
+    $sessionIds = $_POST['sessionId'] ?? '';
+    if (!is_array($sessionIds)) {
+        $sessionIds = [$sessionIds];
+    }
+    $applied = 0;
+    foreach ($sessionIds as $sessionId) {
+        $sessionId = trim((string)$sessionId);
+        if ($sessionId === '' || !preg_match('/^\d+_[QEF]$/', $sessionId)) {
+            continue;
+        }
+        if (applySessionDefaultsForTest($sessionId)) {
+            $applied++;
+        }
+    }
+    if ($applied === 0) {
+        echo json_encode(['error' => 1, 'message' => 'No sessions were updated']);
         return;
     }
-    if (!applySessionDefaultsForTest($sessionId)) {
-        echo json_encode(['error' => 1, 'message' => 'Session not found']);
-        return;
-    }
-    echo json_encode(['error' => 0, 'message' => 'Session time set']);
+    echo json_encode(['error' => 0, 'message' => "{$applied} session(s) updated"]);
 }
 
 // $sessionId is the SesOrder_SesType composite string GetSessions() synthesizes
@@ -931,13 +973,26 @@ function applySessionDefaultsForTest($sessionId) {
 }
 
 function pullClubLogo() {
-    $clubCode = trim((string)($_POST['clubCode'] ?? ''));
-    if ($clubCode === '') {
+    // clubCode may be a single code or (for the collapsed "fix all" button)
+    // an array of them -- see the matching comment on applySessionDefaults().
+    $clubCodes = $_POST['clubCode'] ?? '';
+    if (!is_array($clubCodes)) {
+        $clubCodes = [$clubCodes];
+    }
+    $applied = 0;
+    foreach ($clubCodes as $clubCode) {
+        $clubCode = trim((string)$clubCode);
+        if ($clubCode === '') {
+            continue;
+        }
+        pullClubLogoForTest($clubCode);
+        $applied++;
+    }
+    if ($applied === 0) {
         echo json_encode(['error' => 1, 'message' => 'Invalid club code']);
         return;
     }
-    pullClubLogoForTest($clubCode);
-    echo json_encode(['error' => 0, 'message' => 'Logo linked']);
+    echo json_encode(['error' => 0, 'message' => "{$applied} logo(s) linked"]);
 }
 
 function pullClubLogoForTest($clubCode) {

@@ -73,20 +73,30 @@ function laneAssistFinalsPlanningIssues(array $event) {
     $finalFirstPhase = intval($event['finalFirstPhase'] ?? 0);
 
     if ($finalFirstPhase <= 0) {
+        $message = "Event {$code} ({$label}): {$rawEntrantCount} entrants but no finals bracket is configured";
+        $suggested = laneAssistRecommendBracketSize($rawEntrantCount, $event['standardCapacities'] ?? []);
+        if ($suggested > 0) {
+            $message .= " (suggest sizing for {$suggested})";
+        }
         return [[
             'type' => 'no_bracket',
             'severity' => 'warning',
-            'message' => "Event {$code} ({$label}): entrants exist but no finals bracket is configured",
+            'message' => $message,
         ]];
     }
 
     $issues = [];
 
     if (empty($event['hasAnyScheduled'])) {
+        $expectedSize = intval($event['expectedSize'] ?? 0);
+        $message = "Event {$code} ({$label}): bracket configured but not scheduled yet";
+        if ($expectedSize > 0) {
+            $message .= " (sized for {$expectedSize})";
+        }
         $issues[] = [
             'type' => 'not_scheduled',
             'severity' => 'warning',
-            'message' => "Event {$code} ({$label}): bracket configured but not scheduled yet",
+            'message' => $message,
         ];
     }
 
@@ -149,4 +159,47 @@ function laneAssistClassifyClubLogo($clubCode, $hasTournamentFlag, $hasGlobalFla
     }
 
     return ['type' => 'missing', 'club' => (string)$clubCode];
+}
+
+/**
+ * Groups per-club laneAssistClassifyClubLogo() results into the two
+ * collapsed Status-tab cards: clubs whose logo can be pulled automatically
+ * (one bulk "fix all" button) vs. clubs with no logo anywhere (a plain list
+ * linking out to Tournament/Countries.php).
+ */
+function laneAssistGroupClubLogoIssues(array $issues) {
+    $fixable = [];
+    $missing = [];
+
+    foreach ($issues as $issue) {
+        if (($issue['type'] ?? '') === 'linkable') {
+            $fixable[] = (string)($issue['club'] ?? '');
+        } elseif (($issue['type'] ?? '') === 'missing') {
+            $missing[] = (string)($issue['club'] ?? '');
+        }
+    }
+
+    return ['fixable' => $fixable, 'missing' => $missing];
+}
+
+/**
+ * Smallest standard bracket capacity that covers $rawEntrantCount, falling
+ * back to the largest available capacity when entrants exceed them all.
+ */
+function laneAssistRecommendBracketSize($rawEntrantCount, array $standardCapacities) {
+    $rawEntrantCount = intval($rawEntrantCount);
+    $capacities = array_values(array_unique(array_map('intval', $standardCapacities)));
+
+    if ($rawEntrantCount <= 0 || empty($capacities)) {
+        return 0;
+    }
+
+    sort($capacities);
+    foreach ($capacities as $capacity) {
+        if ($capacity >= $rawEntrantCount) {
+            return $capacity;
+        }
+    }
+
+    return end($capacities);
 }

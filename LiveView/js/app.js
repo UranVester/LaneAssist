@@ -439,6 +439,20 @@
             $header.append('<div><strong>' + escapeHtml(item.title) + '</strong><br><small>' + escapeHtml(item.detail) + '</small></div>');
             $card.append($header);
 
+            if (item.rows && item.rows.length) {
+                var $rows = $('<ul class="status-item-rows"></ul>');
+                item.rows.forEach(function(row) {
+                    var $row = $('<li></li>');
+                    if (row.link) {
+                        $('<a></a>').attr('href', row.link).text(row.text).appendTo($row);
+                    } else {
+                        $row.text(row.text);
+                    }
+                    $rows.append($row);
+                });
+                $card.append($rows);
+            }
+
             if (item.link) {
                 $card.append('<footer><a href="' + item.link + '">Open</a></footer>');
             } else if (item.fix) {

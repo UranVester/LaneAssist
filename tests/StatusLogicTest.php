@@ -114,6 +114,28 @@ final class StatusLogicTest extends TestCase
         $this->assertStringContainsString('no finals bracket is configured', $issues[0]['message']);
     }
 
+    public function testFinalsPlanningMissingBracketSuggestsStandardSize(): void
+    {
+        $issues = laneAssistFinalsPlanningIssues([
+            'code' => 'TIC', 'label' => 'individual', 'finalFirstPhase' => 0,
+            'rawEntrantCount' => 10, 'hasAnyScheduled' => false, 'expectedSize' => 0,
+            'standardCapacities' => [8, 16, 32],
+        ]);
+        $this->assertCount(1, $issues);
+        $this->assertStringContainsString('10 entrants', $issues[0]['message']);
+        $this->assertStringContainsString('suggest sizing for 16', $issues[0]['message']);
+    }
+
+    public function testFinalsPlanningMissingBracketOmitsSuggestionWhenNoStandardCapacitiesGiven(): void
+    {
+        $issues = laneAssistFinalsPlanningIssues([
+            'code' => 'TIC', 'label' => 'individual', 'finalFirstPhase' => 0,
+            'rawEntrantCount' => 10, 'hasAnyScheduled' => false, 'expectedSize' => 0,
+        ]);
+        $this->assertCount(1, $issues);
+        $this->assertStringNotContainsString('suggest sizing for', $issues[0]['message']);
+    }
+
     public function testFinalsPlanningFlagsUnscheduledBracket(): void
     {
         $issues = laneAssistFinalsPlanningIssues([
@@ -123,6 +145,7 @@ final class StatusLogicTest extends TestCase
         $this->assertCount(1, $issues);
         $this->assertSame('not_scheduled', $issues[0]['type']);
         $this->assertStringContainsString('not scheduled yet', $issues[0]['message']);
+        $this->assertStringContainsString('sized for 16', $issues[0]['message']);
     }
 
     public function testFinalsPlanningFlagsSizeMismatchIncludingIrregularPhases(): void
@@ -223,5 +246,41 @@ final class StatusLogicTest extends TestCase
     {
         $result = laneAssistClassifyClubLogo('USA', false, false);
         $this->assertSame(['type' => 'missing', 'club' => 'USA'], $result);
+    }
+
+    public function testGroupClubLogoIssuesSeparatesFixableFromMissing(): void
+    {
+        $groups = laneAssistGroupClubLogoIssues([
+            ['type' => 'linkable', 'club' => 'USA'],
+            ['type' => 'missing', 'club' => 'GER'],
+            ['type' => 'linkable', 'club' => 'FRA'],
+        ]);
+        $this->assertSame(['USA', 'FRA'], $groups['fixable']);
+        $this->assertSame(['GER'], $groups['missing']);
+    }
+
+    public function testGroupClubLogoIssuesIsEmptyArraysWhenNoIssues(): void
+    {
+        $groups = laneAssistGroupClubLogoIssues([]);
+        $this->assertSame(['fixable' => [], 'missing' => []], $groups);
+    }
+
+    // ---------- Bracket size recommendation ----------
+
+    public function testRecommendBracketSizePicksSmallestCapacityThatCoversEntrants(): void
+    {
+        $this->assertSame(16, laneAssistRecommendBracketSize(10, [8, 16, 32]));
+        $this->assertSame(8, laneAssistRecommendBracketSize(8, [8, 16, 32]));
+    }
+
+    public function testRecommendBracketSizeFallsBackToLargestWhenEntrantsExceedAllCapacities(): void
+    {
+        $this->assertSame(32, laneAssistRecommendBracketSize(50, [8, 16, 32]));
+    }
+
+    public function testRecommendBracketSizeIsZeroWhenNothingToRecommend(): void
+    {
+        $this->assertSame(0, laneAssistRecommendBracketSize(0, [8, 16, 32]));
+        $this->assertSame(0, laneAssistRecommendBracketSize(10, []));
     }
 }

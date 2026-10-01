@@ -101,6 +101,9 @@
 .status-item-danger { border-left: 4px solid var(--live-red); }
 .status-item footer { padding: 8px 12px; text-align: right; }
 .status-item footer a { color: #286fa0; font-size: 13px; }
+.status-item-rows { margin: 0; padding: 8px 12px; list-style: none; border-top: 1px solid var(--live-line); }
+.status-item-rows li { padding: 3px 0; font-size: 13px; }
+.status-item-rows a { color: #286fa0; }
 
 @media (max-width: 760px) {
     .live-view { padding: 8px; }
