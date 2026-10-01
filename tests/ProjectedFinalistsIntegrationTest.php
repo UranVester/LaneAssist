@@ -180,4 +180,25 @@ final class ProjectedFinalistsIntegrationTest extends LaneAssistDbTestCase
         $this->assertSame(0, getProjectedFinalistsForEvent('TIZ', 0, 16));
         $this->assertSame(0, getProjectedFinalistsForEvent('TIZ', 0, 0));
     }
+
+    public function testGetRawFinalistDemandReturnsUncappedCountForIndividualEvent(): void
+    {
+        // Sentinel class 'XZ' to isolate from other tests in this suite.
+        self::seedRow('EventClass', [
+            'EcCode' => 'TID', 'EcTournament' => self::SENTINEL,
+            'EcClass' => 'XZ', 'EcDivision' => 'R', 'EcSubClass' => '',
+            'EcExtraAddons' => 0, 'EcTeamEvent' => 0,
+        ]);
+        for ($i = 1; $i <= 5; $i++) {
+            self::seedRow('Entries', [
+                'EnId' => 991000 + $i, 'EnTournament' => self::SENTINEL,
+                'EnDivision' => 'R', 'EnClass' => 'XZ', 'EnCode' => "Q$i",
+                'EnName' => 'T', 'EnFirstName' => 'T', 'EnIndFEvent' => 1,
+            ]);
+        }
+
+        // Raw demand is uncapped even though a cap of 2 would shrink it.
+        $this->assertSame(5, getRawFinalistDemand('TID', 0));
+        $this->assertSame(2, getProjectedFinalistsForEvent('TID', 0, 2));
+    }
 }

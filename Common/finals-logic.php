@@ -133,10 +133,10 @@ function projectFinalists($entrantCount, $numQualified)
     return $entrantCount;
 }
 
-function getProjectedFinalistsForEvent($eventCode, $teamEvent, $eventNumQualified) {
+function getRawFinalistDemand($eventCode, $teamEvent) {
     static $cache = [];
 
-    $cacheKey = intval($_SESSION['TourId']) . '|' . intval($teamEvent) . '|' . trim((string)$eventCode) . '|' . intval($eventNumQualified);
+    $cacheKey = intval($_SESSION['TourId']) . '|' . intval($teamEvent) . '|' . trim((string)$eventCode);
     if (isset($cache[$cacheKey])) {
         return $cache[$cacheKey];
     }
@@ -258,7 +258,19 @@ function getProjectedFinalistsForEvent($eventCode, $teamEvent, $eventNumQualifie
         }
     }
 
-    $entrantCount = projectFinalists($entrantCount, $eventNumQualified);
+    $cache[$cacheKey] = $entrantCount;
+    return $entrantCount;
+}
+
+function getProjectedFinalistsForEvent($eventCode, $teamEvent, $eventNumQualified) {
+    static $cache = [];
+
+    $cacheKey = intval($_SESSION['TourId']) . '|' . intval($teamEvent) . '|' . trim((string)$eventCode) . '|' . intval($eventNumQualified);
+    if (isset($cache[$cacheKey])) {
+        return $cache[$cacheKey];
+    }
+
+    $entrantCount = projectFinalists(getRawFinalistDemand($eventCode, $teamEvent), $eventNumQualified);
 
     $cache[$cacheKey] = $entrantCount;
     return $entrantCount;
