@@ -228,6 +228,20 @@ final class StatusLogicTest extends TestCase
         $this->assertSame([], $issues);
     }
 
+    public function testDetectSessionsWithoutTimesSkipsSessionsWithARealDistanceTime(): void
+    {
+        // Regression: Tournament/ManSessions_kiss.php (the simplified session UI
+        // for multi-distance Qualification rounds) saves per-distance start
+        // times into DistanceInformation and never backfills Session's own
+        // SesDtStart, which stays at the zero-date sentinel forever. A session
+        // with a real distance time must not be flagged just because SesDtStart
+        // itself is unset.
+        $issues = laneAssistDetectSessionsWithoutTimes([
+            ['sessionOrder' => 1, 'sessionId' => '1_Q', 'dtStart' => '0000-00-00 00:00:00', 'hasDistanceTime' => true],
+        ]);
+        $this->assertSame([], $issues);
+    }
+
     // ---------- Club logos ----------
 
     public function testClassifyClubLogoIsNullWhenAlreadyLinkedToTournament(): void

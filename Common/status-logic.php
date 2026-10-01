@@ -134,11 +134,22 @@ function laneAssistDetectUnassignedArchers(array $assignments) {
     return $issues;
 }
 
+/**
+ * A session counts as having a time if either its own SesDtStart is set, or
+ * (for multi-distance Qualification rounds built via the "kiss" simplified
+ * session UI) any of its DistanceInformation rows has a real day. That UI
+ * (Tournament/ManSessions_kiss.php) saves per-distance start times straight
+ * into DistanceInformation.DiDay/DiStart and never backfills Session's own
+ * SesDtStart, so a tournament can have real, admin-set times while
+ * SesDtStart stays at the zero-date sentinel forever.
+ */
 function laneAssistDetectSessionsWithoutTimes(array $sessions) {
     $issues = [];
 
     foreach ($sessions as $session) {
-        if (trim((string)($session['dtStart'] ?? '')) === '0000-00-00 00:00:00') {
+        $hasSessionTime = trim((string)($session['dtStart'] ?? '')) !== '0000-00-00 00:00:00';
+        $hasDistanceTime = !empty($session['hasDistanceTime']);
+        if (!$hasSessionTime && !$hasDistanceTime) {
             $issues[] = [
                 'sessionOrder' => intval($session['sessionOrder'] ?? 0),
                 'sessionId' => (string)($session['sessionId'] ?? ''),

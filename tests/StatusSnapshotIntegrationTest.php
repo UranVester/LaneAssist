@@ -42,7 +42,11 @@ final class StatusSnapshotIntegrationTest extends LaneAssistDbTestCase
             . StrSafe_DB(self::WITHDRAWN_ENTRY_ID) . ',' . StrSafe_DB(self::NON_ATHLETE_ENTRY_ID)
             . ',' . StrSafe_DB(self::SESSION_ZERO_ENTRY_ID) . ')');
         safe_w_sql('DELETE FROM Session WHERE SesTournament=' . StrSafe_DB(self::SENTINEL)
-            . " AND SesType IN ('Q','F') AND SesOrder IN (1, 2, 3, 4, 5)");
+            . " AND SesType IN ('Q','F') AND SesOrder IN (1, 2, 3, 4, 5, 6)");
+        // DistanceInformation has no DiTournament-only cleanup in the generic
+        // $tables map (it isn't listed there), and its primary key is
+        // composite (DiTournament, DiSession, DiDistance, DiType).
+        safe_w_sql('DELETE FROM DistanceInformation WHERE DiTournament=' . StrSafe_DB(self::SENTINEL));
         // Countries is per-tournament reference data (has its own CoTournament
         // column), unlike Grids -- safe to seed/delete scoped to the sentinel.
         safe_w_sql('DELETE FROM Countries WHERE CoTournament=' . StrSafe_DB(self::SENTINEL));
@@ -265,6 +269,39 @@ final class StatusSnapshotIntegrationTest extends LaneAssistDbTestCase
         $this->assertStringContainsString('5', $match['detail']);
         $this->assertSame('applySessionDefaults', $match['fix']['action']);
         $this->assertSame(['4_Q', '5_Q'], $match['fix']['params']['sessionId']);
+    }
+
+    public function testSessionsWithoutTimesIgnoresASessionWithARealDistanceTime(): void
+    {
+        // Regression: Tournament/ManSessions_kiss.php (the simplified session
+        // UI for multi-distance Qualification rounds) saves per-distance start
+        // times into DistanceInformation and never backfills Session's own
+        // SesDtStart, which stays at the zero-date sentinel forever even
+        // though the tournament has real, admin-set times.
+        self::seedRow('Session', [
+            'SesTournament' => self::SENTINEL, 'SesType' => 'Q',
+            'SesOrder' => 6, 'SesDtStart' => '0000-00-00 00:00:00', 'SesDtEnd' => '0000-00-00 00:00:00',
+        ]);
+        self::seedRow('DistanceInformation', [
+            'DiTournament' => self::SENTINEL, 'DiSession' => 6, 'DiDistance' => 1, 'DiType' => 'Q',
+            'DiDay' => '2026-08-30', 'DiStart' => '09:00:00',
+        ]);
+
+        $items = statusChecklistItems();
+        $match = null;
+        foreach ($items as $item) {
+            if ($item['key'] === 'sessionsWithoutTimes') {
+                $match = $item;
+                break;
+            }
+        }
+
+        // Not asserting $match===null: an earlier test in this class (orders
+        // 4 and 5) leaves its own flagged sessions in place until
+        // tearDownAfterClass, so a card may legitimately still exist here.
+        // Only session 6, this test's own session, must be excluded from it.
+        $flaggedIds = $match['fix']['params']['sessionId'] ?? [];
+        $this->assertNotContains('6_Q', $flaggedIds, 'A session with a real distance time must not be flagged');
     }
 
     public function testClubLogosSplitIntoFixableAndMissingCards(): void

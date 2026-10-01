@@ -825,12 +825,25 @@ function statusChecklistItems() {
     // session. An unscoped GetSessions() picked up that E/F row and flagged
     // the pair as "no time set" even though the Qualification session the
     // user actually sees has a real start time.
+    // Multi-distance Qualification rounds built via the "kiss" simplified
+    // session UI store their real per-distance start times in
+    // DistanceInformation, not in Session.SesDtStart (see
+    // laneAssistDetectSessionsWithoutTimes()'s doc comment) -- gather which
+    // SesOrders have a real distance day so those sessions aren't flagged.
+    $distanceSessionsWithTime = [];
+    $distRs = safe_r_sql("SELECT DISTINCT DiSession FROM DistanceInformation
+        WHERE DiTournament=$tourId AND DiType='Q' AND DiDay<>'0000-00-00'");
+    while ($dist = safe_fetch($distRs)) {
+        $distanceSessionsWithTime[intval($dist->DiSession)] = true;
+    }
+
     $sessions = [];
     foreach (GetSessions('Q') as $session) {
         $sessions[] = [
             'sessionOrder' => intval($session->SesOrder),
             'sessionId' => (string)$session->Id,
             'dtStart' => (string)$session->SesDtStart,
+            'hasDistanceTime' => !empty($distanceSessionsWithTime[intval($session->SesOrder)]),
         ];
     }
     $sessionIssues = laneAssistDetectSessionsWithoutTimes($sessions);
