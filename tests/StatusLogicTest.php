@@ -50,6 +50,47 @@ final class StatusLogicTest extends TestCase
         $this->assertSame('qualification', $stage);
     }
 
+    // ---------- Finals completion ----------
+
+    public function testFinalsAreNotCompleteWithNoMatches(): void
+    {
+        $this->assertFalse(laneAssistFinalsAreComplete([]));
+    }
+
+    public function testFinalsAreCompleteWhenEveryMatchIsCompleteOrAdvanced(): void
+    {
+        $matches = [
+            ['status' => 'complete', 'canAdvance' => false, 'canMarkBye' => false],
+            ['status' => 'advanced', 'canAdvance' => false, 'canMarkBye' => false],
+        ];
+        $this->assertTrue(laneAssistFinalsAreComplete($matches));
+    }
+
+    public function testFinalsAreNotCompleteWhenAMatchCanStillAdvance(): void
+    {
+        $matches = [
+            ['status' => 'bye', 'canAdvance' => true, 'canMarkBye' => true],
+        ];
+        $this->assertFalse(laneAssistFinalsAreComplete($matches));
+    }
+
+    public function testFinalsAreNotCompleteWhileAMatchIsStillInProgress(): void
+    {
+        // Regression: 'unreported'/'partial'/'uneven'/'live' matches have
+        // canAdvance=false and canMarkBye=false, same as a genuinely finished
+        // match -- checking only those flags misreports the tournament as
+        // "over" while a round is still being shot.
+        foreach (['unreported', 'partial', 'uneven', 'live'] as $inProgressStatus) {
+            $matches = [
+                ['status' => $inProgressStatus, 'canAdvance' => false, 'canMarkBye' => false],
+            ];
+            $this->assertFalse(
+                laneAssistFinalsAreComplete($matches),
+                "status '$inProgressStatus' with no pending action must still block completion"
+            );
+        }
+    }
+
     // ---------- Per-event finals planning (demand-gating + size mismatch) ----------
 
     public function testFinalsPlanningIsSilentWhenNoEntrantsWantThisFinalsType(): void

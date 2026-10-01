@@ -691,19 +691,7 @@ function statusTournamentStage() {
 }
 
 function statusFinalsAreComplete() {
-    $matches = allFinalMatchesSnapshot();
-    if (empty($matches)) {
-        return false;
-    }
-    foreach ($matches as $match) {
-        if (!empty($match['canAdvance']) || !empty($match['canMarkBye'])) {
-            return false;
-        }
-        if (!in_array($match['status'], ['complete', 'advanced'], true)) {
-            return false;
-        }
-    }
-    return true;
+    return laneAssistFinalsAreComplete(allFinalMatchesSnapshot());
 }
 
 function statusQualificationIsComplete() {

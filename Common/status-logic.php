@@ -40,6 +40,28 @@ function laneAssistTournamentStage(
     return 'qualification';
 }
 
+/**
+ * Whether every final match is done -- no action possible (canAdvance/
+ * canMarkBye both false) AND its status is a terminal one ('complete' or
+ * 'advanced'). A match sitting in 'unreported'/'partial'/'uneven'/'live'
+ * also has both flags false, so checking only those flags (the original
+ * bug) misreads an in-progress round as finished.
+ */
+function laneAssistFinalsAreComplete(array $matches) {
+    if (empty($matches)) {
+        return false;
+    }
+    foreach ($matches as $match) {
+        if (!empty($match['canAdvance']) || !empty($match['canMarkBye'])) {
+            return false;
+        }
+        if (!in_array($match['status'], ['complete', 'advanced'], true)) {
+            return false;
+        }
+    }
+    return true;
+}
+
 function laneAssistFinalsPlanningIssues(array $event) {
     $rawEntrantCount = intval($event['rawEntrantCount'] ?? 0);
     if ($rawEntrantCount <= 0) {
