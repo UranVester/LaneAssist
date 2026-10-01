@@ -23,6 +23,10 @@ final class StatusSnapshotIntegrationTest extends LaneAssistDbTestCase
 {
     /** EnId used by the withdrawn-entry scenario; also Qualifications.QuId. */
     private const WITHDRAWN_ENTRY_ID = 992002;
+    /** EnId used by the non-athlete scenario; also Qualifications.QuId. */
+    private const NON_ATHLETE_ENTRY_ID = 992003;
+    /** EnId used by the session-0 (not yet assigned) scenario; also Qualifications.QuId. */
+    private const SESSION_ZERO_ENTRY_ID = 992004;
 
     protected static function cleanupSentinel(): void
     {
@@ -34,7 +38,9 @@ final class StatusSnapshotIntegrationTest extends LaneAssistDbTestCase
         // their known keys instead -- both here (in case a prior run
         // crashed mid-test) and this same method runs again in
         // tearDownAfterClass.
-        safe_w_sql('DELETE FROM Qualifications WHERE QuId=' . StrSafe_DB(self::WITHDRAWN_ENTRY_ID));
+        safe_w_sql('DELETE FROM Qualifications WHERE QuId IN ('
+            . StrSafe_DB(self::WITHDRAWN_ENTRY_ID) . ',' . StrSafe_DB(self::NON_ATHLETE_ENTRY_ID)
+            . ',' . StrSafe_DB(self::SESSION_ZERO_ENTRY_ID) . ')');
         safe_w_sql('DELETE FROM Session WHERE SesTournament=' . StrSafe_DB(self::SENTINEL) . " AND SesType='Q' AND SesOrder=1");
     }
 
@@ -143,5 +149,53 @@ final class StatusSnapshotIntegrationTest extends LaneAssistDbTestCase
         }
 
         $this->assertNull($unassigned, 'A withdrawn entry with no target must not be counted as unassigned');
+    }
+
+    public function testUnassignedArchersExcludesNonAthletesAndSessionZeroEntries(): void
+    {
+        self::seedRow('Session', [
+            'SesTournament' => self::SENTINEL, 'SesType' => 'Q',
+            'SesOrder' => 1, 'SesFirstTarget' => 1, 'SesTar4Session' => 10,
+            'SesDtStart' => '2026-08-30 09:00:00', 'SesDtEnd' => '2026-08-30 12:00:00',
+        ]);
+
+        // A non-athlete (e.g. a captain-only registration) with no target or
+        // letter must not be counted: the target-assignment check only
+        // concerns athletes who actually shoot, same as
+        // qualificationSnapshot()'s own `EnAthlete=1` filter.
+        self::seedRow('Entries', [
+            'EnId' => self::NON_ATHLETE_ENTRY_ID, 'EnTournament' => self::SENTINEL,
+            'EnDivision' => 'R', 'EnClass' => 'XZ', 'EnCode' => 'S3',
+            'EnName' => 'T', 'EnFirstName' => 'T', 'EnAthlete' => 0,
+        ]);
+        self::seedRow('Qualifications', [
+            'QuId' => self::NON_ATHLETE_ENTRY_ID, 'QuSession' => 1,
+            'QuTarget' => 0, 'QuLetter' => '',
+        ]);
+
+        // QuSession=0 means "not yet assigned to any session at all", which is
+        // distinct from "assigned to session 1 but missing target/letter",
+        // and must not be folded into session 1's unassigned count.
+        self::seedRow('Entries', [
+            'EnId' => self::SESSION_ZERO_ENTRY_ID, 'EnTournament' => self::SENTINEL,
+            'EnDivision' => 'R', 'EnClass' => 'XZ', 'EnCode' => 'S4',
+            'EnName' => 'T', 'EnFirstName' => 'T', 'EnAthlete' => 1,
+        ]);
+        self::seedRow('Qualifications', [
+            'QuId' => self::SESSION_ZERO_ENTRY_ID, 'QuSession' => 0,
+            'QuTarget' => 0, 'QuLetter' => '',
+        ]);
+
+        $items = statusChecklistItems();
+        foreach (['unassignedTargets_0', 'unassignedTargets_1'] as $key) {
+            $match = null;
+            foreach ($items as $item) {
+                if ($item['key'] === $key) {
+                    $match = $item;
+                    break;
+                }
+            }
+            $this->assertNull($match, "$key must not appear: only a non-athlete and a session-0 entry are present");
+        }
     }
 }

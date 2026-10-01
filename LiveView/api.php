@@ -750,7 +750,7 @@ function statusChecklistItems() {
     $asRs = safe_r_sql("SELECT qu.QuSession AS SessionOrder, qu.QuTarget AS Target, qu.QuLetter AS Letter
         FROM Qualifications qu
         INNER JOIN Entries e ON e.EnId=qu.QuId AND e.EnTournament=$tourId
-        WHERE e.EnStatus<=1");
+        WHERE e.EnStatus<=1 AND e.EnAthlete=1 AND qu.QuSession<>0");
     while ($row = safe_fetch($asRs)) {
         $assignments[] = ['sessionOrder' => intval($row->SessionOrder), 'target' => (string)$row->Target, 'letter' => (string)$row->Letter];
     }
