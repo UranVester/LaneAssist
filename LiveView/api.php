@@ -943,6 +943,14 @@ function pullClubLogoForTest($clubCode) {
     $tourId = StrSafe_DB($_SESSION['TourId']);
     $clubCode = StrSafe_DB($clubCode);
 
-    safe_w_sql("INSERT IGNORE INTO Flags (FlCode, FlTournament, FlJPG, FlSVG)
-        SELECT FlCode, $tourId, FlJPG, FlSVG FROM Flags WHERE FlCode=$clubCode AND FlTournament=-1");
+    // FlIocCode is part of Flags' real composite primary key
+    // (FlTournament, FlIocCode, FlCode) and every core logo lookup joins on
+    // FlIocCode='FITA' (the hard convention for global rows -- see
+    // UpdateDb-2011.inc.php); omitting it from the column list would leave
+    // the copied row with the NOT-NULL varchar's empty-string default,
+    // invisible to every one of those lookups. FlContAssoc is carried over
+    // for the same reason (NOT-NULL, no default) even though it isn't part
+    // of a join condition anywhere found.
+    safe_w_sql("INSERT IGNORE INTO Flags (FlCode, FlTournament, FlIocCode, FlJPG, FlSVG, FlContAssoc)
+        SELECT FlCode, $tourId, FlIocCode, FlJPG, FlSVG, FlContAssoc FROM Flags WHERE FlCode=$clubCode AND FlTournament=-1");
 }

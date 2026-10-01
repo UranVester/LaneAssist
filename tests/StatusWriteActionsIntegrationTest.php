@@ -93,12 +93,27 @@ final class StatusWriteActionsIntegrationTest extends LaneAssistDbTestCase
 
     public function testPullClubLogoInsertsIgnoreScopedToOneClub(): void
     {
-        self::seedRow('Flags', ['FlCode' => 'ZZZ', 'FlTournament' => -1, 'FlJPG' => 'x.jpg', 'FlSVG' => '']);
+        // FlIocCode is part of Flags' real composite primary key
+        // (FlTournament, FlIocCode, FlCode) and every core logo lookup joins
+        // on FlIocCode='FITA' (the hard convention for global rows). Seed it
+        // explicitly, along with another NOT-NULL column with no default
+        // (FlContAssoc), and assert both copied over -- without this,
+        // seedRow() zero-fills unlisted NOT-NULL columns on both the source
+        // and whatever the INSERT produces on the destination, so a bug that
+        // drops FlIocCode from the copy would pass this test identically to
+        // a correct implementation.
+        self::seedRow('Flags', [
+            'FlCode' => 'ZZZ', 'FlTournament' => -1, 'FlIocCode' => 'FITA',
+            'FlJPG' => 'x.jpg', 'FlSVG' => '', 'FlContAssoc' => 'EUR',
+        ]);
 
         pullClubLogoForTest('ZZZ');
 
-        $row = safe_fetch(safe_r_sql("SELECT FlJPG FROM Flags WHERE FlCode='ZZZ' AND FlTournament=" . self::SENTINEL));
+        $row = safe_fetch(safe_r_sql("SELECT FlJPG, FlIocCode, FlContAssoc FROM Flags
+            WHERE FlCode='ZZZ' AND FlTournament=" . self::SENTINEL));
         $this->assertSame('x.jpg', (string)$row->FlJPG);
+        $this->assertSame('FITA', (string)$row->FlIocCode);
+        $this->assertSame('EUR', (string)$row->FlContAssoc);
     }
 
     public function testPullClubLogoIsIdempotentOnSecondClick(): void
