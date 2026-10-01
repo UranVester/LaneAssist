@@ -181,6 +181,128 @@ final class StatusLogicTest extends TestCase
         $this->assertSame('no_bracket', $issues[0]['type']);
     }
 
+    // ---------- Phase labels ----------
+
+    public function testPhaseLabelNamesTheMedalPhases(): void
+    {
+        $this->assertSame('Gold', laneAssistPhaseLabel(0));
+        $this->assertSame('Bronze', laneAssistPhaseLabel(1));
+    }
+
+    public function testPhaseLabelFormatsStandardPhasesAsFractions(): void
+    {
+        $this->assertSame('1/2', laneAssistPhaseLabel(2));
+        $this->assertSame('1/8', laneAssistPhaseLabel(8));
+        $this->assertSame('1/16', laneAssistPhaseLabel(16));
+    }
+
+    public function testPhaseLabelFormatsIrregularPhasesAsFractionsToo(): void
+    {
+        // numQualifiedByPhase() has hardcoded irregular overrides for these
+        // phase ids (12 => 24 entrants, not 12*2), but the *label* is still
+        // just "1/<phase>" -- no lookup table needed.
+        $this->assertSame('1/12', laneAssistPhaseLabel(12));
+    }
+
+    // ---------- Finals planning: bucketing into Status-tab cards ----------
+
+    public function testGroupFinalsPlanningIssuesFormatsBracketSizeWrongRowWithSuggestion(): void
+    {
+        // Mirrors the user's own example: an individual event sized for 1/8
+        // (8 qualified) but with 30 raw entrants should suggest 1/16 (32
+        // qualified), the smallest standard capacity that covers them.
+        $grouped = laneAssistGroupFinalsPlanningIssues([[
+            'code' => 'BD', 'label' => 'individual', 'teamEvent' => 0,
+            'finalFirstPhase' => 8, 'rawEntrantCount' => 30, 'hasAnyScheduled' => true,
+            'expectedSize' => 16, 'standardCapacities' => [8, 16, 32],
+            'phaseByCapacity' => [8 => 8, 16 => 16, 32 => 16],
+            'listLink' => '/list', 'scheduleLink' => '/schedule',
+        ]]);
+
+        $this->assertSame([['text' => 'BD - 1/8 -> 1/16', 'link' => '/list']], $grouped['bracketSizeWrong']);
+        $this->assertSame([], $grouped['unscheduledFinals']);
+        $this->assertSame([], $grouped['noBracketConfigured']);
+    }
+
+    public function testGroupFinalsPlanningIssuesOmitsArrowWhenNoSuggestedPhaseIsKnown(): void
+    {
+        $grouped = laneAssistGroupFinalsPlanningIssues([[
+            'code' => 'BD', 'label' => 'individual', 'teamEvent' => 0,
+            'finalFirstPhase' => 8, 'rawEntrantCount' => 30, 'hasAnyScheduled' => true,
+            'expectedSize' => 16, 'standardCapacities' => [],
+            'phaseByCapacity' => [], 'listLink' => '/list', 'scheduleLink' => '/schedule',
+        ]]);
+
+        $this->assertSame([['text' => 'BD - 1/8', 'link' => '/list']], $grouped['bracketSizeWrong']);
+    }
+
+    public function testGroupFinalsPlanningIssuesDropsSizeMismatchForTeamAndMixedEvents(): void
+    {
+        foreach ([1, 2] as $teamEvent) {
+            $grouped = laneAssistGroupFinalsPlanningIssues([[
+                'code' => 'TIC', 'label' => 'team', 'teamEvent' => $teamEvent,
+                'finalFirstPhase' => 8, 'rawEntrantCount' => 30, 'hasAnyScheduled' => true,
+                'expectedSize' => 16, 'standardCapacities' => [8, 16, 32],
+                'phaseByCapacity' => [8 => 8, 16 => 16, 32 => 16],
+                'listLink' => '/list', 'scheduleLink' => '/schedule',
+            ]]);
+            $this->assertSame([], $grouped['bracketSizeWrong'], "teamEvent={$teamEvent} must not surface a size-wrong row");
+        }
+    }
+
+    public function testGroupFinalsPlanningIssuesListsUnscheduledEventsOfAnyType(): void
+    {
+        $grouped = laneAssistGroupFinalsPlanningIssues([[
+            'code' => 'TIC', 'label' => 'team', 'teamEvent' => 1,
+            'finalFirstPhase' => 8, 'rawEntrantCount' => 16, 'hasAnyScheduled' => false,
+            'expectedSize' => 16, 'standardCapacities' => [8, 16, 32],
+            'phaseByCapacity' => [], 'listLink' => '/list', 'scheduleLink' => '/schedule',
+        ]]);
+
+        $this->assertSame([['text' => 'TIC (team)', 'link' => '/schedule']], $grouped['unscheduledFinals']);
+    }
+
+    public function testGroupFinalsPlanningIssuesListsNoBracketConfiguredEventsOfAnyType(): void
+    {
+        $grouped = laneAssistGroupFinalsPlanningIssues([[
+            'code' => 'TIC', 'label' => 'team', 'teamEvent' => 1,
+            'finalFirstPhase' => 0, 'rawEntrantCount' => 16, 'hasAnyScheduled' => false,
+            'expectedSize' => 0, 'standardCapacities' => [],
+            'phaseByCapacity' => [], 'listLink' => '/list', 'scheduleLink' => '/schedule',
+        ]]);
+
+        $this->assertSame([['text' => 'TIC (team)', 'link' => '/list']], $grouped['noBracketConfigured']);
+    }
+
+    public function testGroupFinalsPlanningIssuesBucketsAcrossMultipleEvents(): void
+    {
+        $grouped = laneAssistGroupFinalsPlanningIssues([
+            [
+                'code' => 'BD', 'label' => 'individual', 'teamEvent' => 0,
+                'finalFirstPhase' => 8, 'rawEntrantCount' => 30, 'hasAnyScheduled' => true,
+                'expectedSize' => 16, 'standardCapacities' => [8, 16, 32],
+                'phaseByCapacity' => [8 => 8, 16 => 16, 32 => 16],
+                'listLink' => '/list/ind', 'scheduleLink' => '/schedule',
+            ],
+            [
+                'code' => 'TIC', 'label' => 'team', 'teamEvent' => 1,
+                'finalFirstPhase' => 8, 'rawEntrantCount' => 16, 'hasAnyScheduled' => false,
+                'expectedSize' => 16, 'standardCapacities' => [],
+                'phaseByCapacity' => [], 'listLink' => '/list/team', 'scheduleLink' => '/schedule',
+            ],
+            [
+                'code' => 'RC', 'label' => 'individual', 'teamEvent' => 0,
+                'finalFirstPhase' => 0, 'rawEntrantCount' => 12, 'hasAnyScheduled' => false,
+                'expectedSize' => 0, 'standardCapacities' => [],
+                'phaseByCapacity' => [], 'listLink' => '/list/ind', 'scheduleLink' => '/schedule',
+            ],
+        ]);
+
+        $this->assertCount(1, $grouped['bracketSizeWrong']);
+        $this->assertCount(1, $grouped['unscheduledFinals']);
+        $this->assertCount(1, $grouped['noBracketConfigured']);
+    }
+
     // ---------- Unassigned archers ----------
 
     public function testDetectUnassignedArchersGroupsCountBySession(): void

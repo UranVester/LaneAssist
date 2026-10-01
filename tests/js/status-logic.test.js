@@ -39,8 +39,23 @@ test('an unplayable pair that is actually scheduled (has a real target) is flagg
     const items = statusLogic.computeUnplayableFinalsItems(rows, playability, '/root/');
     assert.strictEqual(items.length, 1);
     assert.strictEqual(items[0].severity, 'warning');
-    assert.strictEqual(items[0].title, 'Unplayable finals');
-    assert.strictEqual(items[0].link, '/root/Modules/Custom/LaneAssist/ManageFinals/index.php');
+    assert.strictEqual(items[0].title, 'Unplayable scheduled finals');
+    assert.strictEqual(items[0].link, null);
+    assert.deepStrictEqual(items[0].rows, [
+        {text: 'TIC', link: '/root/Modules/Custom/LaneAssist/ManageFinals/index.php'},
+    ]);
+});
+
+test('multiple unplayable scheduled pairs in the same event collapse into one row', () => {
+    const rowsA = pairRows({projectedParticipants: 0, seeds: [1, 2], targets: ['12', '']});
+    const rowsB = pairRows({projectedParticipants: 0, seeds: [3, 4], targets: ['13', '']})
+        .map((r) => Object.assign({}, r, {matchNo: r.matchNo + 2}));
+
+    const items = statusLogic.computeUnplayableFinalsItems(rowsA.concat(rowsB), playability, '/root/');
+    assert.strictEqual(items.length, 1);
+    assert.deepStrictEqual(items[0].rows, [
+        {text: 'TIC', link: '/root/Modules/Custom/LaneAssist/ManageFinals/index.php'},
+    ]);
 });
 
 test('a playable pair never produces a warning, scheduled or not', () => {

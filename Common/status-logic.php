@@ -112,6 +112,74 @@ function laneAssistFinalsPlanningIssues(array $event) {
     return $issues;
 }
 
+/**
+ * 0 and 1 are the medal matches themselves (Gold/Bronze), not fractional
+ * brackets; every other phase id is "1/<id>" regardless of how
+ * numQualifiedByPhase() maps it to an entrant count (irregular phases like
+ * 12 or 48 still read as "1/12"/"1/48").
+ */
+function laneAssistPhaseLabel($phaseId) {
+    $phaseId = intval($phaseId);
+    if ($phaseId === 0) {
+        return 'Gold';
+    }
+    if ($phaseId === 1) {
+        return 'Bronze';
+    }
+    return '1/' . $phaseId;
+}
+
+/**
+ * Buckets laneAssistFinalsPlanningIssues() output across every event into
+ * the Status tab's three collapsed cards. Each $event entry needs
+ * everything laneAssistFinalsPlanningIssues() needs, plus:
+ *   - 'teamEvent' (int, 0 = individual)
+ *   - 'listLink' / 'scheduleLink' (strings, resolved by the caller)
+ *   - 'phaseByCapacity' (capacity => phaseId, for the size-wrong suggestion)
+ *
+ * size_mismatch issues are dropped for team/mixed events: bracket-size
+ * checking is individual-only here, per the restructured design.
+ */
+function laneAssistGroupFinalsPlanningIssues(array $events) {
+    $bracketSizeWrong = [];
+    $unscheduledFinals = [];
+    $noBracketConfigured = [];
+
+    foreach ($events as $event) {
+        $code = (string)($event['code'] ?? '');
+        $label = (string)($event['label'] ?? '');
+
+        foreach (laneAssistFinalsPlanningIssues($event) as $issue) {
+            if ($issue['type'] === 'size_mismatch') {
+                if (intval($event['teamEvent'] ?? 1) !== 0) {
+                    continue;
+                }
+                $currentLabel = laneAssistPhaseLabel($event['finalFirstPhase'] ?? 0);
+                $suggestedCapacity = laneAssistRecommendBracketSize(
+                    intval($event['rawEntrantCount'] ?? 0),
+                    $event['standardCapacities'] ?? []
+                );
+                $suggestedPhase = ($event['phaseByCapacity'] ?? [])[$suggestedCapacity] ?? null;
+                $text = "{$code} - {$currentLabel}";
+                if ($suggestedPhase !== null) {
+                    $text .= ' -> ' . laneAssistPhaseLabel($suggestedPhase);
+                }
+                $bracketSizeWrong[] = ['text' => $text, 'link' => $event['listLink'] ?? null];
+            } elseif ($issue['type'] === 'not_scheduled') {
+                $unscheduledFinals[] = ['text' => "{$code} ({$label})", 'link' => $event['scheduleLink'] ?? null];
+            } elseif ($issue['type'] === 'no_bracket') {
+                $noBracketConfigured[] = ['text' => "{$code} ({$label})", 'link' => $event['listLink'] ?? null];
+            }
+        }
+    }
+
+    return [
+        'bracketSizeWrong' => $bracketSizeWrong,
+        'unscheduledFinals' => $unscheduledFinals,
+        'noBracketConfigured' => $noBracketConfigured,
+    ];
+}
+
 function laneAssistDetectUnassignedArchers(array $assignments) {
     $countsBySession = [];
 

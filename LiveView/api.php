@@ -753,7 +753,8 @@ function statusChecklistItems() {
         ];
     }
 
-    // 3. Per-event finals planning (individual / team / mixed, demand-gated)
+    // 3. Per-event finals planning (individual / team / mixed, demand-gated),
+    // split into three cards by issue type.
     $evRs = safe_r_sql("SELECT EvCode, EvEventName, EvTeamEvent, EvMixedTeam, EvFinalFirstPhase, EvNumQualified
         FROM Events WHERE EvTournament=$tourId");
     $finalsRows = buildFinalsRows()['rows'];
@@ -763,8 +764,22 @@ function statusChecklistItems() {
             $scheduledByEvent[$row['teamEvent'] . '|' . $row['event']] = true;
         }
     }
-    $standardCapacities = array_map('numQualifiedByPhase', getStandardPhases());
-    $finalsPlanningRows = [];
+    // Floored at phase 2 (SemiFinal): phases 0 (Gold) and 1 (Bronze) are the
+    // medal matches themselves, never a valid bracket-size suggestion, even
+    // though getStandardPhases()'s PhLevel IN(0,-1) filter includes both.
+    $standardCapacities = [];
+    $phaseByCapacity = [];
+    foreach (getStandardPhases() as $phase) {
+        $phase = intval($phase);
+        if ($phase < 2) {
+            continue;
+        }
+        $capacity = numQualifiedByPhase($phase);
+        $standardCapacities[] = $capacity;
+        $phaseByCapacity[$capacity] = $phase;
+    }
+
+    $finalsPlanningEvents = [];
     while ($ev = safe_fetch($evRs)) {
         $teamEvent = intval($ev->EvTeamEvent);
         $mixedTeam = intval($ev->EvMixedTeam) === 1;
@@ -772,37 +787,60 @@ function statusChecklistItems() {
         $finalFirstPhase = intval($ev->EvFinalFirstPhase);
         $expectedSize = $finalFirstPhase > 0 ? numQualifiedByPhase($finalFirstPhase) : 0;
         $eventKey = $teamEvent . '|' . $ev->EvCode;
+        $listPage = $teamEvent === 0
+            ? 'Final/Individual/ListEvents.php'
+            : 'Final/Team/ListEvents.php';
 
-        $issues = laneAssistFinalsPlanningIssues([
+        $finalsPlanningEvents[] = [
             'code' => $ev->EvCode,
             'label' => $label,
+            'teamEvent' => $teamEvent,
             'finalFirstPhase' => $finalFirstPhase,
             'rawEntrantCount' => getRawFinalistDemand($ev->EvCode, $teamEvent),
             'hasAnyScheduled' => !empty($scheduledByEvent[$eventKey]),
             'expectedSize' => $expectedSize,
             'standardCapacities' => $standardCapacities,
-        ]);
-
-        $listPage = $teamEvent === 0
-            ? 'Final/Individual/ListEvents.php'
-            : 'Final/Team/ListEvents.php';
-        foreach ($issues as $issue) {
-            $finalsPlanningRows[] = [
-                'text' => $issue['message'],
-                'link' => $rootDir . ($issue['type'] === 'not_scheduled' ? 'Modules/Custom/LaneAssist/ManageFinals/index.php' : $listPage),
-            ];
-        }
+            'phaseByCapacity' => $phaseByCapacity,
+            'listLink' => $rootDir . $listPage,
+            'scheduleLink' => $rootDir . 'Modules/Custom/LaneAssist/ManageFinals/index.php',
+        ];
     }
-    if (!empty($finalsPlanningRows)) {
-        $count = count($finalsPlanningRows);
+
+    $groupedFinalsPlanning = laneAssistGroupFinalsPlanningIssues($finalsPlanningEvents);
+    if (!empty($groupedFinalsPlanning['bracketSizeWrong'])) {
+        $count = count($groupedFinalsPlanning['bracketSizeWrong']);
         $items[] = [
-            'key' => 'finalsPlanning',
+            'key' => 'bracketSizeWrong',
             'severity' => 'warning',
-            'title' => 'Per-event finals planning',
-            'detail' => $count . ' finals planning issue' . ($count === 1 ? '' : 's'),
+            'title' => 'Bracket size wrong (individual)',
+            'detail' => $count . ' bracket size issue' . ($count === 1 ? '' : 's'),
             'link' => null,
             'fix' => null,
-            'rows' => $finalsPlanningRows,
+            'rows' => $groupedFinalsPlanning['bracketSizeWrong'],
+        ];
+    }
+    if (!empty($groupedFinalsPlanning['unscheduledFinals'])) {
+        $count = count($groupedFinalsPlanning['unscheduledFinals']);
+        $items[] = [
+            'key' => 'unscheduledFinals',
+            'severity' => 'warning',
+            'title' => 'Unscheduled finals',
+            'detail' => $count . ' event' . ($count === 1 ? '' : 's') . ' not scheduled yet',
+            'link' => null,
+            'fix' => null,
+            'rows' => $groupedFinalsPlanning['unscheduledFinals'],
+        ];
+    }
+    if (!empty($groupedFinalsPlanning['noBracketConfigured'])) {
+        $count = count($groupedFinalsPlanning['noBracketConfigured']);
+        $items[] = [
+            'key' => 'noBracketConfigured',
+            'severity' => 'warning',
+            'title' => 'No bracket configured',
+            'detail' => $count . ' event' . ($count === 1 ? '' : 's') . ' with entrants but no bracket configured',
+            'link' => null,
+            'fix' => null,
+            'rows' => $groupedFinalsPlanning['noBracketConfigured'],
         ];
     }
 
