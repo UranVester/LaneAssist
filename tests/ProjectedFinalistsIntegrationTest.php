@@ -183,16 +183,23 @@ final class ProjectedFinalistsIntegrationTest extends LaneAssistDbTestCase
 
     public function testGetRawFinalistDemandReturnsUncappedCountForIndividualEvent(): void
     {
-        // Sentinel class 'XZ' to isolate from other tests in this suite.
+        // Sentinel class 'ZD' (not used by any other test in this file) to
+        // isolate from the other tests here: getRawFinalistDemand's raw
+        // entrant count is keyed by class/division across the whole sentinel
+        // tournament (not by event code), so reusing 'XY' or 'XZ' here (used
+        // by testIndividualFallbackCountsRegisteredWhenNoneFlagged and
+        // testIndividualNumQualifiedCaps respectively) -- or their EnId
+        // ranges -- would either crash on a duplicate PK or silently inflate
+        // this test's count by picking up their entries too.
         self::seedRow('EventClass', [
             'EcCode' => 'TID', 'EcTournament' => self::SENTINEL,
-            'EcClass' => 'XZ', 'EcDivision' => 'R', 'EcSubClass' => '',
+            'EcClass' => 'ZD', 'EcDivision' => 'R', 'EcSubClass' => '',
             'EcExtraAddons' => 0, 'EcTeamEvent' => 0,
         ]);
         for ($i = 1; $i <= 5; $i++) {
             self::seedRow('Entries', [
-                'EnId' => 991000 + $i, 'EnTournament' => self::SENTINEL,
-                'EnDivision' => 'R', 'EnClass' => 'XZ', 'EnCode' => "Q$i",
+                'EnId' => 995000 + $i, 'EnTournament' => self::SENTINEL,
+                'EnDivision' => 'R', 'EnClass' => 'ZD', 'EnCode' => "Q$i",
                 'EnName' => 'T', 'EnFirstName' => 'T', 'EnIndFEvent' => 1,
             ]);
         }
