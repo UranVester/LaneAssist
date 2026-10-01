@@ -20,7 +20,7 @@
 .live-progress small { display: block; margin-top: 3px; color: var(--live-muted); font-size: 13px; font-weight: normal; }
 .live-controls, .mode-switch, .session-control { display: flex; align-items: center; gap: 8px; }
 .mode-switch { gap: 0; }
-.mode-button, .icon-button, .advance-button, .bulk-advance-button { min-height: 36px; border: 1px solid #aab6c0; background: #fff; color: var(--live-ink); cursor: pointer; }
+.mode-button, .icon-button, .advance-button, .bulk-advance-button, .status-fix-button { min-height: 36px; border: 1px solid #aab6c0; background: #fff; color: var(--live-ink); cursor: pointer; }
 .mode-button { padding: 7px 12px; }
 .mode-button + .mode-button { border-left: 0; }
 .mode-button.active { background: #25313b; color: #fff; border-color: #25313b; }
@@ -92,7 +92,7 @@
 .final-side { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 58px; padding: 8px 12px; border-bottom: 1px solid #edf0f2; }
 .final-side.winner { background: #edf8f2; }
 .final-card footer { min-height: 12px; padding: 8px 12px; text-align: right; }
-.advance-button, .bulk-advance-button { padding: 7px 11px; border-color: #286fa0; background: #286fa0; color: #fff; }
+.advance-button, .bulk-advance-button, .status-fix-button { padding: 7px 11px; border-color: #286fa0; background: #286fa0; color: #fff; }
 .advance-button:disabled, .bulk-advance-button:disabled { opacity: .55; cursor: wait; }
 .advanced-mark { color: #286fa0; font-size: 12px; font-weight: bold; }
 .empty-state { margin-top: 12px; padding: 50px 16px; border: 1px dashed #aab6c0; background: #f8fafb; color: var(--live-muted); text-align: center; }

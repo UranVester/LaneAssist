@@ -442,7 +442,7 @@
             if (item.link) {
                 $card.append('<footer><a href="' + item.link + '">Open</a></footer>');
             } else if (item.fix) {
-                var $fixButton = $('<button type="button" class="advance-button">Fix</button>');
+                var $fixButton = $('<button type="button" class="status-fix-button">Fix</button>');
                 $fixButton.on('click', function() {
                     applyStatusFix(item);
                 });
