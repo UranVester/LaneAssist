@@ -106,6 +106,7 @@ include('Common/Templates/head.php');
             <div class="mode-switch" role="group" aria-label="Competition phase">
                 <button type="button" class="mode-button active" data-mode="qualification">Qualification</button>
                 <button type="button" class="mode-button" data-mode="finals">Finals <span id="final-count" class="count-badge">0</span></button>
+                <button type="button" class="mode-button" data-mode="status">Status <span id="status-issue-count" class="count-badge" hidden>0</span></button>
             </div>
             <button type="button" id="refresh-button" class="icon-button" title="Refresh now" aria-label="Refresh now">
                 <i class="fa fa-refresh" aria-hidden="true"></i>
@@ -123,6 +124,7 @@ include('Common/Templates/head.php');
     <div id="live-notices" class="live-notices" aria-live="polite"></div>
     <section id="qualification-view" class="live-grid" aria-label="Qualification targets"></section>
     <section id="finals-view" class="live-grid" aria-label="Final matches" hidden></section>
+    <section id="status-view" class="live-grid" aria-label="Tournament status" hidden></section>
     <div id="empty-state" class="empty-state" hidden>No live data is available for this view.</div>
 </main>
 <?php
