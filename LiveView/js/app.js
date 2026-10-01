@@ -423,7 +423,9 @@
         $stageCard.append('<header><h3>Stage: ' + escapeHtml(stageLabels[state.statusSnapshot.stage] || state.statusSnapshot.stage) + '</h3></header>');
         $view.append($stageCard);
 
-        var items = (state.statusSnapshot.items || []).concat(computeUnplayableFinalsItems(state.statusSnapshot.finalsRows || []));
+        var items = (state.statusSnapshot.items || []).concat(window.LaneAssist.statusLogic.computeUnplayableFinalsItems(
+            state.statusSnapshot.finalsRows || [], window.LaneAssist.finalsPlayability, ROOT_DIR
+        ));
 
         var issueCount = 0;
         items.forEach(function(item) {
@@ -451,32 +453,6 @@
         });
 
         $('#status-issue-count').text(issueCount).attr('hidden', issueCount === 0);
-    }
-
-    function computeUnplayableFinalsItems(finalsRows) {
-        var pairs = {};
-        finalsRows.forEach(function(row) {
-            var pairNo = Math.floor((row.matchNo || 0) / 2);
-            var key = row.teamEvent + '|' + row.event + '|' + row.group + '|' + row.phase + '|' + pairNo;
-            (pairs[key] = pairs[key] || []).push(row);
-        });
-
-        var items = [];
-        Object.keys(pairs).forEach(function(key) {
-            var pairRows = pairs[key];
-            if (!window.LaneAssist.finalsPlayability.isPairPlayable(pairRows)) {
-                var sample = pairRows[0];
-                items.push({
-                    key: 'unplayable_' + key,
-                    severity: 'warning',
-                    title: 'Unplayable finals',
-                    detail: 'Event ' + sample.event + ': a scheduled match cannot be filled from the projected field',
-                    link: ROOT_DIR + 'Modules/Custom/LaneAssist/ManageFinals/index.php',
-                    fix: null,
-                });
-            }
-        });
-        return items;
     }
 
     function applyStatusFix(item) {

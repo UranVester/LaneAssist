@@ -835,7 +835,10 @@ function statusChecklistItems() {
             'title' => 'Sessions without times',
             'detail' => "Session {$issue['sessionOrder']} has no time set",
             'link' => null,
-            'fix' => ['action' => 'applySessionDefaults', 'params' => ['sessionId' => $issue['sessionId']]],
+            'fix' => [
+                'action' => 'applySessionDefaults', 'params' => ['sessionId' => $issue['sessionId']],
+                'confirm' => "Set this session to the tournament's start date, 09:00-12:00",
+            ],
         ];
     }
 
@@ -869,7 +872,10 @@ function statusChecklistItems() {
                 'title' => 'Clubs missing logos',
                 'detail' => "Club {$code}'s logo is available but not linked to this tournament",
                 'link' => null,
-                'fix' => ['action' => 'pullClubLogo', 'params' => ['clubCode' => $code]],
+                'fix' => [
+                    'action' => 'pullClubLogo', 'params' => ['clubCode' => $code],
+                    'confirm' => "Copy club {$code}'s logo from another tournament's record of this club code into this tournament",
+                ],
             ];
         } else {
             $items[] = [
