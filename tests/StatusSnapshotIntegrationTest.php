@@ -41,7 +41,7 @@ final class StatusSnapshotIntegrationTest extends LaneAssistDbTestCase
         safe_w_sql('DELETE FROM Qualifications WHERE QuId IN ('
             . StrSafe_DB(self::WITHDRAWN_ENTRY_ID) . ',' . StrSafe_DB(self::NON_ATHLETE_ENTRY_ID)
             . ',' . StrSafe_DB(self::SESSION_ZERO_ENTRY_ID) . ')');
-        safe_w_sql('DELETE FROM Session WHERE SesTournament=' . StrSafe_DB(self::SENTINEL) . " AND SesType='Q' AND SesOrder=1");
+        safe_w_sql('DELETE FROM Session WHERE SesTournament=' . StrSafe_DB(self::SENTINEL) . " AND SesType='Q' AND SesOrder IN (1, 2)");
     }
 
     public static function setUpBeforeClass(): void
@@ -153,9 +153,13 @@ final class StatusSnapshotIntegrationTest extends LaneAssistDbTestCase
 
     public function testUnassignedArchersExcludesNonAthletesAndSessionZeroEntries(): void
     {
+        // A distinct SesOrder (2, not 1) from testUnassignedArchersExcludesWithdrawnEntries's
+        // seed above: Session's primary key is (SesTournament, SesOrder, SesType), and both
+        // tests run in the same class/process, so reusing SesOrder=1 here would hit a
+        // duplicate-key INSERT the second time either test runs.
         self::seedRow('Session', [
             'SesTournament' => self::SENTINEL, 'SesType' => 'Q',
-            'SesOrder' => 1, 'SesFirstTarget' => 1, 'SesTar4Session' => 10,
+            'SesOrder' => 2, 'SesFirstTarget' => 1, 'SesTar4Session' => 10,
             'SesDtStart' => '2026-08-30 09:00:00', 'SesDtEnd' => '2026-08-30 12:00:00',
         ]);
 
