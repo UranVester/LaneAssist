@@ -43,6 +43,14 @@ if (!defined('LANEASSIST_LIVEVIEW_API_TEST_MODE')) {
         liveSnapshot();
     } elseif ($action === 'statusSnapshot') {
         statusSnapshot();
+    } elseif ($action === 'applySessionDefaults') {
+        laneAssistRequirePost();
+        checkFullACL(AclCompetition, '', AclReadWrite, false);
+        applySessionDefaults();
+    } elseif ($action === 'pullClubLogo') {
+        laneAssistRequirePost();
+        checkFullACL(AclCompetition, '', AclReadWrite, false);
+        pullClubLogo();
     } else {
         echo json_encode(['error' => 1, 'message' => 'Invalid action']);
     }
@@ -873,4 +881,68 @@ function statusChecklistItems() {
     }
 
     return $items;
+}
+
+function applySessionDefaults() {
+    $sessionId = trim((string)($_POST['sessionId'] ?? ''));
+    if ($sessionId === '' || !preg_match('/^\d+_[QEF]$/', $sessionId)) {
+        echo json_encode(['error' => 1, 'message' => 'Invalid session']);
+        return;
+    }
+    if (!applySessionDefaultsForTest($sessionId)) {
+        echo json_encode(['error' => 1, 'message' => 'Session not found']);
+        return;
+    }
+    echo json_encode(['error' => 0, 'message' => 'Session time set']);
+}
+
+// $sessionId is the SesOrder_SesType composite string GetSessions() synthesizes
+// as its Id (e.g. "1_Q") -- Session has no SesId column; its real primary key
+// is (SesTournament, SesOrder, SesType).
+function applySessionDefaultsForTest($sessionId) {
+    if (!preg_match('/^(\d+)_([QEF])$/', (string)$sessionId, $m)) {
+        return false;
+    }
+    $sessionOrder = StrSafe_DB(intval($m[1]));
+    $sessionType = StrSafe_DB($m[2]);
+    $tourId = StrSafe_DB($_SESSION['TourId']);
+
+    $tourRow = safe_fetch(safe_r_sql("SELECT ToWhenFrom FROM Tournament WHERE ToId=$tourId"));
+    if (!$tourRow) {
+        return false;
+    }
+    $whenFrom = trim((string)$tourRow->ToWhenFrom);
+    if ($whenFrom === '' || $whenFrom === '0000-00-00') {
+        return false;
+    }
+
+    $sessionRow = safe_fetch(safe_r_sql("SELECT SesOrder FROM Session
+        WHERE SesTournament=$tourId AND SesOrder=$sessionOrder AND SesType=$sessionType"));
+    if (!$sessionRow) {
+        return false;
+    }
+
+    $startValue = StrSafe_DB($whenFrom . ' 09:00:00');
+    $endValue = StrSafe_DB($whenFrom . ' 12:00:00');
+    safe_w_sql("UPDATE Session SET SesDtStart=$startValue, SesDtEnd=$endValue
+        WHERE SesTournament=$tourId AND SesOrder=$sessionOrder AND SesType=$sessionType");
+    return true;
+}
+
+function pullClubLogo() {
+    $clubCode = trim((string)($_POST['clubCode'] ?? ''));
+    if ($clubCode === '') {
+        echo json_encode(['error' => 1, 'message' => 'Invalid club code']);
+        return;
+    }
+    pullClubLogoForTest($clubCode);
+    echo json_encode(['error' => 0, 'message' => 'Logo linked']);
+}
+
+function pullClubLogoForTest($clubCode) {
+    $tourId = StrSafe_DB($_SESSION['TourId']);
+    $clubCode = StrSafe_DB($clubCode);
+
+    safe_w_sql("INSERT IGNORE INTO Flags (FlCode, FlTournament, FlJPG, FlSVG)
+        SELECT FlCode, $tourId, FlJPG, FlSVG FROM Flags WHERE FlCode=$clubCode AND FlTournament=-1");
 }
