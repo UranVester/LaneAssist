@@ -622,11 +622,11 @@ function getLastQualificationSessionEnd() {
     return '';
 }
 
-function getCurrent() {
-    $teamEvent = $_REQUEST['teamEvent'] ?? '';
-    $dateFilter = trim($_REQUEST['dateFilter'] ?? '');
-    $divisionFilter = normalizeFilterValues($_REQUEST['divisionFilter'] ?? []);
-    $classFilter = normalizeFilterValues($_REQUEST['classFilter'] ?? []);
+function buildFinalsRows(array $filters = []) {
+    $teamEvent = $filters['teamEvent'] ?? '';
+    $dateFilter = trim((string)($filters['dateFilter'] ?? ''));
+    $divisionFilter = normalizeFilterValues($filters['divisionFilter'] ?? []);
+    $classFilter = normalizeFilterValues($filters['classFilter'] ?? []);
 
     $where = [
         'fs.FSTournament=' . StrSafe_DB($_SESSION['TourId'])
@@ -983,6 +983,21 @@ function getCurrent() {
         $availableTargets = array_keys($derived);
         sort($availableTargets);
     }
+
+    return ['rows' => $rows, 'availableTargets' => $availableTargets];
+}
+
+function getCurrent() {
+    $filters = [
+        'teamEvent' => $_REQUEST['teamEvent'] ?? '',
+        'dateFilter' => trim($_REQUEST['dateFilter'] ?? ''),
+        'divisionFilter' => $_REQUEST['divisionFilter'] ?? [],
+        'classFilter' => $_REQUEST['classFilter'] ?? [],
+    ];
+
+    $result = buildFinalsRows($filters);
+    $rows = $result['rows'];
+    $availableTargets = $result['availableTargets'];
 
     $validationErrors = validateFinalRows($rows);
     $lastQualificationEnd = getLastQualificationSessionEnd();

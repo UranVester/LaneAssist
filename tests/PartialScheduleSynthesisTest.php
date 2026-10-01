@@ -205,4 +205,14 @@ final class PartialScheduleSynthesisTest extends LaneAssistDbTestCase
                 'match ' . $row['matchNo'] . ' of an unentered individual event must have no seated athlete');
         }
     }
+
+    public function testBuildFinalsRowsReturnsRowsAndAvailableTargetsDirectly(): void
+    {
+        $result = buildFinalsRows(['teamEvent' => '', 'dateFilter' => '', 'divisionFilter' => [], 'classFilter' => []]);
+
+        $this->assertArrayHasKey('rows', $result);
+        $this->assertArrayHasKey('availableTargets', $result);
+        $this->assertIsArray($result['rows']);
+        $this->assertIsArray($result['availableTargets']);
+    }
 }
