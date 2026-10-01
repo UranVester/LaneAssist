@@ -1,35 +1,51 @@
 <?php
 
-require_once(dirname(__FILE__, 3) . '/config.php');
-header('Content-Type: application/json');
-header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
-header('Pragma: no-cache');
+// LANEASSIST_LIVEVIEW_API_TEST_MODE lets a DB integration test load this
+// file's functions (statusSnapshot() and friends) without running the real
+// request plumbing below: config.php bootstraps a real HTTP session, and
+// CheckTourSession()/checkFullACL() either exit() or die() outside a real
+// IANSEO request context, which would abort the whole PHPUnit process. A
+// test defines the constant and pre-loads the dependencies itself (see
+// tests/StatusSnapshotIntegrationTest.php) before requiring this file. The
+// constant is never defined in production, so normal dispatch is unchanged.
+if (!defined('LANEASSIST_LIVEVIEW_API_TEST_MODE')) {
+    require_once(dirname(__FILE__, 3) . '/config.php');
+    header('Content-Type: application/json');
+    header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
+    header('Pragma: no-cache');
 
-if (!CheckTourSession()) {
-    echo json_encode(['error' => 1, 'message' => get_text('CrackError')]);
-    exit;
-}
+    if (!CheckTourSession()) {
+        echo json_encode(['error' => 1, 'message' => get_text('CrackError')]);
+        exit;
+    }
 
-checkFullACL(AclCompetition, '', AclReadOnly, false);
-require_once('Common/Lib/ArrTargets.inc.php');
-require_once(dirname(__FILE__, 2) . '/Common/csrf.php');
-require_once(dirname(__FILE__, 2) . '/Common/live-view-logic.php');
-require_once(dirname(__FILE__, 2) . '/Common/badge-providers.php');
+    checkFullACL(AclCompetition, '', AclReadOnly, false);
+    require_once('Common/Lib/ArrTargets.inc.php');
+    require_once(dirname(__FILE__, 2) . '/Common/csrf.php');
+    require_once(dirname(__FILE__, 2) . '/Common/live-view-logic.php');
+    require_once(dirname(__FILE__, 2) . '/Common/badge-providers.php');
+    require_once('Common/Lib/Fun_Phases.inc.php');
+    require_once('Common/Fun_Sessions.inc.php');
+    require_once(dirname(__FILE__, 2) . '/Common/finals-logic.php');
+    require_once(dirname(__FILE__, 2) . '/Common/status-logic.php');
 
-$action = $_REQUEST['action'] ?? 'snapshot';
-if ($action === 'advance') {
-    laneAssistRequirePost();
-    advanceLiveMatch();
-} elseif ($action === 'toggleArcherRetired') {
-    laneAssistRequirePost();
-    toggleArcherRetired();
-} elseif ($action === 'toggleArcherRetiredBulk') {
-    laneAssistRequirePost();
-    toggleArcherRetiredBulk();
-} elseif ($action === 'snapshot') {
-    liveSnapshot();
-} else {
-    echo json_encode(['error' => 1, 'message' => 'Invalid action']);
+    $action = $_REQUEST['action'] ?? 'snapshot';
+    if ($action === 'advance') {
+        laneAssistRequirePost();
+        advanceLiveMatch();
+    } elseif ($action === 'toggleArcherRetired') {
+        laneAssistRequirePost();
+        toggleArcherRetired();
+    } elseif ($action === 'toggleArcherRetiredBulk') {
+        laneAssistRequirePost();
+        toggleArcherRetiredBulk();
+    } elseif ($action === 'snapshot') {
+        liveSnapshot();
+    } elseif ($action === 'statusSnapshot') {
+        statusSnapshot();
+    } else {
+        echo json_encode(['error' => 1, 'message' => 'Invalid action']);
+    }
 }
 
 function qualificationSnapshot($session) {
@@ -627,4 +643,234 @@ function toggleArcherRetiredBulk() {
         'succeeded' => $succeeded,
         'failed' => count($results) - $succeeded,
     ]);
+}
+
+function statusSnapshot() {
+    echo json_encode([
+        'error' => 0,
+        'stage' => statusTournamentStage(),
+        'updatedAt' => date('c'),
+        'items' => statusChecklistItems(),
+        'finalsRows' => buildFinalsRows()['rows'],
+    ]);
+}
+
+function statusTournamentStage() {
+    $tourId = StrSafe_DB($_SESSION['TourId']);
+
+    $firstQualSessionStart = null;
+    $rs = safe_r_sql("SELECT MIN(SesDtStart) AS FirstStart FROM Session
+        WHERE SesTournament=$tourId AND SesType='Q' AND SesDtStart<>'0000-00-00 00:00:00'");
+    if ($row = safe_fetch($rs)) {
+        $value = trim((string)($row->FirstStart ?? ''));
+        if ($value !== '') {
+            $firstQualSessionStart = $value;
+        }
+    }
+
+    $anyFinalsConfigured = (bool)safe_fetch(safe_r_sql(
+        "SELECT 1 FROM Events WHERE EvTournament=$tourId AND EvFinalFirstPhase>0 LIMIT 1"
+    ));
+
+    return laneAssistTournamentStage(
+        date('Y-m-d H:i:s'),
+        $firstQualSessionStart,
+        finalsBracketsInitialized(),
+        statusFinalsAreComplete(),
+        $anyFinalsConfigured,
+        statusQualificationIsComplete()
+    );
+}
+
+function statusFinalsAreComplete() {
+    $matches = allFinalMatchesSnapshot();
+    if (empty($matches)) {
+        return false;
+    }
+    foreach ($matches as $match) {
+        if (!empty($match['canAdvance']) || !empty($match['canMarkBye'])) {
+            return false;
+        }
+    }
+    return true;
+}
+
+function statusQualificationIsComplete() {
+    $sessions = GetSessions('Q');
+    if (empty($sessions)) {
+        return false;
+    }
+    foreach ($sessions as $session) {
+        $progress = laneAssistQualificationProgress(qualificationSnapshot(intval($session->SesOrder)));
+        if (empty($progress['complete'])) {
+            return false;
+        }
+    }
+    return true;
+}
+
+function statusChecklistItems() {
+    global $CFG;
+    $tourId = StrSafe_DB($_SESSION['TourId']);
+    $rootDir = $CFG->ROOT_DIR;
+    $items = [];
+
+    // 1. Participants entered
+    $participantCount = 0;
+    if ($row = safe_fetch(safe_r_sql("SELECT COUNT(*) AS Cnt FROM Entries WHERE EnTournament=$tourId AND EnAthlete=1"))) {
+        $participantCount = intval($row->Cnt);
+    }
+    $items[] = [
+        'key' => 'participants',
+        'severity' => $participantCount > 0 ? 'info' : 'danger',
+        'title' => 'Participants entered',
+        'detail' => $participantCount > 0
+            ? "{$participantCount} participant" . ($participantCount === 1 ? '' : 's') . ' entered'
+            : 'No participants entered yet',
+        'link' => $rootDir . 'Partecipants/index.php',
+        'fix' => null,
+    ];
+
+    // 2. Target assignment errors, per qualification session
+    $assignments = [];
+    // Qualifications has no tournament column of its own; QuId is Entries.EnId,
+    // so tournament scoping (and the active-entrant filter) goes through the
+    // Entries join, exactly as qualificationSnapshot() above does it.
+    $asRs = safe_r_sql("SELECT qu.QuSession AS SessionOrder, qu.QuTarget AS Target, qu.QuLetter AS Letter
+        FROM Qualifications qu
+        INNER JOIN Entries e ON e.EnId=qu.QuId AND e.EnTournament=$tourId
+        WHERE e.EnStatus<=1");
+    while ($row = safe_fetch($asRs)) {
+        $assignments[] = ['sessionOrder' => intval($row->SessionOrder), 'target' => (string)$row->Target, 'letter' => (string)$row->Letter];
+    }
+    foreach (laneAssistDetectUnassignedArchers($assignments) as $issue) {
+        $items[] = [
+            'key' => 'unassignedTargets_' . $issue['sessionOrder'],
+            'severity' => 'warning',
+            'title' => 'Target assignment errors',
+            'detail' => "{$issue['count']} archers unassigned on target in session {$issue['sessionOrder']}",
+            'link' => $rootDir . 'Modules/Custom/LaneAssist/ManageTargets/index.php?session=' . $issue['sessionOrder'],
+            'fix' => null,
+        ];
+    }
+
+    // 3. Per-event finals planning (individual / team / mixed, demand-gated)
+    $evRs = safe_r_sql("SELECT EvCode, EvEventName, EvTeamEvent, EvMixedTeam, EvFinalFirstPhase, EvNumQualified
+        FROM Events WHERE EvTournament=$tourId");
+    $finalsRows = buildFinalsRows()['rows'];
+    $scheduledByEvent = [];
+    foreach ($finalsRows as $row) {
+        if (trim((string)$row['scheduledDate']) !== '') {
+            $scheduledByEvent[$row['teamEvent'] . '|' . $row['event']] = true;
+        }
+    }
+    while ($ev = safe_fetch($evRs)) {
+        $teamEvent = intval($ev->EvTeamEvent);
+        $mixedTeam = intval($ev->EvMixedTeam) === 1;
+        $label = $teamEvent === 0 ? 'individual' : ($mixedTeam ? 'mixed' : 'team');
+        $finalFirstPhase = intval($ev->EvFinalFirstPhase);
+        $expectedSize = $finalFirstPhase > 0 ? numQualifiedByPhase($finalFirstPhase) : 0;
+        $eventKey = $teamEvent . '|' . $ev->EvCode;
+
+        $issues = laneAssistFinalsPlanningIssues([
+            'code' => $ev->EvCode,
+            'label' => $label,
+            'finalFirstPhase' => $finalFirstPhase,
+            'rawEntrantCount' => getRawFinalistDemand($ev->EvCode, $teamEvent),
+            'hasAnyScheduled' => !empty($scheduledByEvent[$eventKey]),
+            'expectedSize' => $expectedSize,
+        ]);
+
+        $listPage = $teamEvent === 0
+            ? 'Final/Individual/ListEvents.php'
+            : 'Final/Team/ListEvents.php';
+        foreach ($issues as $issue) {
+            $items[] = [
+                'key' => 'finalsPlanning_' . $eventKey . '_' . $issue['type'],
+                'severity' => $issue['severity'],
+                'title' => 'Per-event finals planning',
+                'detail' => $issue['message'],
+                'link' => $rootDir . ($issue['type'] === 'not_scheduled' ? 'Modules/Custom/LaneAssist/ManageFinals/index.php' : $listPage),
+                'fix' => null,
+            ];
+        }
+    }
+
+    // 4. Finals validation errors (phase order / target conflicts)
+    foreach (validateFinalRows($finalsRows) as $error) {
+        $items[] = [
+            'key' => 'finalsValidation_' . $error['type'] . '_' . md5($error['message']),
+            'severity' => 'danger',
+            'title' => 'Finals validation errors',
+            'detail' => $error['message'],
+            'link' => $rootDir . 'Modules/Custom/LaneAssist/ManageFinals/index.php',
+            'fix' => null,
+        ];
+    }
+
+    // 6. Sessions without times
+    $sessions = [];
+    foreach (GetSessions() as $session) {
+        $sessions[] = [
+            'sessionOrder' => intval($session->SesOrder),
+            'sessionId' => (string)$session->Id,
+            'dtStart' => (string)$session->SesDtStart,
+        ];
+    }
+    foreach (laneAssistDetectSessionsWithoutTimes($sessions) as $issue) {
+        $items[] = [
+            'key' => 'sessionTime_' . $issue['sessionId'],
+            'severity' => 'warning',
+            'title' => 'Sessions without times',
+            'detail' => "Session {$issue['sessionOrder']} has no time set",
+            'link' => null,
+            'fix' => ['action' => 'applySessionDefaults', 'params' => ['sessionId' => $issue['sessionId']]],
+        ];
+    }
+
+    // 7. Clubs missing logos
+    $clubRs = safe_r_sql("SELECT DISTINCT co.CoCode AS Code FROM Entries e
+        INNER JOIN Countries co ON co.CoId=e.EnCountry
+        WHERE e.EnTournament=$tourId");
+    $flagRs = safe_r_sql("SELECT FlCode, FlTournament FROM Flags WHERE FlTournament IN (-1, $tourId)");
+    $tournamentFlags = [];
+    $globalFlags = [];
+    while ($flag = safe_fetch($flagRs)) {
+        if (intval($flag->FlTournament) === -1) {
+            $globalFlags[(string)$flag->FlCode] = true;
+        } else {
+            $tournamentFlags[(string)$flag->FlCode] = true;
+        }
+    }
+    while ($club = safe_fetch($clubRs)) {
+        $code = (string)$club->Code;
+        if ($code === '') {
+            continue;
+        }
+        $classification = laneAssistClassifyClubLogo($code, isset($tournamentFlags[$code]), isset($globalFlags[$code]));
+        if ($classification === null) {
+            continue;
+        }
+        if ($classification['type'] === 'linkable') {
+            $items[] = [
+                'key' => 'clubLogo_' . $code,
+                'severity' => 'info',
+                'title' => 'Clubs missing logos',
+                'detail' => "Club {$code}'s logo is available but not linked to this tournament",
+                'link' => null,
+                'fix' => ['action' => 'pullClubLogo', 'params' => ['clubCode' => $code]],
+            ];
+        } else {
+            $items[] = [
+                'key' => 'clubLogo_' . $code,
+                'severity' => 'info',
+                'title' => 'Clubs missing logos',
+                'detail' => "Club {$code} has no logo on file anywhere",
+                'link' => null,
+                'fix' => null,
+            ];
+        }
+    }
+
+    return $items;
 }
