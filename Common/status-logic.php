@@ -154,14 +154,29 @@ function laneAssistGroupFinalsPlanningIssues(array $events) {
                 if (intval($event['teamEvent'] ?? 1) !== 0) {
                     continue;
                 }
-                $currentLabel = laneAssistPhaseLabel($event['finalFirstPhase'] ?? 0);
+                $rawEntrantCount = intval($event['rawEntrantCount'] ?? 0);
+                $expectedSize = intval($event['expectedSize'] ?? 0);
+                $finalFirstPhase = intval($event['finalFirstPhase'] ?? 0);
                 $suggestedCapacity = laneAssistRecommendBracketSize(
-                    intval($event['rawEntrantCount'] ?? 0),
+                    $rawEntrantCount,
                     $event['standardCapacities'] ?? []
                 );
                 $suggestedPhase = ($event['phaseByCapacity'] ?? [])[$suggestedCapacity] ?? null;
+
+                // laneAssistRecommendBracketSize() picks the smallest standard
+                // capacity that covers rawEntrantCount, which is often the
+                // *currently configured* capacity -- that's normal byes, not
+                // a mis-sized bracket, so suppress it entirely. The only time
+                // a same-as-current suggestion is still worth a row is a
+                // genuine overflow (more entrants than the configured bracket
+                // expects) where no bigger standard size exists to suggest.
+                if ($suggestedPhase === $finalFirstPhase && $rawEntrantCount <= $expectedSize) {
+                    continue;
+                }
+
+                $currentLabel = laneAssistPhaseLabel($finalFirstPhase);
                 $text = "{$code} - {$currentLabel}";
-                if ($suggestedPhase !== null) {
+                if ($suggestedPhase !== null && $suggestedPhase !== $finalFirstPhase) {
                     $text .= ' -> ' . laneAssistPhaseLabel($suggestedPhase);
                 }
                 $bracketSizeWrong[] = ['text' => $text, 'link' => $event['listLink'] ?? null];

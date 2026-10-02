@@ -209,19 +209,61 @@ final class StatusLogicTest extends TestCase
     public function testGroupFinalsPlanningIssuesFormatsBracketSizeWrongRowWithSuggestion(): void
     {
         // Mirrors the user's own example: an individual event sized for 1/8
-        // (8 qualified) but with 30 raw entrants should suggest 1/16 (32
-        // qualified), the smallest standard capacity that covers them.
+        // (16 qualified, per numQualifiedByPhase(8)=16) but with 30 raw
+        // entrants should suggest 1/16 (32 qualified), the smallest standard
+        // capacity that covers them. phaseByCapacity mirrors real
+        // numQualifiedByPhase() output: capacity 16 is phase 8, capacity 32
+        // is phase 16 -- capacity never equals phase id.
         $grouped = laneAssistGroupFinalsPlanningIssues([[
             'code' => 'BD', 'label' => 'individual', 'teamEvent' => 0,
             'finalFirstPhase' => 8, 'rawEntrantCount' => 30, 'hasAnyScheduled' => true,
             'expectedSize' => 16, 'standardCapacities' => [8, 16, 32],
-            'phaseByCapacity' => [8 => 8, 16 => 16, 32 => 16],
+            'phaseByCapacity' => [8 => 4, 16 => 8, 32 => 16],
             'listLink' => '/list', 'scheduleLink' => '/schedule',
         ]]);
 
         $this->assertSame([['text' => 'BD - 1/8 -> 1/16', 'link' => '/list']], $grouped['bracketSizeWrong']);
         $this->assertSame([], $grouped['unscheduledFinals']);
         $this->assertSame([], $grouped['noBracketConfigured']);
+    }
+
+    public function testGroupFinalsPlanningIssuesSuppressesSelfReferentialSuggestionFromByes(): void
+    {
+        // Regression: reported live as "BD - 1/8 -> 1/8", which makes no
+        // sense. finalFirstPhase=8 expects 16 qualified; 10 raw entrants is
+        // comfortably within that (byes), but laneAssistRecommendBracketSize()
+        // still returns 16 as "the smallest standard capacity that covers
+        // 10", which maps back to phase 8 -- identical to the current
+        // configuration. This is not a mis-sized bracket, so the row must be
+        // suppressed entirely rather than printing a same-to-same arrow.
+        $grouped = laneAssistGroupFinalsPlanningIssues([[
+            'code' => 'BD', 'label' => 'individual', 'teamEvent' => 0,
+            'finalFirstPhase' => 8, 'rawEntrantCount' => 10, 'hasAnyScheduled' => true,
+            'expectedSize' => 16, 'standardCapacities' => [8, 16, 32],
+            'phaseByCapacity' => [8 => 4, 16 => 8, 32 => 16],
+            'listLink' => '/list', 'scheduleLink' => '/schedule',
+        ]]);
+
+        $this->assertSame([], $grouped['bracketSizeWrong']);
+    }
+
+    public function testGroupFinalsPlanningIssuesShowsOverflowWithoutArrowWhenNoBiggerStandardSizeExists(): void
+    {
+        // Genuine overflow: 40 entrants for a bracket configured at 1/16 (32
+        // qualified), and 32 is the largest standard capacity available.
+        // laneAssistRecommendBracketSize() falls back to that same largest
+        // capacity, which maps back to the current phase -- but this really
+        // is too many entrants for the configured bracket, so the row must
+        // still appear, just without a self-referential arrow.
+        $grouped = laneAssistGroupFinalsPlanningIssues([[
+            'code' => 'BD', 'label' => 'individual', 'teamEvent' => 0,
+            'finalFirstPhase' => 16, 'rawEntrantCount' => 40, 'hasAnyScheduled' => true,
+            'expectedSize' => 32, 'standardCapacities' => [8, 16, 32],
+            'phaseByCapacity' => [8 => 4, 16 => 8, 32 => 16],
+            'listLink' => '/list', 'scheduleLink' => '/schedule',
+        ]]);
+
+        $this->assertSame([['text' => 'BD - 1/16', 'link' => '/list']], $grouped['bracketSizeWrong']);
     }
 
     public function testGroupFinalsPlanningIssuesOmitsArrowWhenNoSuggestedPhaseIsKnown(): void
@@ -243,7 +285,7 @@ final class StatusLogicTest extends TestCase
                 'code' => 'TIC', 'label' => 'team', 'teamEvent' => $teamEvent,
                 'finalFirstPhase' => 8, 'rawEntrantCount' => 30, 'hasAnyScheduled' => true,
                 'expectedSize' => 16, 'standardCapacities' => [8, 16, 32],
-                'phaseByCapacity' => [8 => 8, 16 => 16, 32 => 16],
+                'phaseByCapacity' => [8 => 4, 16 => 8, 32 => 16],
                 'listLink' => '/list', 'scheduleLink' => '/schedule',
             ]]);
             $this->assertSame([], $grouped['bracketSizeWrong'], "teamEvent={$teamEvent} must not surface a size-wrong row");
@@ -281,7 +323,7 @@ final class StatusLogicTest extends TestCase
                 'code' => 'BD', 'label' => 'individual', 'teamEvent' => 0,
                 'finalFirstPhase' => 8, 'rawEntrantCount' => 30, 'hasAnyScheduled' => true,
                 'expectedSize' => 16, 'standardCapacities' => [8, 16, 32],
-                'phaseByCapacity' => [8 => 8, 16 => 16, 32 => 16],
+                'phaseByCapacity' => [8 => 4, 16 => 8, 32 => 16],
                 'listLink' => '/list/ind', 'scheduleLink' => '/schedule',
             ],
             [
