@@ -286,13 +286,15 @@ function loadQualificationPersonalBestScores(array $archers) {
         $firstName = strtolower(trim((string)($archer['firstName'] ?? '')));
         $lastName = strtolower(trim((string)($archer['lastName'] ?? '')));
         $club = strtolower(trim((string)($archer['club'] ?? '')));
-        $identityConditions[$firstName . '|' . $lastName . '|' . $club] = "(LOWER(TRIM(past.EnFirstName))=" . StrSafe_DB($firstName) . "
+        $division = strtolower(trim((string)($archer['division'] ?? '')));
+        $identityConditions[$firstName . '|' . $lastName . '|' . $club . '|' . $division] = "(LOWER(TRIM(past.EnFirstName))=" . StrSafe_DB($firstName) . "
             AND LOWER(TRIM(past.EnName))=" . StrSafe_DB($lastName) . "
-            AND LOWER(TRIM(COALESCE(pastClub.CoCode, '')))=" . StrSafe_DB($club) . ')';
+            AND LOWER(TRIM(COALESCE(pastClub.CoCode, '')))=" . StrSafe_DB($club) . "
+            AND LOWER(TRIM(past.EnDivision))=" . StrSafe_DB($division) . ')';
     }
 
     $sql = "SELECT past.EnFirstName FirstName, past.EnName LastName, COALESCE(pastClub.CoCode, '') Club,
-            history.QuScore Score, pastTournament.ToName CompetitionName
+            past.EnDivision Division, history.QuScore Score, pastTournament.ToName CompetitionName
         FROM Qualifications history
         INNER JOIN Entries past ON past.EnId=history.QuId
         INNER JOIN Tournament pastTournament ON pastTournament.ToId=past.EnTournament
@@ -310,6 +312,7 @@ function loadQualificationPersonalBestScores(array $archers) {
             'firstName' => (string)$row->FirstName,
             'lastName' => (string)$row->LastName,
             'club' => (string)$row->Club,
+            'division' => (string)$row->Division,
             'score' => intval($row->Score),
             'competitionName' => (string)$row->CompetitionName,
         ];

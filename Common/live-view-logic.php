@@ -5,17 +5,17 @@ function laneAssistCompletedEnds($arrowString, $arrowsPerEnd) {
     return intdiv(strlen(rtrim((string)$arrowString)), $arrowsPerEnd);
 }
 
-function laneAssistPersonalBestKey($firstName, $lastName, $club) {
+function laneAssistPersonalBestKey($firstName, $lastName, $club, $division) {
     $normalize = function($value) {
         return preg_replace('/\s+/', ' ', strtolower(trim((string)$value)));
     };
-    return $normalize($firstName) . '|' . $normalize($lastName) . '|' . $normalize($club);
+    return $normalize($firstName) . '|' . $normalize($lastName) . '|' . $normalize($club) . '|' . $normalize($division);
 }
 
 function laneAssistAttachPersonalBests(array $archers, array $historicalScores) {
     $bestScores = [];
     foreach ($historicalScores as $score) {
-        $key = laneAssistPersonalBestKey($score['firstName'] ?? '', $score['lastName'] ?? '', $score['club'] ?? '');
+        $key = laneAssistPersonalBestKey($score['firstName'] ?? '', $score['lastName'] ?? '', $score['club'] ?? '', $score['division'] ?? '');
         $points = max(0, intval($score['score'] ?? 0));
         if (!isset($bestScores[$key]) || $points > $bestScores[$key]['score']) {
             $bestScores[$key] = ['score' => $points, 'competitionName' => trim((string)($score['competitionName'] ?? ''))];
@@ -23,7 +23,7 @@ function laneAssistAttachPersonalBests(array $archers, array $historicalScores) 
     }
 
     foreach ($archers as &$archer) {
-        $key = laneAssistPersonalBestKey($archer['firstName'] ?? '', $archer['lastName'] ?? '', $archer['club'] ?? '');
+        $key = laneAssistPersonalBestKey($archer['firstName'] ?? '', $archer['lastName'] ?? '', $archer['club'] ?? '', $archer['division'] ?? '');
         $personalBest = $bestScores[$key] ?? null;
         $archer['personalBest'] = $personalBest['score'] ?? null;
         $archer['personalBestCompetitionName'] = $personalBest['competitionName'] ?? '';

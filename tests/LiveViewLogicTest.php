@@ -19,12 +19,12 @@ final class LiveViewLogicTest extends TestCase
     public function testPersonalBestMatchesNormalizedNameAndClubAndRequiresAHigherScore(): void
     {
         $archers = laneAssistAttachPersonalBests([
-            ['firstName' => 'Ada', 'lastName' => ' Archer', 'club' => 'North  Club', 'totalPoints' => 601],
-            ['firstName' => 'Ada', 'lastName' => 'Archer', 'club' => 'South Club', 'totalPoints' => 600],
-            ['firstName' => 'No', 'lastName' => 'History', 'club' => 'North Club', 'totalPoints' => 550],
+            ['firstName' => 'Ada', 'lastName' => ' Archer', 'club' => 'North  Club', 'division' => 'R', 'totalPoints' => 601],
+            ['firstName' => 'Ada', 'lastName' => 'Archer', 'club' => 'South Club', 'division' => 'R', 'totalPoints' => 600],
+            ['firstName' => 'No', 'lastName' => 'History', 'club' => 'North Club', 'division' => 'R', 'totalPoints' => 550],
         ], [
-            ['firstName' => ' ada ', 'lastName' => 'archer', 'club' => 'north club', 'score' => 600, 'competitionName' => 'Spring Open'],
-            ['firstName' => 'Ada', 'lastName' => 'Archer', 'club' => 'South Club', 'score' => 600, 'competitionName' => 'Autumn Open'],
+            ['firstName' => ' ada ', 'lastName' => 'archer', 'club' => 'north club', 'division' => ' r ', 'score' => 600, 'competitionName' => 'Spring Open'],
+            ['firstName' => 'Ada', 'lastName' => 'Archer', 'club' => 'South Club', 'division' => 'R', 'score' => 600, 'competitionName' => 'Autumn Open'],
         ]);
 
         $this->assertSame(600, $archers[0]['personalBest']);
@@ -36,6 +36,19 @@ final class LiveViewLogicTest extends TestCase
         $this->assertNull($archers[2]['personalBest']);
         $this->assertSame('', $archers[2]['personalBestCompetitionName']);
         $this->assertFalse($archers[2]['hasNewPersonalBest']);
+    }
+
+    public function testPersonalBestIgnoresHistoryFromADifferentDivision(): void
+    {
+        $archers = laneAssistAttachPersonalBests([
+            ['firstName' => 'Ada', 'lastName' => 'Archer', 'club' => 'North Club', 'division' => 'C', 'totalPoints' => 500],
+        ], [
+            ['firstName' => 'Ada', 'lastName' => 'Archer', 'club' => 'North Club', 'division' => 'R', 'score' => 650, 'competitionName' => 'Recurve Open'],
+        ]);
+
+        $this->assertNull($archers[0]['personalBest']);
+        $this->assertSame('', $archers[0]['personalBestCompetitionName']);
+        $this->assertFalse($archers[0]['hasNewPersonalBest']);
     }
 
     public function testFinalSetPointsAreLimitedAndPaddedToFiveSets(): void
