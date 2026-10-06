@@ -5,8 +5,6 @@
 
 require_once(dirname(__FILE__, 3) . '/config.php');
 
-checkFullACL(AclRoot, '', AclReadWrite);
-
 $PAGE_TITLE = 'Clone Tournament';
 $IncludeJquery = true;
 $IncludeFA = true;

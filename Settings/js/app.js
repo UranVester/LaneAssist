@@ -167,7 +167,6 @@
                 if ($('#admin-hide-ianseo-update-menu').length) {
                     const menuSettings = adminSettings.menu || {};
                     $('#admin-hide-ianseo-update-menu').prop('checked', parseInt(menuSettings.hideIanseoUpdateEntry, 10) > 0);
-                    $('#admin-hide-clone-tournament-menu').prop('checked', parseInt(menuSettings.hideCloneTournamentEntry, 10) > 0);
                     $('#admin-hide-target-faces-menu').prop('checked', parseInt(menuSettings.hideTargetFacesEntry, 10) > 0);
                 }
 
@@ -247,7 +246,6 @@
     function saveAdminSettings() {
         const defaultFinalsLength = parseInt($('#admin-default-finals-length').val(), 10) || 0;
         const hideIanseoUpdateEntry = $('#admin-hide-ianseo-update-menu').is(':checked') ? 1 : 0;
-        const hideCloneTournamentEntry = $('#admin-hide-clone-tournament-menu').is(':checked') ? 1 : 0;
         const hideTargetFacesEntry = $('#admin-hide-target-faces-menu').is(':checked') ? 1 : 0;
 
         $.ajax({
@@ -258,7 +256,6 @@
                 action: 'saveAdminSettings',
                 defaultFinalsLength: defaultFinalsLength,
                 hideIanseoUpdateEntry: hideIanseoUpdateEntry,
-                hideCloneTournamentEntry: hideCloneTournamentEntry,
                 hideTargetFacesEntry: hideTargetFacesEntry
             },
             success: function(response) {

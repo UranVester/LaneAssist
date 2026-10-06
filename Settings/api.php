@@ -71,7 +71,6 @@ function getSettings() {
     }
 
     $adminHideIanseoUpdateMenuEntry = intval(getGlobalModuleParameter('LaneAssist', 'AdminHideIanseoUpdateMenuEntry', 0)) ? 1 : 0;
-    $adminHideCloneTournamentEntry = intval(getGlobalModuleParameter('LaneAssist', 'AdminHideCloneTournamentEntry', 0)) ? 1 : 0;
     $adminHideTargetFacesEntry = intval(getGlobalModuleParameter('LaneAssist', 'AdminHideTargetFacesEntry', 0)) ? 1 : 0;
 
     $userDefaultFinalsLength = intval(getUserScopedGlobalSetting('LaneAssist', 'DefaultFinalsLength', $adminDefaultFinalsLength));
@@ -104,7 +103,6 @@ function getSettings() {
                 'defaultFinalsLength' => $adminDefaultFinalsLength,
                 'menu' => [
                     'hideIanseoUpdateEntry' => $adminHideIanseoUpdateMenuEntry,
-                    'hideCloneTournamentEntry' => $adminHideCloneTournamentEntry,
                     'hideTargetFacesEntry' => $adminHideTargetFacesEntry,
                 ],
             ],
@@ -160,12 +158,10 @@ function saveAdminSettings() {
     }
 
     $hideIanseoUpdateEntry = intval($_REQUEST['hideIanseoUpdateEntry'] ?? ($_REQUEST['hideUpdateEntry'] ?? 0)) ? 1 : 0;
-    $hideCloneTournamentEntry = intval($_REQUEST['hideCloneTournamentEntry'] ?? 0) ? 1 : 0;
     $hideTargetFacesEntry = intval($_REQUEST['hideTargetFacesEntry'] ?? 0) ? 1 : 0;
 
     setGlobalModuleParameter('LaneAssist', 'AdminDefaultFinalsLength', $defaultFinalsLength);
     setGlobalModuleParameter('LaneAssist', 'AdminHideIanseoUpdateMenuEntry', $hideIanseoUpdateEntry);
-    setGlobalModuleParameter('LaneAssist', 'AdminHideCloneTournamentEntry', $hideCloneTournamentEntry);
     setGlobalModuleParameter('LaneAssist', 'AdminHideTargetFacesEntry', $hideTargetFacesEntry);
 
     echo json_encode([
@@ -174,7 +170,6 @@ function saveAdminSettings() {
         'settings' => [
             'defaultFinalsLength' => $defaultFinalsLength,
             'hideIanseoUpdateEntry' => $hideIanseoUpdateEntry,
-            'hideCloneTournamentEntry' => $hideCloneTournamentEntry,
             'hideTargetFacesEntry' => $hideTargetFacesEntry,
         ]
     ]);

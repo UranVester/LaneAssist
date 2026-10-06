@@ -6,8 +6,6 @@
 require_once(dirname(__FILE__, 3) . '/config.php');
 header('Content-Type: application/json');
 
-checkFullACL(AclRoot, '', AclReadWrite, false);
-
 require_once(dirname(__FILE__, 2) . '/Common/csrf.php');
 
 $action = $_REQUEST['action'] ?? '';
@@ -163,6 +161,43 @@ function getMeta() {
     ]);
 }
 
+/**
+ * Whether $toId is in the caller's visible tournament set -- the same rule
+ * getMeta() applies to the list, re-applied here so a caller can't clone a
+ * tournament outside that set just by passing its ToId straight to the API.
+ */
+function isTournamentVisibleToCaller($toId) {
+    if (!empty($_SESSION['debug'])) {
+        return true;
+    }
+
+    $authFilter = buildTournamentAuthFilter();
+    if (empty($authFilter)) {
+        return true;
+    }
+
+    $q = safe_r_sql("SELECT ToId FROM Tournament WHERE ToId=" . StrSafe_DB($toId)
+        . " AND (" . implode(' OR ', $authFilter) . ")");
+    return ($q && safe_num_rows($q) > 0);
+}
+
+/**
+ * Mirrors Tournament/index.php's own guard on creating a tournament with a
+ * given code: only enforced when the Authentication module is active and
+ * the caller isn't global root, via possibleFeature(). On installs without
+ * that module (or without it enabled for this session) this is always true,
+ * same as core's own check.
+ */
+function canCreateTournamentWithCode($code) {
+    if (!(defined('AuthModule') && AuthModule && !empty($GLOBALS['CFG']->USERAUTH))) {
+        return true;
+    }
+    if (empty($_SESSION['AUTH_ENABLE']) || !empty($_SESSION['AUTH_ROOT'])) {
+        return true;
+    }
+    return possibleFeature(AclRoot, AclReadWrite, $code);
+}
+
 function buildTournamentAuthFilter() {
     $authFilter = [];
 
@@ -245,6 +280,10 @@ function buildInsertSet(array $row, array $allowedColumns) {
 }
 
 function cloneTournamentRow($sourceTournamentId, $newName, $newCodeRaw) {
+    if (!isTournamentVisibleToCaller($sourceTournamentId)) {
+        return [0, '', 'Source tournament not found'];
+    }
+
     $sourceRs = safe_r_sql("SELECT * FROM Tournament WHERE ToId=" . StrSafe_DB($sourceTournamentId));
     if (!$sourceRs || safe_num_rows($sourceRs) !== 1) {
         return [0, '', 'Source tournament not found'];
@@ -263,10 +302,26 @@ function cloneTournamentRow($sourceTournamentId, $newName, $newCodeRaw) {
     if (tournamentCodeExists($newCode)) {
         return [0, '', 'Competition code already exists'];
     }
+    if (!canCreateTournamentWithCode($newCode)) {
+        return [0, '', 'You are not permitted to create a tournament with this code'];
+    }
 
     unset($source['ToId']);
     $source['ToName'] = $newName;
     $source['ToCode'] = $newCode;
+
+    // Flags/bindings about the SOURCE tournament, not the structure being
+    // copied -- a clone must never inherit them. ToOnlineId above all: it
+    // binds to an ianseo.net online event (Common/Lib/CommonLib.php writes
+    // it from SetCredentials), so an inherited value would make the clone
+    // claim the source's online identity. ToDbVersion is re-stamped for the
+    // same reason the fresh-create path does: the clone's structure is
+    // today's schema, so UpdatePreOpen() must not replay the source's
+    // historical per-tournament upgrade history against it.
+    $source['ToOnlineId'] = 0;
+    $source['ToIsORIS'] = 0;
+    $source['ToBlock'] = 0;
+    $source['ToDbVersion'] = GetParameter('DBUpdate');
 
     $set = [];
     foreach ($source as $col => $val) {

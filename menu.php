@@ -51,7 +51,6 @@ function laneAssistRemoveCoreUpdateEntry(&$mods, $rootDir) {
 }
 
 $hideIanseoUpdateEntry = laneAssistGetAdminMenuToggle('AdminHideIanseoUpdateMenuEntry');
-$hideCloneTournamentEntry = laneAssistGetAdminMenuToggle('AdminHideCloneTournamentEntry');
 $hideTargetFacesEntry = laneAssistGetAdminMenuToggle('AdminHideTargetFacesEntry');
 
 if ($hideIanseoUpdateEntry) {
@@ -59,9 +58,6 @@ if ($hideIanseoUpdateEntry) {
 }
 
 $ret['MODS'][] = MENU_DIVIDER;
-if (!$hideCloneTournamentEntry) {
-	$ret['MODS'][] = 'Clone Tournament' . '|' . $CFG->ROOT_DIR . 'Modules/Custom/LaneAssist/CloneTournament/index.php';
-}
 if ($hasSelectedTour) {
 	$ret['MODS'][] = 'LaneAssist Live View' . '|' . $CFG->ROOT_DIR . 'Modules/Custom/LaneAssist/LiveView/index.php';
 	$ret['MODS'][] = 'Manage Targets - Interactive' . '|' . $CFG->ROOT_DIR . 'Modules/Custom/LaneAssist/ManageTargets/index.php';

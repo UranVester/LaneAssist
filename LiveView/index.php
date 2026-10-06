@@ -106,9 +106,9 @@ include('Common/Templates/head.php');
                 </div>
             </div>
             <div class="mode-switch" role="group" aria-label="Competition phase">
+                <button type="button" class="mode-button" data-mode="status">Status <span id="status-issue-count" class="count-badge" hidden>0</span></button>
                 <button type="button" class="mode-button active" data-mode="qualification">Qualification</button>
                 <button type="button" class="mode-button" data-mode="finals">Finals <span id="final-count" class="count-badge">0</span></button>
-                <button type="button" class="mode-button" data-mode="status">Status <span id="status-issue-count" class="count-badge" hidden>0</span></button>
             </div>
             <button type="button" id="refresh-button" class="icon-button" title="Refresh now" aria-label="Refresh now">
                 <i class="fa fa-refresh" aria-hidden="true"></i>

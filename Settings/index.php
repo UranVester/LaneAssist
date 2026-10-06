@@ -70,12 +70,6 @@ include('Common/Templates/head.php');
                 </label>
             </div>
             <div class="settings-field">
-                <label class="checkbox-inline">
-                    <input id="admin-hide-clone-tournament-menu" type="checkbox">
-                    Hide "Clone Tournament" menu entry
-                </label>
-            </div>
-            <div class="settings-field">
                 <!--<label class="checkbox-inline">
                     <input id="admin-hide-target-faces-menu" type="checkbox">
                     Hide "Target Faces" menu entry
@@ -137,6 +131,15 @@ include('Common/Templates/head.php');
                     <a href="<?php echo $CFG->ROOT_DIR; ?>index.php" class="btn btn-info"><i class="fa fa-list"></i> Select Competition</a>
                 </div>
             <?php endif; ?>
+        </section>
+
+        <section class="settings-card">
+            <h3><i class="fa fa-copy"></i> Clone Tournament</h3>
+            <p>Create a new tournament from an existing one's setup (categories, events, targets/sessions, finals, etc).</p>
+            <p class="inline-note">The tournament list there only shows the tournaments you have access to.</p>
+            <div class="settings-actions">
+                <a href="<?php echo $CFG->ROOT_DIR; ?>Modules/Custom/LaneAssist/CloneTournament/index.php" class="btn btn-info"><i class="fa fa-clone"></i> Open Clone Tournament</a>
+            </div>
         </section>
 
         <section class="settings-card">
