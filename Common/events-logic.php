@@ -278,6 +278,22 @@ function ceDefaultEventSettings(string $div): array
 }
 
 /**
+ * A raw EvDistance / distance-profile token reduced to bare digits, as the
+ * plan's 'distance' fields expect: '18 m' -> '18', '12m' -> '12', '08' ->
+ * '8'. '0' (CreateEventNew's "not set" default), '' and anything without
+ * digits give '' (unknown).
+ */
+function ceNormalizeDistance(string $raw): string
+{
+    if (!preg_match('/(\d+)/', $raw, $matches)) {
+        return '';
+    }
+
+    $meters = intval($matches[1]);
+    return $meters > 0 ? (string) $meters : '';
+}
+
+/**
  * The finals distance a single division+class pair contributes to its
  * group: the distance of whichever of the pair's current individual events
  * has the most participants (ties: lowest EvProgr), since that's the event

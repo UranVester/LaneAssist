@@ -377,6 +377,21 @@ final class EventsLogicTest extends TestCase
         $this->assertSame('', $plan['events'][0]['distance']);
     }
 
+    public function testNormalizeDistanceKeepsDigitsOnly(): void
+    {
+        // Live EvDistance values include '18 m', '12m', '08' and '0'/'' (the
+        // CreateEventNew default, i.e. "not set"). Plan building appends 'm'
+        // to the distance for the name and uses its digits for the code, so
+        // it must arrive as bare digits or '' for unknown.
+        $this->assertSame('18', ceNormalizeDistance('18'));
+        $this->assertSame('18', ceNormalizeDistance('18 m'));
+        $this->assertSame('12', ceNormalizeDistance('12m'));
+        $this->assertSame('8', ceNormalizeDistance('08'));
+        $this->assertSame('', ceNormalizeDistance('0'));
+        $this->assertSame('', ceNormalizeDistance(''));
+        $this->assertSame('', ceNormalizeDistance('-'));
+    }
+
     public function testFingerprintChangesWithDeletionCounts(): void
     {
         $plan = $this->dkPlan(['RHS' => 2], ['division' => 1]);
