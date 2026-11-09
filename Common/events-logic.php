@@ -499,6 +499,11 @@ function ceBuildPlan(array $pairs, array $oldEvents, array $classes, array $crit
         if (!isset($classesById[$pair['class']])) {
             continue; // pair's class isn't in this rule set's class list -- skip it
         }
+        if (!$tournamentEmpty && $pair['count'] === 0) {
+            // With archers anywhere, only pairs that have some are mapped;
+            // an empty pair must not join a group (or set its distance).
+            continue;
+        }
 
         $keyParts = [];
         if ($criteria['division']) {

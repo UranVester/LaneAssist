@@ -272,6 +272,37 @@ final class EventsLogicTest extends TestCase
         $this->assertSame('12R', $r['settingsFrom']);
     }
 
+    public function testPairsWithoutArchersAreNotMappedOrUsedForDistance(): void
+    {
+        // Found live on a DK indoor tournament, Division only: group R also
+        // swept in the empty 8m Micro class, so it got distance 8 and mapped
+        // all 14 classes. With archers anywhere, a pair with none is not
+        // mapped (spec), so it must not shape the group's distance either.
+        $classes = [
+            ['id' => 'HC', 'name' => 'Herre Micro', 'sex' => 0, 'ageFrom' => 1, 'ageTo' => 11, 'order' => 2],
+            ['id' => 'HA', 'name' => 'Herre Aspirant', 'sex' => 0, 'ageFrom' => 14, 'ageTo' => 15, 'order' => 6],
+            ['id' => 'HS', 'name' => 'Herre Senior', 'sex' => 0, 'ageFrom' => 21, 'ageTo' => 49, 'order' => 12],
+        ];
+        $pairs = [
+            ['div' => 'R', 'divName' => 'Recurve', 'divOrder' => 1, 'class' => 'HC', 'count' => 0, 'oldEvents' => ['08R'], 'qualShortest' => '8'],
+            ['div' => 'R', 'divName' => 'Recurve', 'divOrder' => 1, 'class' => 'HA', 'count' => 2, 'oldEvents' => ['12R'], 'qualShortest' => '12'],
+            ['div' => 'R', 'divName' => 'Recurve', 'divOrder' => 1, 'class' => 'HS', 'count' => 3, 'oldEvents' => ['18R'], 'qualShortest' => '18'],
+        ];
+        $oldEvents = [
+            '08R' => ['code' => '08R', 'name' => '8m Recurve', 'progr' => 1, 'distance' => '8', 'count' => 0, 'settings' => []],
+            '12R' => ['code' => '12R', 'name' => '12m Recurve', 'progr' => 2, 'distance' => '12', 'count' => 2, 'settings' => []],
+            '18R' => ['code' => '18R', 'name' => '18m Recurve', 'progr' => 3, 'distance' => '18', 'count' => 3, 'settings' => []],
+        ];
+
+        $plan = ceBuildPlan($pairs, $oldEvents, $classes, ['division' => 1], $this->dkLabels());
+
+        $this->assertCount(1, $plan['events']);
+        $r = $plan['events'][0];
+        $this->assertSame('12', $r['distance']);
+        $this->assertSame(5, $r['count']);
+        $this->assertSame([['div' => 'R', 'class' => 'HA'], ['div' => 'R', 'class' => 'HS']], $r['pairs']);
+    }
+
     public function testClassWithoutGenderMergesHerreDame(): void
     {
         $plan = $this->dkPlan(['RHJ' => 3, 'RDJ' => 3], ['class' => 1, 'division' => 1]);
