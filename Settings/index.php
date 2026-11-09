@@ -143,6 +143,18 @@ include('Common/Templates/head.php');
         </section>
 
         <section class="settings-card">
+            <h3><i class="fa fa-random"></i> Change finals events</h3>
+            <p>Replace the selected tournament's individual final events with a new set, separated by gender, class, division or distance. Preview first; team events are not touched.</p>
+            <?php if ($hasCompetition): ?>
+                <div class="settings-actions">
+                    <a href="<?php echo $CFG->ROOT_DIR; ?>Modules/Custom/LaneAssist/ChangeEvents/index.php" class="btn btn-info"><i class="fa fa-random"></i> Open Change finals events</a>
+                </div>
+            <?php else: ?>
+                <p class="inline-note">Select a competition first.</p>
+            <?php endif; ?>
+        </section>
+
+        <section class="settings-card">
             <h3><i class="fa fa-cloud-download"></i> Updates</h3>
             <p class="inline-note">Checks the latest signed release from <strong>GitHub</strong>.</p>
             <div id="update-github-summary" class="inline-note">Updates have not been checked yet.</div>

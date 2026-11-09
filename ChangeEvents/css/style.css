@@ -1,0 +1,151 @@
+.change-events-container {
+    padding: 20px;
+}
+
+.toolbar {
+    margin-bottom: 12px;
+}
+
+.toolbar h2 {
+    margin: 0;
+}
+
+.subtitle {
+    margin-top: 4px;
+    color: #666;
+    font-size: 13px;
+}
+
+.status-message {
+    margin: 0 0 12px;
+    padding: 10px 12px;
+    border-radius: 4px;
+    font-size: 13px;
+}
+
+.hidden {
+    display: none;
+}
+
+.status-info { background: #e7f3ff; color: #0b518d; border: 1px solid #9fc7ea; }
+.status-success { background: #eaf8ed; color: #1f6a36; border: 1px solid #a5dfb6; }
+.status-error { background: #fdecec; color: #8b1f1f; border: 1px solid #efb1b1; }
+
+.panel {
+    background: #fff;
+    border: 1px solid #dfe4ea;
+    border-radius: 8px;
+    padding: 12px;
+    margin-bottom: 14px;
+}
+
+.panel h3 {
+    margin: 0 0 10px;
+    font-size: 15px;
+}
+
+.criteria {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 20px;
+    margin-bottom: 10px;
+}
+
+.criteria label {
+    cursor: pointer;
+}
+
+.criteria label.disabled {
+    opacity: 0.45;
+    cursor: default;
+}
+
+.criteria label i {
+    color: #666;
+}
+
+.actions {
+    margin-top: 8px;
+}
+
+.content-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+}
+
+@media (max-width: 900px) {
+    .content-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+.events-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+}
+
+.events-table th,
+.events-table td {
+    text-align: left;
+    padding: 4px 6px;
+    border-bottom: 1px solid #eef1f5;
+}
+
+.events-table th.num,
+.events-table td.num {
+    text-align: center;
+}
+
+.events-table tr.more-row.hidden {
+    display: none;
+}
+
+.show-more-row td {
+    font-style: italic;
+}
+
+.table-total,
+.empty-note {
+    margin-top: 6px;
+    color: #666;
+    font-size: 12px;
+}
+
+.warning-box {
+    border: 2px solid #c0392b;
+    background: rgba(192, 57, 43, 0.08);
+    padding: 12px;
+    border-radius: 6px;
+    margin-bottom: 14px;
+    font-size: 13px;
+}
+
+.warning-title {
+    color: #c0392b;
+    font-weight: bold;
+}
+
+.warning-box ul {
+    margin: 6px 0;
+}
+
+.warning-line {
+    margin-top: 4px;
+}
+
+.btn-danger {
+    background: #c0392b;
+    color: #fff;
+}
+
+.btn-danger:hover:not(:disabled) {
+    background: #a93226;
+}
+
+.result-line {
+    font-weight: bold;
+    color: #1f6a36;
+    margin-bottom: 8px;
+}

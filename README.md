@@ -32,6 +32,7 @@ LaneAssist adds practical tools on top of IANSEO, including:
 - Interactive target management (Drag & drop + auto)
 - Interactive finals management (Drag & drop + auto)
 - Tournament cloning helpers (opened from the Settings page)
+- Change finals events: replace a tournament's individual final events with a new set split by gender, class, division or distance, with a preview and a warning listing what will be deleted (opened from the Settings page)
 - Module settings and update controls
 
 ## Live View
