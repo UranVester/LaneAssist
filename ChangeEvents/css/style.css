@@ -149,3 +149,7 @@
     color: #1f6a36;
     margin-bottom: 8px;
 }
+
+.result-line.result-warning {
+    color: #8a5a00;
+}

@@ -432,6 +432,52 @@ final class EventsLogicTest extends TestCase
         );
     }
 
+    public function testLongNameIsCutByCharactersNotBytes(): void
+    {
+        // Found in review: substr($name, 0, 64) counted bytes, so a name
+        // with "Å" (2 bytes) was cut short and could end mid-character --
+        // invalid UTF-8 that then broke json_encode() in the fingerprint.
+        $divName = 'Åben ' . str_repeat('Å', 70);
+        $classes = [
+            ['id' => 'H', 'name' => 'Herre', 'sex' => 0, 'ageFrom' => 0, 'ageTo' => 0, 'order' => 1],
+        ];
+        $pairs = [
+            ['div' => 'R', 'divName' => $divName, 'divOrder' => 1, 'class' => 'H', 'count' => 2, 'oldEvents' => [], 'qualShortest' => '18'],
+        ];
+
+        $plan = ceBuildPlan($pairs, [], $classes, ['division' => 1], $this->dkLabels());
+        $name = $plan['events'][0]['name'];
+
+        $this->assertTrue(mb_check_encoding($name, 'UTF-8'));
+        $this->assertSame(64, mb_strlen($name, 'UTF-8'));
+        $this->assertSame(mb_substr($divName, 0, 64, 'UTF-8'), $name);
+        $this->assertSame(40, strlen(cePlanFingerprint($plan, [])));
+    }
+
+    public function testCodesAreCutByCharacters(): void
+    {
+        $used = [];
+        $code = ceUniqueCode('ÅÅÅÅÅÅÅÅÅÅÅÅ', $used);
+        $this->assertSame('ÅÅÅÅÅÅÅÅÅÅ', $code);
+        $this->assertSame('ÅÅÅÅÅÅÅÅÅ2', ceUniqueCode('ÅÅÅÅÅÅÅÅÅÅÅÅ', $used));
+    }
+
+    public function testCommonCodeComparesCharactersNotBytes(): void
+    {
+        // Å (C3 85) and Ø (C3 98) share a lead byte; a byte-wise compare
+        // kept that stray byte in the merged code.
+        $this->assertSame('1', ceCommonCode(['Å1', 'Ø1']));
+    }
+
+    public function testFingerprintRefusesInvalidUtf8InsteadOfHashingEmpty(): void
+    {
+        $plan = ['events' => [[
+            'code' => "R\xC3", 'pairs' => [], 'firstPhase' => 2, 'distance' => '18', 'settingsFrom' => null,
+        ]]];
+        $this->expectException(JsonException::class);
+        cePlanFingerprint($plan, []);
+    }
+
     public function testDefaultEventSettingsDifferForCompound(): void
     {
         $recurve = ceDefaultEventSettings('R');

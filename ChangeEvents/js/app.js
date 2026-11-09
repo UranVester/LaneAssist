@@ -252,6 +252,11 @@
         if (del.eliminationRows > 0) {
             lines.push('<b>Eliminations:</b> ' + plural(del.eliminationRows, 'elimination row', 'elimination rows'));
         }
+        const elimTypeEvents = del.elimTypeEvents || [];
+        if (elimTypeEvents.length > 0) {
+            lines.push('<b>Elimination/round-robin setup</b> on ' + plural(elimTypeEvents.length, 'event', 'events')
+                + ': ' + escapeHtml(elimTypeEvents.join(', ')) + ' (new events are created without it)');
+        }
         const collapsed = del.collapsed || [];
         if (collapsed.length > 0) {
             lines.push('<b>Subclass / multi-event mappings:</b> ' + plural(collapsed.length, 'event', 'events')
@@ -289,12 +294,19 @@
     function renderResult(response) {
         clearPreview();
         const listUrl = ROOT_DIR + 'Final/Individual/ListEvents.php';
+        const summary = 'Created ' + plural(parseInt(response.created, 10) || 0, 'event', 'events')
+            + ', deleted ' + (parseInt(response.deleted, 10) || 0)
+            + ', placed ' + plural(parseInt(response.placed, 10) || 0, 'archer', 'archers');
+        const warning = response.warning
+            ? '<div class="result-line result-warning"><i class="fa fa-exclamation-triangle"></i> '
+                + escapeHtml(response.warning) + '</div>'
+            : '';
         $('#result').removeClass('hidden').html(
-            '<div class="result-line"><i class="fa fa-check"></i> '
-            + escapeHtml('Created ' + response.created + ' events, deleted ' + response.deleted) + '</div>'
+            '<div class="result-line"><i class="fa fa-check"></i> ' + escapeHtml(summary) + '</div>'
+            + warning
             + '<a class="btn btn-info" href="' + escapeHtml(listUrl) + '"><i class="fa fa-list"></i> Open individual events list</a>'
         );
-        showStatus('Created ' + response.created + ' events, deleted ' + response.deleted, 'success');
+        showStatus(response.warning ? summary + ' — ' + response.warning : summary, 'success');
     }
 
     function showStatus(message, type) {

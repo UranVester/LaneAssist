@@ -226,6 +226,8 @@ function ceCountQuery(string $sql): int
  *   shoot-off (IndSO > 0, a tie for a qualifying place, or shoot-off arrows
  *   entered). A negative IndSO is IANSEO's plain untied-rank marker
  *   (Obj_Rank_Abs_calc stores so * rank), not a shoot-off.
+ * - elimTypeEvents: codes of events with EvElimType>0 (elimination rounds,
+ *   pools or round robin), whose setup the new events do not carry over.
  * - collapsed: events whose mapping a rebuild cannot keep -- they use
  *   subclass/extras rows, or share a division+class with another event.
  * - stale: rows in tables a rebuild leaves pointing at old events (Awards,
@@ -265,6 +267,15 @@ function ceDeletionSummary(int $tourId): array
         WHERE IndTournament=$tourId AND (IndSO>0 OR IndTieBreak<>'')");
     $eliminationRows = ceCountQuery("SELECT COUNT(*) FROM Eliminations $joinIndEvent AND EvCode=ElEventCode
         WHERE ElTournament=$tourId");
+
+    // Events with an elimination / round-robin / pool setup (EvElimType>0):
+    // new events are created without one, so that setup is lost too.
+    $elimTypeEvents = [];
+    $rs = safe_r_sql("SELECT EvCode FROM Events
+        WHERE EvTournament=$tourId AND EvTeamEvent=0 AND EvElimType>0 ORDER BY EvProgr, EvCode");
+    while ($row = safe_fetch($rs)) {
+        $elimTypeEvents[] = (string) $row->EvCode;
+    }
 
     $collapsed = [];
     $rs = safe_r_sql("SELECT DISTINCT EcCode FROM EventClass $joinIndEvent AND EvCode=EcCode
@@ -317,15 +328,17 @@ function ceDeletionSummary(int $tourId): array
         'rankedRows' => $rankedRows,
         'shootOffRows' => $shootOffRows,
         'eliminationRows' => $eliminationRows,
+        'elimTypeEvents' => $elimTypeEvents,
         'collapsed' => $collapsed,
         'stale' => $stale,
     ];
 }
 
 /**
- * Replaces every individual event of $tourId with $plan's events (a
- * ceBuildPlan() result) in one write-connection transaction: deleteEvent()
- * each old one, create each new one with its match settings (copied from
+ * Replaces the individual events of $tourId listed in $oldEvents (the
+ * ceLoadInput() 'oldEvents' the plan was previewed against, code => event)
+ * with $plan's events (a ceBuildPlan() result) in one write-connection
+ * transaction: deleteEvent() each old one, create each new one with its match settings (copied from
  * 'settingsFrom', else ceDefaultEventSettings()), map its division+class
  * pairs, then build the finals grids. Team events are not touched.
  *
@@ -336,10 +349,16 @@ function ceDeletionSummary(int $tourId): array
  * rolled back explicitly. Rankings (MakeIndAbs) are the caller's job, after
  * commit.
  */
-function ceApplyPlan(int $tourId, array $plan, array $tour): array
+function ceApplyPlan(int $tourId, array $plan, array $tour, array $oldEvents): array
 {
-    $oldEvents = ceLoadOldEvents($tourId);
+    if (empty($plan['events'])) {
+        // Never delete everything and create nothing.
+        throw new InvalidArgumentException('The plan creates no events; refusing to delete the current ones.');
+    }
 
+    // A safe_error() (failed query) exit()s instead of throwing, so the
+    // catch below never sees it; that path relies on IANSEO's non-persistent
+    // mysqli connection closing at exit, which rolls the transaction back.
     safe_w_BeginTransaction();
     try {
         foreach (array_keys($oldEvents) as $code) {
@@ -389,7 +408,11 @@ function ceApplyPlan(int $tourId, array $plan, array $tour): array
         throw $e;
     }
 
-    return ['created' => count($plan['events']), 'deleted' => count($oldEvents)];
+    return [
+        'created' => count($plan['events']),
+        'deleted' => count($oldEvents),
+        'placed' => (int) array_sum(array_column($plan['events'], 'count')),
+    ];
 }
 
 /**
@@ -436,16 +459,23 @@ function cePreview(int $tourId, array $criteria): array
 /**
  * Applies the rebuild only if a fresh preview still has $fingerprint (the
  * one the user confirmed). Otherwise nothing is written and the fresh
- * preview comes back as 'preview' so the user can re-check it.
+ * preview comes back as 'preview' so the user can re-check it. A plan that
+ * would create no events is refused ('message') with nothing written.
  */
 function ceGuardedApply(int $tourId, array $criteria, string $fingerprint): array
 {
     $input = ceLoadInput($tourId);
     $preview = cePreviewFromInput($tourId, $input, $criteria);
 
+    if (empty($preview['plan']['events'])) {
+        return ['error' => 1, 'message' => 'These settings would create no events, so nothing was changed.'];
+    }
+
     if (!hash_equals($preview['fingerprint'], $fingerprint)) {
         return ['error' => 1, 'stale' => true, 'preview' => $preview];
     }
 
-    return ['error' => 0] + ceApplyPlan($tourId, $preview['plan'], $input['tour']);
+    // Delete exactly the events this preview was built (and fingerprinted)
+    // against, not a fresh re-read.
+    return ['error' => 0] + ceApplyPlan($tourId, $preview['plan'], $input['tour'], $input['oldEvents']);
 }

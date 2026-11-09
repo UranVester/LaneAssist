@@ -323,9 +323,9 @@ final class ChangeEventsIntegrationTest extends LaneAssistDbTestCase
         $this->assertSame(['RDS', 'RHS'], array_column($preview['newEvents'], 'code'));
         $input = ceLoadInput(self::SENTINEL);
 
-        $result = ceApplyPlan(self::SENTINEL, $preview['plan'], $input['tour']);
+        $result = ceApplyPlan(self::SENTINEL, $preview['plan'], $input['tour'], $input['oldEvents']);
 
-        $this->assertSame(['created' => 2, 'deleted' => 1], $result);
+        $this->assertSame(['created' => 2, 'deleted' => 1, 'placed' => 5], $result);
         $s = self::SENTINEL;
         $this->assertSame(0, self::countRows("SELECT COUNT(*) n FROM Events WHERE EvTournament=$s AND EvCode='18R'"));
         $this->assertSame(0, self::countRows("SELECT COUNT(*) n FROM Finals WHERE FinTournament=$s AND FinEvent='18R'"));
@@ -394,7 +394,7 @@ final class ChangeEventsIntegrationTest extends LaneAssistDbTestCase
         $fingerprint = cePreview(self::SENTINEL, self::DK_FULL)['fingerprint'];
         $result = ceGuardedApply(self::SENTINEL, self::DK_FULL, $fingerprint);
 
-        $this->assertSame(['error' => 0, 'created' => 1, 'deleted' => 1], $result);
+        $this->assertSame(['error' => 0, 'created' => 1, 'deleted' => 1, 'placed' => 2], $result);
         $s = self::SENTINEL;
         $this->assertSame(0, self::countRows("SELECT COUNT(*) n FROM Events WHERE EvTournament=$s AND EvCode='18R'"));
         $this->assertSame(1, self::countRows("SELECT COUNT(*) n FROM Events WHERE EvTournament=$s AND EvCode='RHS'"));
@@ -416,5 +416,132 @@ final class ChangeEventsIntegrationTest extends LaneAssistDbTestCase
             $preview['newEvents']
         );
         $this->assertSame(cePlanFingerprint($preview['plan'], $preview['deletion']), $preview['fingerprint']);
+    }
+
+    /** Old event 18R mapped to R/HS + R/DS, with two Finals slots. */
+    private static function seedOldEventWithRows(): void
+    {
+        self::seedEvent('18R', 0);
+        self::seedEventClass('18R', 0, 'R', 'HS');
+        self::seedEventClass('18R', 0, 'R', 'DS');
+        self::seedRow('Finals', ['FinEvent' => '18R', 'FinMatchNo' => 8, 'FinTournament' => self::SENTINEL]);
+        self::seedRow('Finals', ['FinEvent' => '18R', 'FinMatchNo' => 9, 'FinTournament' => self::SENTINEL]);
+    }
+
+    private function assertOldEventIntact(): void
+    {
+        $s = self::SENTINEL;
+        $this->assertSame(1, self::countRows("SELECT COUNT(*) n FROM Events WHERE EvTournament=$s AND EvCode='18R' AND EvTeamEvent=0"));
+        $this->assertSame(2, self::countRows("SELECT COUNT(*) n FROM EventClass WHERE EcTournament=$s AND EcCode='18R' AND EcTeamEvent=0"));
+        $this->assertSame(2, self::countRows("SELECT COUNT(*) n FROM Finals WHERE FinTournament=$s AND FinEvent='18R'"));
+    }
+
+    public function testGuardedApplyRefusesAPlanThatCreatesNoEvents(): void
+    {
+        self::seedOldEventWithRows();
+        // No athlete divisions -> no candidate pairs -> an empty plan.
+        safe_w_sql("DELETE FROM Divisions WHERE DivTournament=" . StrSafe_DB(self::SENTINEL));
+
+        $preview = cePreview(self::SENTINEL, self::DK_FULL);
+        $this->assertSame([], $preview['plan']['events']);
+
+        $result = ceGuardedApply(self::SENTINEL, self::DK_FULL, $preview['fingerprint']);
+
+        $this->assertSame(1, $result['error']);
+        $this->assertSame('These settings would create no events, so nothing was changed.', $result['message']);
+        $this->assertArrayNotHasKey('stale', $result);
+        $this->assertOldEventIntact();
+    }
+
+    public function testApplyPlanThrowsOnAnEmptyPlanBeforeDeletingAnything(): void
+    {
+        self::seedOldEventWithRows();
+        $input = ceLoadInput(self::SENTINEL);
+
+        try {
+            ceApplyPlan(self::SENTINEL, ['events' => []], $input['tour'], $input['oldEvents']);
+            $this->fail('ceApplyPlan() accepted an empty plan');
+        } catch (InvalidArgumentException $e) {
+            $this->assertStringContainsString('no events', $e->getMessage());
+        }
+
+        $this->assertOldEventIntact();
+    }
+
+    public function testApplyPlanRollsBackWhenALaterEventThrows(): void
+    {
+        self::seedOldEventWithRows();
+        self::seedEntry(61, 'R', 'HS');
+        self::seedEntry(62, 'R', 'DS');
+        $input = ceLoadInput(self::SENTINEL);
+        $plan = cePreview(self::SENTINEL, self::DK_FULL)['plan'];
+        $this->assertSame(['RDS', 'RHS'], array_column($plan['events'], 'code'));
+        // The second event's name is not a string: CreateEventNew()'s
+        // StrSafe_DB() -> mysqli_real_escape_string() throws a TypeError,
+        // after deleteEvent('18R') and the first event's inserts have run.
+        $plan['events'][1]['name'] = new stdClass();
+
+        $thrown = null;
+        try {
+            ceApplyPlan(self::SENTINEL, $plan, $input['tour'], $input['oldEvents']);
+        } catch (Throwable $e) {
+            $thrown = $e;
+        }
+
+        $this->assertInstanceOf(TypeError::class, $thrown);
+        $this->assertStringContainsString('mysqli_real_escape_string', $thrown->getMessage());
+        // The checks below read on the separate read connection, which cannot
+        // see uncommitted writes; commit the write connection first so a
+        // missing rollback would show up as deleted/created rows. (After a
+        // real rollback this is a no-op.)
+        safe_w_Commit();
+        $this->assertOldEventIntact();
+        $s = self::SENTINEL;
+        $this->assertSame(0, self::countRows("SELECT COUNT(*) n FROM Events WHERE EvTournament=$s AND EvCode IN ('RDS','RHS')"));
+        $this->assertSame(0, self::countRows("SELECT COUNT(*) n FROM EventClass WHERE EcTournament=$s AND EcCode IN ('RDS','RHS')"));
+        $this->assertSame(0, self::countRows("SELECT COUNT(*) n FROM Finals WHERE FinTournament=$s AND FinEvent IN ('RDS','RHS')"));
+    }
+
+    public function testApplyPlanDeletesOnlyThePreviewedOldEvents(): void
+    {
+        self::seedEvent('18R', 0);
+        self::seedEventClass('18R', 0, 'R', 'HS');
+        self::seedEntry(71, 'R', 'HS');
+        self::seedEntry(72, 'R', 'HS');
+        $input = ceLoadInput(self::SENTINEL);
+        $plan = cePreview(self::SENTINEL, self::DK_FULL)['plan'];
+        // An event created after the preview was taken.
+        self::seedEvent('18X', 0, ['EvProgr' => 2]);
+
+        $result = ceApplyPlan(self::SENTINEL, $plan, $input['tour'], $input['oldEvents']);
+
+        $this->assertSame(1, $result['deleted']);
+        $s = self::SENTINEL;
+        $this->assertSame(0, self::countRows("SELECT COUNT(*) n FROM Events WHERE EvTournament=$s AND EvCode='18R'"));
+        $this->assertSame(1, self::countRows("SELECT COUNT(*) n FROM Events WHERE EvTournament=$s AND EvCode='18X'"));
+        $this->assertSame(1, self::countRows("SELECT COUNT(*) n FROM Events WHERE EvTournament=$s AND EvCode='RHS'"));
+    }
+
+    public function testDeletionSummaryListsEventsWithEliminationOrRoundRobinSetup(): void
+    {
+        self::seedEvent('18R', 0, ['EvProgr' => 1, 'EvElimType' => 1]);
+        self::seedEvent('18C', 0, ['EvProgr' => 2]);
+        self::seedEvent('18X', 0, ['EvProgr' => 3, 'EvElimType' => 5]);
+        self::seedEvent('RT', 1, ['EvElimType' => 1]); // team events are not touched
+
+        $summary = ceDeletionSummary(self::SENTINEL);
+        $this->assertSame(['18R', '18X'], $summary['elimTypeEvents']);
+
+        // Part of the deletion summary, so it is fingerprinted.
+        $plan = ['events' => []];
+        $without = $summary;
+        $without['elimTypeEvents'] = [];
+        $this->assertNotSame(cePlanFingerprint($plan, $summary), cePlanFingerprint($plan, $without));
+    }
+
+    public function testElimTypeEventsIsEmptyWithoutAnySetup(): void
+    {
+        self::seedEvent('18R', 0);
+        $this->assertSame([], ceDeletionSummary(self::SENTINEL)['elimTypeEvents']);
     }
 }

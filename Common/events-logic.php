@@ -139,15 +139,20 @@ function ceGroupInfo(array $group): array
  */
 function ceCommonCode(array $ids): string
 {
-    $first = $ids[0];
-    $minLength = min(array_map('strlen', $ids));
+    $first = (string) $ids[0];
+    // Compared by character, not byte: two different multibyte letters
+    // (e.g. Å/Ø) share a lead byte, which must not leak into the code.
+    $chars = array_map(function ($id) {
+        return mb_str_split((string) $id, 1, 'UTF-8');
+    }, $ids);
+    $minLength = min(array_map('count', $chars));
 
     $common = '';
     for ($position = 0; $position < $minLength; $position++) {
-        $char = $first[$position];
+        $char = $chars[0][$position];
         $sameAcrossAll = true;
-        foreach ($ids as $id) {
-            if ($id[$position] !== $char) {
+        foreach ($chars as $idChars) {
+            if ($idChars[$position] !== $char) {
                 $sameAcrossAll = false;
                 break;
             }
@@ -441,7 +446,9 @@ function ceCodeAndNameForGroup(
         $name = $labels['allName'];
     }
 
-    return ['codeBase' => $code, 'name' => substr($name, 0, 64)];
+    // EvEventName is varchar(64) in utf8mb4: cap by characters, so a
+    // multibyte name (e.g. "Åben") is never cut mid-character.
+    return ['codeBase' => $code, 'name' => mb_substr($name, 0, 64, 'UTF-8')];
 }
 
 /**
@@ -452,7 +459,8 @@ function ceCodeAndNameForGroup(
  */
 function ceUniqueCode(string $base, array &$used): string
 {
-    $code = substr($base, 0, 10);
+    // By characters (EvCode is varchar(10) utf8mb4), never mid-character.
+    $code = mb_substr($base, 0, 10, 'UTF-8');
     if (!isset($used[$code])) {
         $used[$code] = true;
         return $code;
@@ -460,7 +468,7 @@ function ceUniqueCode(string $base, array &$used): string
 
     for ($suffix = 2; ; $suffix++) {
         $suffixStr = (string) $suffix;
-        $candidate = substr($base, 0, 10 - strlen($suffixStr)) . $suffixStr;
+        $candidate = mb_substr($base, 0, 10 - strlen($suffixStr), 'UTF-8') . $suffixStr;
         if (!isset($used[$candidate])) {
             $used[$candidate] = true;
             return $candidate;
@@ -642,5 +650,10 @@ function cePlanFingerprint(array $plan, array $deletion): string
         ];
     }, $plan['events']);
 
-    return sha1(json_encode(['events' => $events, 'deletion' => $deletion]));
+    // Throw rather than let invalid input (e.g. a byte-cut UTF-8 name)
+    // collapse every fingerprint to sha1('') and so always "match".
+    return sha1(json_encode(
+        ['events' => $events, 'deletion' => $deletion],
+        JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE
+    ));
 }

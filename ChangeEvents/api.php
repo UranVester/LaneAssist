@@ -92,17 +92,8 @@ function changeEventsApply()
     }
 
     try {
-        // Refuse before anything is deleted when the rebuild would leave the
-        // tournament with no individual events at all.
-        $check = cePreview($tourId, $criteria);
-        if (count($check['newEvents']) === 0) {
-            echo json_encode([
-                'error' => 1,
-                'message' => 'These settings would create no events, so nothing was changed.',
-            ]);
-            return;
-        }
-
+        // ceGuardedApply() also refuses, with nothing deleted, a plan that
+        // would leave the tournament with no individual events at all.
         $result = ceGuardedApply($tourId, $criteria, $fingerprint);
     } catch (Throwable $e) {
         echo json_encode(['error' => 1, 'message' => 'Replacing events failed, nothing was changed: ' . $e->getMessage()]);
@@ -119,14 +110,47 @@ function changeEventsApply()
         return;
     }
 
-    // After commit: rank qualification into the new events, then refresh
-    // the session's menu flags (finals/eliminations on, events to shoot off).
-    MakeIndAbs();
-    set_qual_session_flags();
+    if (!empty($result['error'])) {
+        echo json_encode(['error' => 1, 'message' => (string) ($result['message'] ?? 'Replacing events failed, nothing was changed.')]);
+        return;
+    }
 
-    echo json_encode([
+    $response = [
         'error' => 0,
         'created' => (int) $result['created'],
         'deleted' => (int) $result['deleted'],
-    ]);
+        'placed' => (int) $result['placed'],
+    ];
+    if (!changeEventsRebuildRanking()) {
+        $response['warning'] = 'Events replaced; ranking not rebuilt — run Make individual ranking';
+    }
+
+    echo json_encode($response);
+}
+
+/**
+ * After commit: rank qualification into the new events, then refresh the
+ * session's menu flags (finals/eliminations on, events to shoot off).
+ * The events are already replaced, so a failure here must not turn the
+ * response into an error: it returns false (-> a warning) when either call
+ * throws, prints anything (which would also corrupt the JSON), or
+ * MakeIndAbs() reports an error (it returns 0 on success, 1 on failure).
+ * A failed query inside them goes through safe_error(), which exit()s and
+ * cannot be caught here.
+ */
+function changeEventsRebuildRanking(): bool
+{
+    ob_start();
+    try {
+        $rankError = MakeIndAbs();
+        set_qual_session_flags();
+        $ok = empty($rankError);
+    } catch (Throwable $e) {
+        $ok = false;
+    } finally {
+        $output = ob_get_contents();
+        ob_end_clean();
+    }
+
+    return $ok && ($output === '' || $output === false);
 }
