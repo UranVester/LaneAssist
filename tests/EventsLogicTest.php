@@ -117,4 +117,268 @@ final class EventsLogicTest extends TestCase
         ]);
         $this->assertSame('Alpha Group', $g['AB']['name']);
     }
+
+    // ---------- Plan building ----------
+
+    /**
+     * Builds Danish indoor pairs: divisions R/C, classes DJ(order 9)/HJ(10)/
+     * DS(11)/HS(12)/DM(13)/HM(14), plus HA(order 6, 12m) when $withAspirant.
+     * Old events: 18R/18C (distance '18') cover the six "normal" classes for
+     * R/C respectively; 12R (distance '12') covers R's HA only. Each old
+     * event's count is the sum of the pairs mapped to it. Returns
+     * ceBuildPlan(...) with DK labels.
+     */
+    private function dkPlan(array $counts, array $criteria, bool $withAspirant = false): array
+    {
+        $classDefs = [
+            'DJ' => ['sex' => 1, 'ageFrom' => 18, 'ageTo' => 20, 'order' => 9,  'name' => 'Dame Junior'],
+            'HJ' => ['sex' => 0, 'ageFrom' => 18, 'ageTo' => 20, 'order' => 10, 'name' => 'Herre Junior'],
+            'DS' => ['sex' => 1, 'ageFrom' => 21, 'ageTo' => 49, 'order' => 11, 'name' => 'Dame Senior'],
+            'HS' => ['sex' => 0, 'ageFrom' => 21, 'ageTo' => 49, 'order' => 12, 'name' => 'Herre Senior'],
+            'DM' => ['sex' => 1, 'ageFrom' => 50, 'ageTo' => 99, 'order' => 13, 'name' => 'Dame Master'],
+            'HM' => ['sex' => 0, 'ageFrom' => 50, 'ageTo' => 99, 'order' => 14, 'name' => 'Herre Master'],
+        ];
+        if ($withAspirant) {
+            $classDefs['HA'] = ['sex' => 0, 'ageFrom' => 14, 'ageTo' => 15, 'order' => 6, 'name' => 'Herre Aspirant'];
+        }
+
+        $classes = [];
+        foreach ($classDefs as $id => $def) {
+            $classes[] = [
+                'id' => $id,
+                'name' => $def['name'],
+                'sex' => $def['sex'],
+                'ageFrom' => $def['ageFrom'],
+                'ageTo' => $def['ageTo'],
+                'order' => $def['order'],
+            ];
+        }
+
+        $divisions = [
+            'R' => ['name' => 'Recurve', 'order' => 1],
+            'C' => ['name' => 'Compound', 'order' => 2],
+        ];
+
+        $pairs = [];
+        $oldEventCounts = ['18R' => 0, '18C' => 0];
+        if ($withAspirant) {
+            $oldEventCounts['12R'] = 0;
+        }
+
+        foreach ($divisions as $divId => $divDef) {
+            foreach ($classDefs as $classId => $classDef) {
+                $count = $counts[$divId . $classId] ?? 0;
+
+                if ($classId === 'HA') {
+                    $oldEventCodes = $divId === 'R' ? ['12R'] : [];
+                } else {
+                    $oldEventCodes = [$divId === 'R' ? '18R' : '18C'];
+                }
+                foreach ($oldEventCodes as $code) {
+                    $oldEventCounts[$code] += $count;
+                }
+
+                $pairs[] = [
+                    'div' => $divId,
+                    'divName' => $divDef['name'],
+                    'divOrder' => $divDef['order'],
+                    'class' => $classId,
+                    'count' => $count,
+                    'oldEvents' => $oldEventCodes,
+                    'qualShortest' => '',
+                ];
+            }
+        }
+
+        $oldEvents = [
+            '18R' => ['code' => '18R', 'name' => '18m Recurve', 'progr' => 1, 'distance' => '18', 'count' => $oldEventCounts['18R'], 'settings' => []],
+            '18C' => ['code' => '18C', 'name' => '18m Compound', 'progr' => 2, 'distance' => '18', 'count' => $oldEventCounts['18C'], 'settings' => []],
+        ];
+        if ($withAspirant) {
+            $oldEvents['12R'] = ['code' => '12R', 'name' => '12m Recurve', 'progr' => 3, 'distance' => '12', 'count' => $oldEventCounts['12R'], 'settings' => []];
+        }
+
+        $labels = $this->dkLabels();
+
+        return ceBuildPlan($pairs, $oldEvents, $classes, $criteria, $labels);
+    }
+
+    private function dkLabels(): array
+    {
+        return [
+            'genderCode' => [0 => 'H', 1 => 'D', -1 => 'U'],
+            'genderName' => [0 => 'Herre', 1 => 'Dame', -1 => 'Åben'],
+            'allCode' => 'ALL',
+            'allName' => 'Alle',
+        ];
+    }
+
+    public function testDivisionDisablesDistance(): void
+    {
+        $this->assertFalse(ceNormalizeCriteria(['division' => 1, 'distance' => 1])['distance']);
+    }
+
+    public function testGenderClassDivisionSplitsDanish(): void
+    {
+        $plan = $this->dkPlan(['RHJ' => 5, 'RDJ' => 2, 'RHS' => 12, 'RDM' => 1], ['gender' => 1, 'class' => 1, 'division' => 1, 'distance' => 0]);
+        $codes = array_column($plan['events'], 'code');
+        $this->assertSame(['RDJ', 'RHJ', 'RHS', 'RDM'], $codes);       // only groups with archers, in order
+        $byCode = array_column($plan['events'], null, 'code');
+        $this->assertSame('Recurve Herre Junior', $byCode['RHJ']['name']);
+        $this->assertSame(4, $byCode['RHJ']['firstPhase']);
+        $this->assertSame(2, $byCode['RDJ']['firstPhase']);
+        $this->assertSame(0, $byCode['RDM']['firstPhase']);
+        $this->assertSame('18R', $byCode['RHS']['settingsFrom']);
+    }
+
+    public function testEmptyTournamentCreatesAllGroupsAt16(): void
+    {
+        $plan = $this->dkPlan([], ['gender' => 1, 'class' => 1, 'division' => 1]);
+        $this->assertTrue($plan['tournamentEmpty']);
+        $this->assertCount(12, $plan['events']);                      // 2 divs × 6 classes
+        $this->assertSame([16], array_values(array_unique(array_column($plan['events'], 'firstPhase'))));
+    }
+
+    public function testDivisionOnlyMixesDistancesAndTakesShortest(): void
+    {
+        // RHS in 18R (18m), aspirant-like class in 12R (12m)
+        $plan = $this->dkPlan(['RHS' => 3, 'RHA' => 2], ['division' => 1], true);
+        $r = array_column($plan['events'], null, 'code')['R'];
+        $this->assertSame('Recurve', $r['name']);
+        $this->assertSame('12', $r['distance']);
+        $this->assertSame('12R', $r['settingsFrom']);
+    }
+
+    public function testClassWithoutGenderMergesHerreDame(): void
+    {
+        $plan = $this->dkPlan(['RHJ' => 3, 'RDJ' => 3], ['class' => 1, 'division' => 1]);
+        $this->assertSame(['RJ'], array_column($plan['events'], 'code'));
+        $this->assertSame('Recurve Junior', $plan['events'][0]['name']);
+        $this->assertSame(4, $plan['events'][0]['firstPhase']);       // 6 archers
+    }
+
+    public function testNothingTickedIsOneEvent(): void
+    {
+        $plan = $this->dkPlan(['RHJ' => 3, 'RDJ' => 2, 'CHS' => 4], []);
+        $this->assertSame(['ALL'], array_column($plan['events'], 'code'));
+        $this->assertSame('Alle', $plan['events'][0]['name']);
+        $this->assertSame(9, $plan['events'][0]['count']);
+    }
+
+    public function testDistanceAndGender(): void
+    {
+        $classes = [
+            ['id' => 'H', 'name' => 'Herre', 'sex' => 0, 'ageFrom' => 0, 'ageTo' => 0, 'order' => 1],
+            ['id' => 'D', 'name' => 'Dame', 'sex' => 1, 'ageFrom' => 0, 'ageTo' => 0, 'order' => 2],
+        ];
+        $pairs = [
+            ['div' => 'R', 'divName' => 'Recurve', 'divOrder' => 1, 'class' => 'H', 'count' => 5, 'oldEvents' => ['18R'], 'qualShortest' => ''],
+            ['div' => 'R', 'divName' => 'Recurve', 'divOrder' => 1, 'class' => 'D', 'count' => 3, 'oldEvents' => ['18R'], 'qualShortest' => ''],
+        ];
+        $oldEvents = [
+            '18R' => ['code' => '18R', 'name' => '18m Recurve', 'progr' => 1, 'distance' => '18', 'count' => 8, 'settings' => []],
+        ];
+
+        $plan = ceBuildPlan($pairs, $oldEvents, $classes, ['gender' => 1, 'distance' => 1], $this->dkLabels());
+        $byCode = array_column($plan['events'], null, 'code');
+        $this->assertSame('18m Herre', $byCode['18H']['name']);
+        $this->assertSame(5, $byCode['18H']['count']);
+    }
+
+    public function testNoOldEventsUsesFallbacks(): void
+    {
+        $classes = [
+            ['id' => 'H', 'name' => 'Herre', 'sex' => 0, 'ageFrom' => 0, 'ageTo' => 0, 'order' => 1],
+        ];
+        $pairs = [
+            ['div' => 'R', 'divName' => 'Recurve', 'divOrder' => 1, 'class' => 'H', 'count' => 4, 'oldEvents' => [], 'qualShortest' => '18'],
+        ];
+
+        $plan = ceBuildPlan($pairs, [], $classes, ['gender' => 1], $this->dkLabels());
+        $this->assertSame('18', $plan['events'][0]['distance']);
+        $this->assertNull($plan['events'][0]['settingsFrom']);
+    }
+
+    public function testUncoveredPairIsIncluded(): void
+    {
+        $classes = [
+            ['id' => 'H', 'name' => 'Herre', 'sex' => 0, 'ageFrom' => 0, 'ageTo' => 0, 'order' => 1],
+        ];
+        $pairs = [
+            ['div' => 'R', 'divName' => 'Recurve', 'divOrder' => 1, 'class' => 'H', 'count' => 3, 'oldEvents' => [], 'qualShortest' => ''],
+        ];
+
+        $plan = ceBuildPlan($pairs, [], $classes, ['division' => 1], $this->dkLabels());
+        $this->assertCount(1, $plan['events']);
+        $this->assertSame(3, $plan['events'][0]['count']);
+    }
+
+    public function testCodesAreUniqueAndFitColumn(): void
+    {
+        $classes = [
+            ['id' => 'U21M', 'name' => 'Under 21 Men', 'sex' => 0, 'ageFrom' => 18, 'ageTo' => 20, 'order' => 1],
+            ['id' => 'U21W', 'name' => 'Under 21 Women', 'sex' => 1, 'ageFrom' => 18, 'ageTo' => 20, 'order' => 2],
+            ['id' => 'VETERANONE', 'name' => 'Veteran Men', 'sex' => 0, 'ageFrom' => 50, 'ageTo' => 99, 'order' => 3],
+            ['id' => 'VETERANTWO', 'name' => 'Veteran Women', 'sex' => 1, 'ageFrom' => 50, 'ageTo' => 99, 'order' => 4],
+        ];
+        $pairs = [];
+        foreach ($classes as $class) {
+            $pairs[] = [
+                'div' => 'R', 'divName' => 'Recurve', 'divOrder' => 1,
+                'class' => $class['id'], 'count' => 1,
+                'oldEvents' => [], 'qualShortest' => '700',
+            ];
+        }
+
+        $plan = ceBuildPlan($pairs, [], $classes, ['gender' => 1, 'class' => 1, 'distance' => 1], $this->dkLabels());
+
+        $codes = array_column($plan['events'], 'code');
+        $this->assertCount(4, $codes);
+        foreach ($codes as $code) {
+            $this->assertLessThanOrEqual(10, strlen($code));
+        }
+        $this->assertCount(4, array_unique($codes));                 // all unique
+        $this->assertContains('2', array_map(fn($c) => substr($c, -1), $codes)); // forced collision resolved with a tail digit
+    }
+
+    public function testUnknownDistanceIsEmptyString(): void
+    {
+        $classes = [
+            ['id' => 'H', 'name' => 'Herre', 'sex' => 0, 'ageFrom' => 0, 'ageTo' => 0, 'order' => 1],
+        ];
+        $pairs = [
+            ['div' => 'R', 'divName' => 'Recurve', 'divOrder' => 1, 'class' => 'H', 'count' => 2, 'oldEvents' => [], 'qualShortest' => ''],
+        ];
+
+        $plan = ceBuildPlan($pairs, [], $classes, ['gender' => 1], $this->dkLabels());
+        $this->assertSame('', $plan['events'][0]['distance']);
+    }
+
+    public function testFingerprintChangesWithDeletionCounts(): void
+    {
+        $plan = $this->dkPlan(['RHS' => 2], ['division' => 1]);
+        $this->assertNotSame(
+            cePlanFingerprint($plan, ['scoredMatches' => 0]),
+            cePlanFingerprint($plan, ['scoredMatches' => 1])
+        );
+    }
+
+    public function testDefaultEventSettingsDifferForCompound(): void
+    {
+        $recurve = ceDefaultEventSettings('R');
+        $compound = ceDefaultEventSettings('C');
+        $this->assertSame(1, $recurve['EvMatchMode']);
+        $this->assertSame(0, $compound['EvMatchMode']);
+        $this->assertSame(1, $recurve['EvFinalTargetType']);
+        $this->assertSame(3, $compound['EvFinalTargetType']);
+        $this->assertSame(5, $recurve['EvElimEnds']);
+        $this->assertSame(3, $recurve['EvElimArrows']);
+        $this->assertSame(1, $recurve['EvElimSO']);
+        $this->assertSame(5, $recurve['EvFinEnds']);
+        $this->assertSame(3, $recurve['EvFinArrows']);
+        $this->assertSame(1, $recurve['EvFinSO']);
+        $this->assertSame(0, $recurve['EvMatchArrowsNo']);
+        $this->assertSame(248, $recurve['EvFinalAthTarget']);
+        $this->assertSame(40, $recurve['EvTargetSize']);
+    }
 }
