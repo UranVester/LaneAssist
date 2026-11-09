@@ -223,7 +223,9 @@ function ceCountQuery(string $sql): int
  *   or arrows, counted as matches (a match is two FinMatchNo slots).
  * - scheduledMatches: individual FinSchedule matches with a date.
  * - rankedRows/shootOffRows: Individuals rows, and those carrying a
- *   shoot-off decision (IndSO set or shoot-off arrows entered).
+ *   shoot-off (IndSO > 0, a tie for a qualifying place, or shoot-off arrows
+ *   entered). A negative IndSO is IANSEO's plain untied-rank marker
+ *   (Obj_Rank_Abs_calc stores so * rank), not a shoot-off.
  * - collapsed: events whose mapping a rebuild cannot keep -- they use
  *   subclass/extras rows, or share a division+class with another event.
  * - stale: rows in tables a rebuild leaves pointing at old events (Awards,
@@ -260,7 +262,7 @@ function ceDeletionSummary(int $tourId): array
     $rankedRows = ceCountQuery("SELECT COUNT(*) FROM Individuals $joinIndEvent AND EvCode=IndEvent
         WHERE IndTournament=$tourId");
     $shootOffRows = ceCountQuery("SELECT COUNT(*) FROM Individuals $joinIndEvent AND EvCode=IndEvent
-        WHERE IndTournament=$tourId AND (IndSO<>0 OR IndTieBreak<>'')");
+        WHERE IndTournament=$tourId AND (IndSO>0 OR IndTieBreak<>'')");
     $eliminationRows = ceCountQuery("SELECT COUNT(*) FROM Eliminations $joinIndEvent AND EvCode=ElEventCode
         WHERE ElTournament=$tourId");
 

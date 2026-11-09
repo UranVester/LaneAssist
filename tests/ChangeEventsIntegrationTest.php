@@ -282,6 +282,25 @@ final class ChangeEventsIntegrationTest extends LaneAssistDbTestCase
         $this->assertSame(['18R', '18X', '18C'], array_column($summary['events'], 'code'));
     }
 
+    public function testShootOffRowsIgnoreNegativeIndSoRankMarkers(): void
+    {
+        // Obj_Rank_Abs_calc stores IndSO = so * rank: positive = tied for a
+        // qualifying place (shoot-off), negative = a plain untied qualifying
+        // rank, 0 = outside the qualifiers. Found live: a freshly ranked
+        // tournament reported 66 "shoot-off decisions" out of 68 archers.
+        self::seedEvent('18R', 0);
+        self::seedRow('Individuals', ['IndId' => 997111, 'IndEvent' => '18R', 'IndTournament' => self::SENTINEL, 'IndSO' => -1]);
+        self::seedRow('Individuals', ['IndId' => 997112, 'IndEvent' => '18R', 'IndTournament' => self::SENTINEL, 'IndSO' => -2]);
+        self::seedRow('Individuals', ['IndId' => 997113, 'IndEvent' => '18R', 'IndTournament' => self::SENTINEL, 'IndSO' => 3]);
+        self::seedRow('Individuals', ['IndId' => 997114, 'IndEvent' => '18R', 'IndTournament' => self::SENTINEL, 'IndSO' => -4, 'IndTieBreak' => 'J']);
+        self::seedRow('Individuals', ['IndId' => 997115, 'IndEvent' => '18R', 'IndTournament' => self::SENTINEL, 'IndSO' => 0]);
+
+        $summary = ceDeletionSummary(self::SENTINEL);
+
+        $this->assertSame(5, $summary['rankedRows']);
+        $this->assertSame(2, $summary['shootOffRows']);
+    }
+
     public function testApplyReplacesIndividualEventsAndKeepsTeams(): void
     {
         // 18R uses cumulative scoring (0), unlike the recurve default (1), so
