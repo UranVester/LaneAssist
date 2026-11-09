@@ -218,6 +218,29 @@ final class EventsLogicTest extends TestCase
         $this->assertFalse(ceNormalizeCriteria(['division' => 1, 'distance' => 1])['distance']);
     }
 
+    public function testClassOrderUsesOwnOrderNotMergedAgeGroupWhenGenderAndClassBothTicked(): void
+    {
+        // HJ (order 9) and DJ (order 10) share an age range, so ceAgeGroups()
+        // merges them into one age group with a shared order of min(9,10)=9.
+        // With Gender+Class both ticked, the grouping *unit* is the class
+        // itself (one event per class), so sorting must use each class's own
+        // order (9 vs 10, no tie) -- not the merged age-group order, which
+        // would tie them at 9 and fall through to the sex tiebreak (Dame
+        // before Herre), reversing the expected HJ-before-DJ result.
+        $classes = [
+            ['id' => 'HJ', 'name' => 'Herre Junior', 'sex' => 0, 'ageFrom' => 18, 'ageTo' => 20, 'order' => 9],
+            ['id' => 'DJ', 'name' => 'Dame Junior', 'sex' => 1, 'ageFrom' => 18, 'ageTo' => 20, 'order' => 10],
+        ];
+        $pairs = [
+            ['div' => 'R', 'divName' => 'Recurve', 'divOrder' => 1, 'class' => 'HJ', 'count' => 5, 'oldEvents' => [], 'qualShortest' => ''],
+            ['div' => 'R', 'divName' => 'Recurve', 'divOrder' => 1, 'class' => 'DJ', 'count' => 5, 'oldEvents' => [], 'qualShortest' => ''],
+        ];
+
+        $plan = ceBuildPlan($pairs, [], $classes, ['gender' => 1, 'class' => 1], $this->dkLabels());
+
+        $this->assertSame(['HJ', 'DJ'], array_column($plan['events'], 'code'));
+    }
+
     public function testGenderClassDivisionSplitsDanish(): void
     {
         $plan = $this->dkPlan(['RHJ' => 5, 'RDJ' => 2, 'RHS' => 12, 'RDM' => 1], ['gender' => 1, 'class' => 1, 'division' => 1, 'distance' => 0]);

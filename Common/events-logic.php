@@ -530,9 +530,22 @@ function ceBuildPlan(array $pairs, array $oldEvents, array $classes, array $crit
         $division = count($divs) === 1 ? $divs[0] : null;
 
         $minDivOrder = min(array_column($groupPairs, 'divOrder'));
-        $minClassOrder = min(array_map(function ($pair) use ($ageGroups) {
-            return $ageGroups[$pair['class']]['order'];
-        }, $groupPairs));
+        // When Gender+Class are both ticked, the grouping unit is the class
+        // itself (see the key-building above), so the sort must use each
+        // class's own order -- not ceAgeGroups()'s merged age-group order,
+        // which can tie two such classes together (e.g. HJ/DJ sharing an
+        // age range) and fall through to the sex tiebreak, reversing the
+        // intended order. The merged order is only correct when Class is
+        // grouping pairs *without* Gender, i.e. is actually doing the
+        // age-group merging.
+        $classOrderForSort = ($criteria['gender'] && $criteria['class'])
+            ? function ($pair) use ($classesById) {
+                return $classesById[$pair['class']]['order'];
+            }
+            : function ($pair) use ($ageGroups) {
+                return $ageGroups[$pair['class']]['order'];
+            };
+        $minClassOrder = min(array_map($classOrderForSort, $groupPairs));
         $sortSex = $criteria['gender'] ? $classesById[$groupPairs[0]['class']]['sex'] : null;
 
         $settingsFrom = ceSettingsFromForGroup($groupPairs, $oldEvents, $groupDistance);
