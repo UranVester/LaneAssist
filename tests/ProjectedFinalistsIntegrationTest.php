@@ -79,11 +79,12 @@ final class ProjectedFinalistsIntegrationTest extends LaneAssistDbTestCase
     // ---------- Team event scenarios ----------
 
     /** Seed one team (coId/subTeam) with a finals-flagged component entry. */
-    private function seedTeamWithComponent(string $event, int $coId, int $subTeam, int $entryId, int $teFinEvent, int $enTeamFEvent): void
+    private function seedTeamWithComponent(string $event, int $coId, int $subTeam, int $entryId, int $teFinEvent, int $enTeamFEvent, int $valid = 0): void
     {
         self::seedRow('Teams', [
             'TeCoId' => $coId, 'TeSubTeam' => $subTeam, 'TeEvent' => $event,
             'TeTournament' => self::SENTINEL, 'TeFinEvent' => $teFinEvent, 'TeSO' => 1,
+            'TeIsValidTeam' => $valid,
         ]);
         self::seedRow('Entries', [
             'EnId' => $entryId, 'EnTournament' => self::SENTINEL,
@@ -207,5 +208,66 @@ final class ProjectedFinalistsIntegrationTest extends LaneAssistDbTestCase
         // Raw demand is uncapped even though a cap of 2 would shrink it.
         $this->assertSame(5, getRawFinalistDemand('TID', 0));
         $this->assertSame(2, getProjectedFinalistsForEvent('TID', 0, 2));
+    }
+
+    // ---------- Team validity (IANSEO 2026-10-26+) ----------
+    // Since that release core keeps an incomplete finals team (a member pulled
+    // out) as a Teams row with TeIsValidTeam=0 and a zeroed score. Its TeSO is
+    // left as it was, and the rank calc skips it, so TeSO!=0 alone no longer
+    // proves the team is real. Older cores never write TeIsValidTeam (it stays
+    // 0 on every row), so the filter must only apply when core tracks it.
+
+    private function seedTeamEvent(string $code): void
+    {
+        self::seedRow('Events', [
+            'EvCode' => $code, 'EvTeamEvent' => 1, 'EvTournament' => self::SENTINEL,
+            'EvEventName' => 'T', 'EvMixedTeam' => 0,
+        ]);
+    }
+
+    public function testTeamPrimarySkipsTeamsCoreMarkedInvalid(): void
+    {
+        $this->seedTeamEvent('TVP');
+        $this->seedTeamWithComponent('TVP', 5301, 0, 996001, 1, 1, 1);
+        $this->seedTeamWithComponent('TVP', 5302, 0, 996002, 1, 1, 0);
+        $this->assertSame(1, getRawFinalistDemand('TVP', 1, true));
+    }
+
+    public function testTeamDirectFallbackSkipsTeamsCoreMarkedInvalid(): void
+    {
+        $this->seedTeamEvent('TVD');
+        foreach ([[5401, 1], [5402, 1], [5403, 0]] as [$coId, $valid]) {
+            self::seedRow('Teams', [
+                'TeCoId' => $coId, 'TeSubTeam' => 0, 'TeEvent' => 'TVD',
+                'TeTournament' => self::SENTINEL, 'TeFinEvent' => 1, 'TeSO' => 1,
+                'TeIsValidTeam' => $valid,
+            ]);
+        }
+        $this->assertSame(2, getRawFinalistDemand('TVD', 1, true));
+    }
+
+    public function testTeamPlanningFallbackStillCountsQualificationTeams(): void
+    {
+        // TeFinEvent=0 rows are never given a validity by core: keep counting them.
+        $this->seedTeamEvent('TVF');
+        $this->seedTeamWithComponent('TVF', 5501, 0, 996101, 0, 1, 0);
+        $this->seedTeamWithComponent('TVF', 5502, 0, 996102, 0, 1, 0);
+        $this->assertSame(2, getRawFinalistDemand('TVF', 1, true));
+    }
+
+    public function testTeamValidityIgnoredOnCoreThatNeverWritesIt(): void
+    {
+        $this->seedTeamEvent('TVO');
+        $this->seedTeamWithComponent('TVO', 5601, 0, 996201, 1, 1, 0);
+        $this->seedTeamWithComponent('TVO', 5602, 0, 996202, 1, 1, 0);
+        $this->assertSame(2, getRawFinalistDemand('TVO', 1, false));
+    }
+
+    public function testTeamValidityTrackedFollowsProgramVersion(): void
+    {
+        $this->assertFalse(laneAssistCoreTracksTeamValidity(null));
+        $this->assertFalse(laneAssistCoreTracksTeamValidity('2026-03-01'));
+        $this->assertTrue(laneAssistCoreTracksTeamValidity('2026-10-26'));
+        $this->assertTrue(laneAssistCoreTracksTeamValidity('2027-01-15'));
     }
 }

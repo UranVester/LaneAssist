@@ -133,10 +133,31 @@ function projectFinalists($entrantCount, $numQualified)
     return $entrantCount;
 }
 
-function getRawFinalistDemand($eventCode, $teamEvent) {
+/**
+ * Whether this IANSEO core keeps Teams.TeIsValidTeam current. From 2026-10-26
+ * core leaves an incomplete finals team (a member pulled out) as a row with
+ * TeIsValidTeam=0, a zeroed score and its old TeSO; earlier cores never write
+ * the column, so it is 0 on every row there and must not be filtered on.
+ */
+function laneAssistCoreTracksTeamValidity($programVersion)
+{
+    return is_string($programVersion) && $programVersion >= '2026-10-26';
+}
+
+/**
+ * $teamValidityTracked: null asks the running core (ProgramVersion); tests
+ * pass it explicitly.
+ */
+function getRawFinalistDemand($eventCode, $teamEvent, $teamValidityTracked = null) {
     static $cache = [];
 
-    $cacheKey = intval($_SESSION['TourId']) . '|' . intval($teamEvent) . '|' . trim((string)$eventCode);
+    if ($teamValidityTracked === null) {
+        $teamValidityTracked = laneAssistCoreTracksTeamValidity(defined('ProgramVersion') ? ProgramVersion : null);
+    }
+    // Qualification-only (TeFinEvent=0) rows never get a validity from core.
+    $validTeamSql = $teamValidityTracked ? " AND (t.TeFinEvent=0 OR t.TeIsValidTeam=1)" : '';
+
+    $cacheKey = intval($_SESSION['TourId']) . '|' . intval($teamEvent) . '|' . trim((string)$eventCode) . '|' . ($teamValidityTracked ? 1 : 0);
     if (isset($cache[$cacheKey])) {
         return $cache[$cacheKey];
     }
@@ -187,7 +208,7 @@ function getRawFinalistDemand($eventCode, $teamEvent) {
                 WHERE t.TeTournament=" . StrSafe_DB($_SESSION['TourId']) . "
                   AND t.TeEvent=" . StrSafe_DB($eventCode) . "
                   AND t.TeFinEvent=1
-                  AND t.TeSO!=0
+                  AND t.TeSO!=0{$validTeamSql}
                   AND EXISTS (
                       SELECT 1
                       FROM TeamFinComponent tfc
@@ -228,7 +249,7 @@ function getRawFinalistDemand($eventCode, $teamEvent) {
                                 AND ev.EvTeamEvent=1
                             WHERE t.TeTournament=" . StrSafe_DB($_SESSION['TourId']) . "
                               AND t.TeEvent=" . StrSafe_DB($eventCode) . "
-                              AND t.TeSO!=0
+                              AND t.TeSO!=0{$validTeamSql}
                               AND EXISTS (
                                   SELECT 1
                                   FROM TeamFinComponent tfc
@@ -250,7 +271,7 @@ function getRawFinalistDemand($eventCode, $teamEvent) {
                           WHERE t.TeTournament=" . StrSafe_DB($_SESSION['TourId']) . "
                             AND t.TeEvent=" . StrSafe_DB($eventCode) . "
                             AND t.TeFinEvent=1
-                            AND t.TeSO!=0";
+                            AND t.TeSO!=0{$validTeamSql}";
             $directRs = safe_r_sql($directSql);
             if ($directRow = safe_fetch($directRs)) {
                 $entrantCount = max(0, intval($directRow->Cnt));
