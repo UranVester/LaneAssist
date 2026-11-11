@@ -87,3 +87,22 @@ function laBuildTargetAvailability($firstTarget, $lastTarget, array $letters, ar
 
     return $availability;
 }
+
+/**
+ * Whether target/letter exists in a qualification session laid out as
+ * $targetsInSession targets from $firstTarget, $archersPerTarget letters
+ * (A, B, ...) each. Mirrors what core createAvailableTargetSQL() generates,
+ * which is not used here: its MySQL 8 / MariaDB path (IANSEO 2026-10-26)
+ * stopped filtering on SesType='Q'.
+ */
+function laIsTargetInSession($target, $letter, $firstTarget, $targetsInSession, $archersPerTarget) {
+    $target = intval($target);
+    $firstTarget = intval($firstTarget);
+    $letter = strtoupper((string)$letter);
+    if (!preg_match('/^[A-Z]$/', $letter)) {
+        return false;
+    }
+    return $target >= $firstTarget
+        && $target < $firstTarget + intval($targetsInSession)
+        && ord($letter) - 64 <= intval($archersPerTarget);
+}

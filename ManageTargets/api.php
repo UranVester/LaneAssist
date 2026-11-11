@@ -1189,7 +1189,7 @@ function applyChanges() {
         
         // Validate target is available for this session
         if ($target > 0) {
-            $sessionSql = "SELECT SesOrder FROM Session 
+            $sessionSql = "SELECT SesOrder, SesFirstTarget, SesTar4Session, SesAth4Target FROM Session 
                           WHERE SesTournament=" . StrSafe_DB($_SESSION['TourId']) . " 
                           AND SesType='Q' 
                           AND SesOrder=" . StrSafe_DB($session);
@@ -1205,14 +1205,9 @@ function applyChanges() {
                 continue;
             }
             
-            // Check target is available using existing validation
-            $atSql = createAvailableTargetSQL($session, $_SESSION['TourId']);
-            $checkSql = "SELECT * FROM ($atSql) at 
-                        WHERE FullTgtTarget=" . intval($target) . " 
-                        AND FullTgtLetter=" . StrSafe_DB($letter);
-            $checkRs = safe_r_sql($checkSql);
-            
-            if (!safe_num_rows($checkRs)) {
+            // Check the target exists in this qualification session
+            $sessionRow = safe_fetch($sessionRs);
+            if (!laIsTargetInSession($target, $letter, $sessionRow->SesFirstTarget, $sessionRow->SesTar4Session, $sessionRow->SesAth4Target)) {
                 $results[] = array(
                     'participantId' => $participantId,
                     'success' => false,
