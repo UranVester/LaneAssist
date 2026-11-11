@@ -27,6 +27,10 @@ final class StatusSnapshotIntegrationTest extends LaneAssistDbTestCase
     private const NON_ATHLETE_ENTRY_ID = 992003;
     /** EnId used by the session-0 (not yet assigned) scenario; also Qualifications.QuId. */
     private const SESSION_ZERO_ENTRY_ID = 992004;
+    /** CoId + EnId for the other-tournament-logo scenario (999903 is taken by real data). */
+    private const OTHER_LOGO_CLUB_ID = 992005;
+    /** Stand-in earlier tournament holding a per-tournament club logo row. */
+    private const OTHER_TOUR = 999998;
 
     protected static function cleanupSentinel(): void
     {
@@ -54,7 +58,8 @@ final class StatusSnapshotIntegrationTest extends LaneAssistDbTestCase
         // row under a code only this suite uses, so it isn't covered by the
         // generic $tables cleanup (which never touches global Flags rows).
         safe_w_sql("DELETE FROM Flags WHERE FlTournament=" . StrSafe_DB(self::SENTINEL)
-            . " OR (FlTournament=-1 AND FlCode='FIX')");
+            . " OR (FlTournament=-1 AND FlCode='FIX')"
+            . ' OR FlTournament=' . self::OTHER_TOUR);
     }
 
     public static function setUpBeforeClass(): void
@@ -348,5 +353,36 @@ final class StatusSnapshotIntegrationTest extends LaneAssistDbTestCase
         $this->assertStringContainsString('MIS', $missing['detail']);
         $this->assertStringEndsWith('Tournament/Countries.php', $missing['link']);
         $this->assertNull($missing['fix']);
+    }
+
+    public function testClubLogoOnlyInAnotherTournamentIsFixable(): void
+    {
+        // Club logos (unlike IOC flags) only ever exist as per-tournament rows
+        // from earlier events, never globally -- they must still be offered.
+        self::seedRow('Countries', [
+            'CoId' => self::OTHER_LOGO_CLUB_ID, 'CoTournament' => self::SENTINEL,
+            'CoIocCode' => 'OTH', 'CoCode' => 'OTH', 'CoName' => 'Other tournament',
+        ]);
+        self::seedRow('Entries', [
+            'EnId' => self::OTHER_LOGO_CLUB_ID, 'EnTournament' => self::SENTINEL, 'EnCountry' => self::OTHER_LOGO_CLUB_ID,
+            'EnDivision' => 'R', 'EnClass' => 'XZ', 'EnCode' => 'F3',
+            'EnName' => 'T', 'EnFirstName' => 'T', 'EnAthlete' => 1,
+        ]);
+        self::seedRow('Flags', ['FlCode' => 'OTH', 'FlTournament' => self::OTHER_TOUR, 'FlJPG' => 'o.jpg', 'FlSVG' => '']);
+
+        $fixable = null;
+        $missing = null;
+        foreach (statusChecklistItems() as $item) {
+            if ($item['key'] === 'clubLogosFixable') {
+                $fixable = $item;
+            }
+            if ($item['key'] === 'clubLogosMissing') {
+                $missing = $item;
+            }
+        }
+
+        $this->assertNotNull($fixable);
+        $this->assertContains('OTH', $fixable['fix']['params']['clubCode']);
+        $this->assertStringNotContainsString('OTH', (string)($missing['detail'] ?? ''));
     }
 }

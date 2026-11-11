@@ -243,12 +243,16 @@ function laneAssistDetectSessionsWithoutTimes(array $sessions) {
     return $issues;
 }
 
-function laneAssistClassifyClubLogo($clubCode, $hasTournamentFlag, $hasGlobalFlag) {
+/**
+ * $hasReusableFlag: a logo for this code exists outside this tournament --
+ * globally (FlTournament=-1) or in any other tournament.
+ */
+function laneAssistClassifyClubLogo($clubCode, $hasTournamentFlag, $hasReusableFlag) {
     if ($hasTournamentFlag) {
         return null;
     }
 
-    if ($hasGlobalFlag) {
+    if ($hasReusableFlag) {
         return ['type' => 'linkable', 'club' => (string)$clubCode];
     }
 

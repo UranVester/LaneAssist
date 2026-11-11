@@ -101,8 +101,13 @@ final class StatusWriteActionsIntegrationTest extends LaneAssistDbTestCase
         // tournament-scoped at all).
         safe_w_sql('DELETE FROM Tournament WHERE ToId=' . StrSafe_DB(self::SENTINEL));
         safe_w_sql("DELETE FROM Flags WHERE FlTournament=" . StrSafe_DB(self::SENTINEL)
-            . " OR (FlTournament=-1 AND FlCode IN ('ZZZ','YYY','AAA','BBB'))");
+            . " OR (FlTournament=-1 AND FlCode IN ('ZZZ','YYY','AAA','BBB','ZQG'))"
+            . ' OR FlTournament IN (' . self::OTHER_TOUR_OLD . ',' . self::OTHER_TOUR_NEW . ')');
     }
+
+    /** Stand-in "earlier tournaments" whose per-tournament logo rows can be reused. */
+    private const OTHER_TOUR_OLD = 999997;
+    private const OTHER_TOUR_NEW = 999998;
 
     public function testApplySessionDefaultsSetsSessionTimeFromTournamentStart(): void
     {
@@ -169,6 +174,43 @@ final class StatusWriteActionsIntegrationTest extends LaneAssistDbTestCase
         $rs = safe_r_sql("SELECT FlCode FROM Flags WHERE FlCode='YYY' AND FlTournament=" . self::SENTINEL);
         while (safe_fetch($rs)) { $count++; }
         $this->assertSame(1, $count);
+    }
+
+    public function testPullClubLogoCopiesFromAnotherTournamentWhenNoGlobalRow(): void
+    {
+        // Danish club logos never get a global (FlTournament=-1) row -- core's
+        // default-flags download only covers FITA/IOC codes -- they only exist
+        // as per-tournament rows uploaded at earlier events. Reusing those is
+        // the whole point of this quickfix; with a global-only lookup it was
+        // silently a no-op for every club.
+        self::seedRow('Flags', [
+            'FlCode' => 'ZQO', 'FlTournament' => self::OTHER_TOUR_OLD,
+            'FlJPG' => 'old.jpg', 'FlSVG' => '', 'FlEntered' => '2025-01-01 10:00:00',
+        ]);
+        self::seedRow('Flags', [
+            'FlCode' => 'ZQO', 'FlTournament' => self::OTHER_TOUR_NEW,
+            'FlJPG' => 'new.jpg', 'FlSVG' => '', 'FlEntered' => '2026-01-01 10:00:00',
+        ]);
+
+        pullClubLogoForTest('ZQO');
+
+        $row = safe_fetch(safe_r_sql("SELECT FlJPG FROM Flags WHERE FlCode='ZQO' AND FlTournament=" . self::SENTINEL));
+        $this->assertNotNull($row, 'logo from an earlier tournament must have been copied');
+        $this->assertSame('new.jpg', (string)$row->FlJPG, 'the most recently entered copy wins');
+    }
+
+    public function testPullClubLogoPrefersGlobalRowOverOtherTournaments(): void
+    {
+        self::seedRow('Flags', ['FlCode' => 'ZQG', 'FlTournament' => -1, 'FlJPG' => 'global.jpg', 'FlSVG' => '']);
+        self::seedRow('Flags', [
+            'FlCode' => 'ZQG', 'FlTournament' => self::OTHER_TOUR_NEW,
+            'FlJPG' => 'tour.jpg', 'FlSVG' => '', 'FlEntered' => '2099-01-01 10:00:00',
+        ]);
+
+        pullClubLogoForTest('ZQG');
+
+        $row = safe_fetch(safe_r_sql("SELECT FlJPG FROM Flags WHERE FlCode='ZQG' AND FlTournament=" . self::SENTINEL));
+        $this->assertSame('global.jpg', (string)$row->FlJPG);
     }
 
     // ---------- Real dispatcher functions, bulk-array params ----------

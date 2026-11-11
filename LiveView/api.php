@@ -910,14 +910,19 @@ function statusChecklistItems() {
     $clubRs = safe_r_sql("SELECT DISTINCT co.CoCode AS Code FROM Entries e
         INNER JOIN Countries co ON co.CoId=e.EnCountry
         WHERE e.EnTournament=$tourId");
-    $flagRs = safe_r_sql("SELECT FlCode, FlTournament FROM Flags WHERE FlTournament IN (-1, $tourId)");
+    // A logo is reusable if it exists globally (FlTournament=-1, FITA/IOC
+    // codes only) or in any other tournament -- club logos only ever exist
+    // as per-tournament rows uploaded at earlier events.
+    $flagRs = safe_r_sql("SELECT FlCode, FlTournament=$tourId AS Here FROM Flags
+        WHERE FlCode IN (SELECT CoCode FROM Countries WHERE CoTournament=$tourId)
+            AND (FlTournament=$tourId OR FlJPG>'' OR FlSVG>'')");
     $tournamentFlags = [];
-    $globalFlags = [];
+    $reusableFlags = [];
     while ($flag = safe_fetch($flagRs)) {
-        if (intval($flag->FlTournament) === -1) {
-            $globalFlags[(string)$flag->FlCode] = true;
-        } else {
+        if (intval($flag->Here)) {
             $tournamentFlags[(string)$flag->FlCode] = true;
+        } else {
+            $reusableFlags[(string)$flag->FlCode] = true;
         }
     }
     $clubIssues = [];
@@ -926,7 +931,7 @@ function statusChecklistItems() {
         if ($code === '') {
             continue;
         }
-        $classification = laneAssistClassifyClubLogo($code, isset($tournamentFlags[$code]), isset($globalFlags[$code]));
+        $classification = laneAssistClassifyClubLogo($code, isset($tournamentFlags[$code]), isset($reusableFlags[$code]));
         if ($classification === null) {
             continue;
         }
@@ -1061,6 +1066,11 @@ function pullClubLogoForTest($clubCode) {
     // invisible to every one of those lookups. FlContAssoc is carried over
     // for the same reason (NOT-NULL, no default) even though it isn't part
     // of a join condition anywhere found.
+    //
+    // Source: the global row if there is one, otherwise the most recently
+    // entered copy from another tournament (where club logos actually live).
     safe_w_sql("INSERT IGNORE INTO Flags (FlCode, FlTournament, FlIocCode, FlJPG, FlSVG, FlContAssoc)
-        SELECT FlCode, $tourId, FlIocCode, FlJPG, FlSVG, FlContAssoc FROM Flags WHERE FlCode=$clubCode AND FlTournament=-1");
+        SELECT FlCode, $tourId, FlIocCode, FlJPG, FlSVG, FlContAssoc FROM Flags
+        WHERE FlCode=$clubCode AND FlTournament<>$tourId AND (FlJPG>'' OR FlSVG>'')
+        ORDER BY FlTournament=-1 DESC, FlEntered DESC LIMIT 1");
 }
