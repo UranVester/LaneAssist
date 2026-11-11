@@ -134,15 +134,6 @@ include('Common/Templates/head.php');
         </section>
 
         <section class="settings-card">
-            <h3><i class="fa fa-copy"></i> Clone Tournament</h3>
-            <p>Create a new tournament from an existing one's setup (categories, events, targets/sessions, finals, etc).</p>
-            <p class="inline-note">The tournament list there only shows the tournaments you have access to.</p>
-            <div class="settings-actions">
-                <a href="<?php echo $CFG->ROOT_DIR; ?>Modules/Custom/LaneAssist/CloneTournament/index.php" class="btn btn-info"><i class="fa fa-clone"></i> Open Clone Tournament</a>
-            </div>
-        </section>
-
-        <section class="settings-card">
             <h3><i class="fa fa-random"></i> Change finals events</h3>
             <p>Replace the selected tournament's individual final events with a new set, separated by gender, class, division or distance. Preview first; team events are not touched.</p>
             <?php if ($hasCompetition): ?>
