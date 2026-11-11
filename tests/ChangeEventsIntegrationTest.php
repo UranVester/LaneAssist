@@ -361,6 +361,40 @@ final class ChangeEventsIntegrationTest extends LaneAssistDbTestCase
         $this->assertSame(8, self::countRows("SELECT COUNT(*) n FROM Finals WHERE FinTournament=$s AND FinEvent='RDS'"));
     }
 
+    /**
+     * The apply flow ranks the new events with core MakeIndAbs(). Since the
+     * 2026-10-26 IANSEO release it returns 1 when MakeIndividuals() finds no
+     * event to (un)populate, which ChangeEvents would report as "ranking not
+     * rebuilt". MakeIndAbs() itself cannot be loaded here (its file pulls in
+     * config.php), so this asserts its precondition instead: right after an
+     * apply, MakeIndividuals()' "missing from Individuals" query (copied from
+     * Qualification/Fun_Qualification.local.inc.php) finds every new event.
+     */
+    public function testEveryNewEventNeedsIndividualsRightAfterApply(): void
+    {
+        self::seedEvent('18R', 0);
+        self::seedEventClass('18R', 0, 'R', 'HS');
+        self::seedEntry(51, 'R', 'HS');
+        self::seedEntry(52, 'R', 'DS');
+
+        $fingerprint = cePreview(self::SENTINEL, self::DK_FULL)['fingerprint'];
+        $this->assertSame(0, ceGuardedApply(self::SENTINEL, self::DK_FULL, $fingerprint)['error']);
+
+        $s = self::SENTINEL;
+        $affected = [];
+        $rs = safe_r_sql("SELECT DISTINCT EcCode
+            FROM Entries
+            LEFT JOIN ExtraData ON EnId=EdId AND EdType='P'
+            INNER JOIN EventClass ON EnTournament=EcTournament AND EcTeamEvent=0 AND EnDivision=EcDivision AND EnClass=EcClass and if(EcSubClass='', true, EcSubClass=EnSubClass) AND (IFNULL(EdExtra,0) & EcExtraAddons) = EcExtraAddons
+            LEFT JOIN Individuals ON IndId=EnId AND IndTournament=EnTournament AND IndEvent=EcCode
+            WHERE EnTournament=$s AND IndEvent IS NULL AND EnIndFEvent=1 AND EnStatus<=1
+            ORDER BY EcCode");
+        while ($row = safe_fetch($rs)) {
+            $affected[] = $row->EcCode;
+        }
+        $this->assertSame(['RDS', 'RHS'], $affected);
+    }
+
     public function testApplyRefusesOnStaleFingerprint(): void
     {
         self::seedEvent('18R', 0);
