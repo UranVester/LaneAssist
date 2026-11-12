@@ -1434,7 +1434,7 @@
             return true;
         }
 
-        const range = lanePlan.ranges[distanceKey] || null;
+        const range = (lanePlan.placementRanges || lanePlan.ranges)[distanceKey] || null;
         if (!range) {
             return false;
         }

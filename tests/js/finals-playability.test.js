@@ -141,3 +141,35 @@ test('fixed-distance planning leaves spare targets unlocked', () => {
         '15m': {start: 13, end: 13}
     });
 });
+
+test('auto placement may use spare targets bordering the last distance (regression: arhE26V lane 24 never used)', () => {
+    const makeBundle = function(distanceProfile, distanceSort, targetsUsed) {
+        return {
+            distanceProfile: distanceProfile,
+            distanceSort: distanceSort,
+            targetsUsed: targetsUsed,
+            rows: [{teamEvent: 0}]
+        };
+    };
+    const targets = function(count) {
+        return Array.from({length: count}, function(_, index) { return index + 1; });
+    };
+
+    // arhE26V: one 18m stream, 134 target-widths over 24 targets -> lock range 1-23, 24 spare
+    const single = [makeBundle('18m', 1, 10)];
+    for (let i = 0; i < 62; i++) {
+        single.push(makeBundle('18m', 1, 2));
+    }
+    const singlePlan = distanceLanePlan.buildDistanceLanePlan(0, single, targets(24));
+    assert.deepStrictEqual(singlePlan.ranges, {'18m': {start: 1, end: 23}});
+    assert.deepStrictEqual(singlePlan.placementRanges, {'18m': {start: 1, end: 24}});
+
+    const mixedPlan = distanceLanePlan.buildDistanceLanePlan(0, [
+        makeBundle('30m', 1, 12),
+        makeBundle('15m', 2, 1)
+    ], targets(17));
+    assert.deepStrictEqual(mixedPlan.placementRanges, {
+        '30m': {start: 1, end: 12},
+        '15m': {start: 13, end: 17}
+    });
+});

@@ -99,7 +99,9 @@
         });
 
         const ranges = {};
+        const placementRanges = {};
         let cursor = 0;
+        let lastKey = null;
 
         groups.forEach(function(group) {
             const slice = targetNumbers.slice(cursor, cursor + group.count);
@@ -112,9 +114,17 @@
                 start: slice[0],
                 end: slice[slice.length - 1]
             };
+            placementRanges[group.key] = Object.assign({}, ranges[group.key]);
+            lastKey = group.key;
         });
 
-        return { ranges: ranges };
+        // Spare targets stay out of `ranges` (no lock for manual moves), but auto placement may
+        // use them for the distance bordering them so they never sit idle.
+        if (lastKey !== null && cursor < targetNumbers.length) {
+            placementRanges[lastKey].end = targetNumbers[targetNumbers.length - 1];
+        }
+
+        return { ranges: ranges, placementRanges: placementRanges };
     }
 
     return {
