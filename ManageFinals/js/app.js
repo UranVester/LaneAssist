@@ -325,6 +325,9 @@
 
         $('#unassigned-list').on('click', '.bundle-clear-btn', handleBundleClearClick);
         $('#visual-board').on('click', '.bundle-clear-btn', handleBundleClearClick);
+        $('#unassigned-list, #visual-board')
+            .on('mouseenter', '.bundle-card', handleBundleCardEnter)
+            .on('mouseleave', '.bundle-card', clearEventHighlight);
         $(window).on('resize orientationchange', updateViewportLayout);
     }
 
@@ -2509,12 +2512,36 @@
         }, 0);
     }
 
+    function getBundleEventKey(bundle) {
+        const teamEvent = parseInt(bundle.rows[0] ? bundle.rows[0].teamEvent : 0, 10) || 0;
+        return teamEvent + '|' + (bundle.event || '');
+    }
+
+    function clearEventHighlight() {
+        $('.bundle-card.event-highlight').removeClass('event-highlight');
+    }
+
+    function handleBundleCardEnter() {
+        clearEventHighlight();
+        if (activeDragSourceCard) {
+            return;
+        }
+        const eventKey = ($(this).attr('data-event-key') || '').toString();
+        if (!eventKey) {
+            return;
+        }
+        $('.bundle-card').filter(function() {
+            return $(this).attr('data-event-key') === eventKey;
+        }).addClass('event-highlight');
+    }
+
     function createBundleCard(bundle) {
         const eventLabel = bundle.eventName ? (bundle.event + ' - ' + bundle.eventName) : bundle.event;
         const $card = $('<div class="bundle-card"></div>')
             .attr('data-bundle-key', bundle.key)
             .attr('data-timeslot-key', bundle.timeslotKey)
-            .attr('data-size', bundle.targetsUsed);
+            .attr('data-size', bundle.targetsUsed)
+            .attr('data-event-key', getBundleEventKey(bundle));
 
         if (Array.isArray(bundle.clearRowKeys) && bundle.clearRowKeys.length) {
             $card.attr('data-row-keys', bundle.clearRowKeys.join(','));
@@ -3039,6 +3066,7 @@
                     width: width + 'px'
                 });
 
+                clearEventHighlight();
                 activeDragSourceCard = $sourceCard;
                 activeDragSourceWrapper = $sourceWrapper.length ? $sourceWrapper : null;
                 $sourceCard.addClass('drag-source-hidden');

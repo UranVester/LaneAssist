@@ -821,6 +821,12 @@
     pointer-events: none;
 }
 
+.bundle-card.event-highlight {
+    outline: 2px solid #212529;
+    outline-offset: 1px;
+    z-index: 3;
+}
+
 .drag-source-hidden {
     visibility: hidden !important;
 }
