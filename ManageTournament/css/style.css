@@ -35,6 +35,11 @@
 .settings-field label { font-size: 13px; font-weight: 600; color: #2f4767; }
 .settings-field input, .settings-field select { width: 100%; box-sizing: border-box; padding: 8px 10px; border: 1px solid #cfd9e6; border-radius: 6px; font-size: 13px; }
 .settings-field small { color: #6a7d95; font-size: 12px; }
+.mt-field-row { display: flex; gap: 8px; align-items: center; }
+.mt-field-row input, .mt-field-row select { flex: 1 1 auto; min-width: 0; }
+.mt-reset { flex: 0 0 auto; white-space: nowrap; }
+.mt-reset[hidden] { display: none; }
+.mt-default-tag { font-weight: normal; color: #6a7d95; }
 .settings-actions { display: flex; flex-wrap: wrap; gap: 10px; }
 .inline-note { margin-top: 8px; color: #5a6e89; font-size: 12px; }
 .status-message { margin: 0 0 12px; padding: 10px 12px; border-radius: 6px; font-size: 13px; }

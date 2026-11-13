@@ -4,7 +4,7 @@
     var apiUrl = ROOT_DIR + 'Modules/Custom/LaneAssist/ManageTournament/api.php';
     var settingsApiUrl = ROOT_DIR + 'Modules/Custom/LaneAssist/Settings/api.php';
     var stageLabels = { planning: 'Planning', qualification: 'Qualification', finals: 'Finals', over: 'Over' };
-    var state = { snapshot: null, loading: false };
+    var state = { snapshot: null, loading: false, settings: {} };
 
     function escapeHtml(value) {
         return $('<div>').text(value == null ? '' : String(value)).html();
@@ -120,6 +120,18 @@
             .addClass(type === 'error' ? 'status-error' : 'status-success').text(message);
     }
 
+    function renderTournamentSettings() {
+        var finals = window.LaneAssist.tournamentSettings.describeFinalsLength(state.settings);
+        var layout = ((state.settings.tournament || {}).manageTargetsLayout || '').toString();
+        $('#competition-default-finals-length').val(finals.value);
+        $('#finals-length-default-tag').prop('hidden', !finals.isDefault);
+        $('#btn-reset-finals-length').prop('hidden', finals.isDefault);
+        $('#finals-length-default-note').text('Default: ' + finals.defaultValue + ' minutes, from your user/admin setting.');
+        $('#competition-manage-targets-layout').val(layout);
+        $('#layout-default-tag').prop('hidden', layout !== '');
+        $('#btn-reset-layout').prop('hidden', layout === '');
+    }
+
     function loadTournamentSettings() {
         $.ajax({ url: settingsApiUrl, method: 'GET', dataType: 'json', cache: false, data: { action: 'getSettings' } })
             .done(function(response) {
@@ -127,25 +139,23 @@
                     showSettingsStatus(response.message || 'Failed to load settings', 'error');
                     return;
                 }
-                var tournamentSettings = (response.settings || {}).tournament || {};
-                $('#competition-default-finals-length').val(tournamentSettings.defaultFinalsLength || 0);
-                $('#competition-manage-targets-layout').val((tournamentSettings.manageTargetsLayout || '').toString());
+                state.settings = response.settings || {};
+                renderTournamentSettings();
             })
             .fail(function() {
                 showSettingsStatus('Failed to load settings', 'error');
             });
     }
 
-    function saveTournamentSettings() {
-        var defaultFinalsLength = parseInt($('#competition-default-finals-length').val(), 10);
+    function saveTournamentSettings(defaultFinalsLength, manageTargetsLayout) {
         $.ajax({
             url: settingsApiUrl,
             method: 'POST',
             dataType: 'json',
             data: {
                 action: 'saveTournamentSettings',
-                defaultFinalsLength: Number.isFinite(defaultFinalsLength) ? defaultFinalsLength : 0,
-                manageTargetsLayout: ($('#competition-manage-targets-layout').val() || '').toString().trim()
+                defaultFinalsLength: defaultFinalsLength,
+                manageTargetsLayout: manageTargetsLayout
             }
         }).done(function(response) {
             if (response.error) {
@@ -153,16 +163,28 @@
                 return;
             }
             showSettingsStatus(response.message || 'Tournament settings saved', 'success');
+            loadTournamentSettings();
         }).fail(function() {
             showSettingsStatus('Failed to save tournament settings', 'error');
         });
+    }
+
+    function currentFinalsLength() {
+        var finals = window.LaneAssist.tournamentSettings.describeFinalsLength(state.settings);
+        return window.LaneAssist.tournamentSettings.finalsLengthToSave($('#competition-default-finals-length').val(), finals.defaultValue);
+    }
+
+    function currentLayout() {
+        return ($('#competition-manage-targets-layout').val() || '').toString().trim();
     }
 
     $(function() {
         $('#mt-refresh').on('click', loadStatusSnapshot);
         loadStatusSnapshot();
         if (window.LANEASSIST_CAN_EDIT_SETTINGS) {
-            $('#btn-save-competition-settings').on('click', saveTournamentSettings);
+            $('#btn-save-competition-settings').on('click', function() { saveTournamentSettings(currentFinalsLength(), currentLayout()); });
+            $('#btn-reset-finals-length').on('click', function() { saveTournamentSettings(0, currentLayout()); });
+            $('#btn-reset-layout').on('click', function() { saveTournamentSettings(currentFinalsLength(), ''); });
             loadTournamentSettings();
         }
     });
