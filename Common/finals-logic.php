@@ -13,6 +13,8 @@ if (!defined('TargetNoPadding')) {
     define('TargetNoPadding', 4);
 }
 
+require_once __DIR__ . '/distance-logic.php';
+
 function normalizeDateTimeValue($dateValue, $timeValue) {
     $date = trim((string)$dateValue);
     $time = trim((string)$timeValue);
@@ -472,19 +474,6 @@ function normalizeFilterValues($rawValue) {
     }
 
     return array_values(array_unique($values));
-}
-
-function normalizeDistanceToken($token) {
-    $token = trim((string)$token);
-    if ($token === '' || $token === '-') {
-        return '';
-    }
-
-    if (preg_match('/(\d+)/', $token, $matches)) {
-        return intval($matches[1]) . 'm';
-    }
-
-    return '';
 }
 
 function getDistanceProfileForCategory($category) {
