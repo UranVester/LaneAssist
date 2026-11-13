@@ -2,7 +2,7 @@
 require_once __DIR__ . '/LaneAssistDbTestCase.php';
 
 /**
- * DB integration test for LiveView/api.php's applySessionDefaults() and
+ * DB integration test for ManageTournament/api.php's applySessionDefaults() and
  * pullClubLogo() write actions.
  *
  * Writes real rows to the local ianseo DB under sentinel TourId 999999 and
@@ -37,7 +37,7 @@ final class StatusWriteActionsIntegrationTest extends LaneAssistDbTestCase
         // This stub must run unconditionally (not nested inside the
         // function_exists('applySessionDefaultsForTest') guard below): when
         // another test class in this process (e.g.
-        // StatusSnapshotIntegrationTest) requires LiveView/api.php first,
+        // StatusSnapshotIntegrationTest) requires ManageTournament/api.php first,
         // that guard is already satisfied and this class's own bootstrap
         // never runs, leaving IsBlocked() undefined when
         // applySessionDefaults() calls it.
@@ -72,11 +72,11 @@ final class StatusWriteActionsIntegrationTest extends LaneAssistDbTestCase
 
             require_once dirname(__DIR__) . '/Common/live-view-logic.php';
             require_once dirname(__DIR__) . '/Common/status-logic.php';
-            if (!defined('LANEASSIST_LIVEVIEW_API_TEST_MODE')) {
-                define('LANEASSIST_LIVEVIEW_API_TEST_MODE', true);
+            if (!defined('LANEASSIST_MANAGETOURNAMENT_API_TEST_MODE')) {
+                define('LANEASSIST_MANAGETOURNAMENT_API_TEST_MODE', true);
             }
             require_once dirname(__DIR__) . '/Common/live-view-data.php';
-            require_once dirname(__DIR__) . '/LiveView/api.php';
+            require_once dirname(__DIR__) . '/ManageTournament/api.php';
         }
 
         // Seeded once per class (not per test method): both session-time tests

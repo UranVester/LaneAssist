@@ -2,18 +2,18 @@
 require_once __DIR__ . '/LaneAssistDbTestCase.php';
 
 /**
- * DB integration test for LiveView/api.php's statusSnapshot() assembly.
+ * DB integration test for ManageTournament/api.php's statusSnapshot() assembly.
  *
  * Writes real rows to the local ianseo DB under sentinel TourId 999999 and
  * deletes them in teardown. Skips entirely if the IANSEO DB layer cannot be
  * bootstrapped. DO NOT run against a production database.
  *
  * statusChecklistItems() (and statusSnapshot()/statusTournamentStage()) are
- * defined in LiveView/api.php, which is normally a web-request entry point:
+ * defined in ManageTournament/api.php, which is normally a web-request entry point:
  * requiring it runs config.php (starts a real HTTP session) and then
  * CheckTourSession()/checkFullACL(), either of which exit()/die() outside a
  * real IANSEO request. To make the functions it defines callable from here,
- * this test defines LANEASSIST_LIVEVIEW_API_TEST_MODE before requiring the
+ * this test defines LANEASSIST_MANAGETOURNAMENT_API_TEST_MODE before requiring the
  * file; api.php's own request-handling top section checks that constant and
  * skips itself when it's set, while the function definitions below it are
  * unaffected and still get declared. This test pre-loads, by hand, exactly
@@ -86,9 +86,9 @@ final class StatusSnapshotIntegrationTest extends LaneAssistDbTestCase
 
         require_once dirname(__DIR__) . '/Common/live-view-logic.php';
         require_once dirname(__DIR__) . '/Common/status-logic.php';
-        define('LANEASSIST_LIVEVIEW_API_TEST_MODE', true);
+        define('LANEASSIST_MANAGETOURNAMENT_API_TEST_MODE', true);
         require_once dirname(__DIR__) . '/Common/live-view-data.php';
-        require_once dirname(__DIR__) . '/LiveView/api.php';
+        require_once dirname(__DIR__) . '/ManageTournament/api.php';
     }
 
     public function testParticipantsItemReportsZeroWhenNoneEntered(): void
@@ -429,5 +429,11 @@ final class StatusSnapshotIntegrationTest extends LaneAssistDbTestCase
         ]);
 
         $this->assertTrue(finalsBracketsInitialized());
+    }
+
+    public function testLiveViewApiNoLongerDefinesStatusCode(): void
+    {
+        $this->assertStringNotContainsString('function statusSnapshot(',
+            file_get_contents(dirname(__DIR__) . '/LiveView/api.php'));
     }
 }
