@@ -9,7 +9,7 @@
         archers: [],
         canWrite: false,
         busy: false,
-        loadSeq: 0,
+        gate: ChangeTargetFacesGate.createRequestGate(),
         filterTimer: null
     };
 
@@ -24,6 +24,7 @@
 
     function init() {
         $('.tf-filter').on('input change', function() {
+            state.gate.markDirty();
             clearTimeout(state.filterTimer);
             state.filterTimer = setTimeout(load, FILTER_DELAY_MS);
         });
@@ -61,15 +62,16 @@
     }
 
     function load() {
-        const seq = ++state.loadSeq;
+        const sent = filters();
+        const token = state.gate.startLoad(sent);
         $.ajax({
             url: API_URL,
             method: 'GET',
             dataType: 'json',
-            data: $.extend({ action: 'load' }, filters()),
+            data: $.extend({ action: 'load' }, sent),
             success: function(response) {
-                if (seq !== state.loadSeq) {
-                    return; // a newer filter is already loading
+                if (!state.gate.finishLoad(token)) {
+                    return; // a newer filter or a write overtook this response
                 }
                 if (response.error) {
                     showStatus(response.message || 'Loading archers failed', 'error');
@@ -83,9 +85,8 @@
                 render();
             },
             error: function() {
-                if (seq === state.loadSeq) {
-                    showStatus('Loading archers failed', 'error');
-                }
+                state.gate.failLoad(token);
+                showStatus('Loading archers failed', 'error');
             }
         });
     }
@@ -170,6 +171,10 @@
                     state.archers[i] = response.archer;
                     $('#tf-body tr[data-en="' + enId + '"]').replaceWith(rowHtml(response.archer));
                 }
+                // Reload so the row drops out of a Current face filter it no
+                // longer matches, and so no older load can paint the old face back.
+                state.gate.noteWrite();
+                load();
             },
             error: function() {
                 showStatus('Changing the face failed', 'error');
@@ -186,6 +191,12 @@
         if (!group || !n || state.busy || !state.canWrite) {
             return;
         }
+        // Only the filters of the rows on screen; refuse while a newer filter is pending.
+        const request = state.gate.setAllRequest(n);
+        if (!request) {
+            showStatus('The list is still updating. Try again in a moment.', 'info');
+            return;
+        }
         if (!window.confirm('Set ' + group.label + ' for ' + n + ' archers?\nArchers it isn\'t allowed for are skipped.')) {
             return;
         }
@@ -194,7 +205,7 @@
             url: API_URL,
             method: 'POST',
             dataType: 'json',
-            data: $.extend({ action: 'setAll', group: groupKey, expectedCount: n }, filters()),
+            data: $.extend({ action: 'setAll', group: groupKey, expectedCount: request.expectedCount }, request.filters),
             success: function(response) {
                 if (response.error) {
                     showStatus(response.message || 'Changing faces failed', 'error');
@@ -204,6 +215,7 @@
                     return;
                 }
                 showStatus(summary(response), 'success');
+                state.gate.noteWrite();
                 load();
             },
             error: function() {

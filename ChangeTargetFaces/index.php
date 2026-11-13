@@ -28,10 +28,12 @@ $IncludeFA = true;
 
 $styleVersion = filemtime(__DIR__ . '/css/style.css');
 $scriptVersion = filemtime(__DIR__ . '/js/app.js');
+$gateVersion = filemtime(__DIR__ . '/js/request-gate.js');
 $JS_SCRIPT = array(
     '<script type="text/javascript">var ROOT_DIR = ' . json_encode($CFG->ROOT_DIR, JSON_HEX_TAG | JSON_HEX_AMP) . ';</script>',
     '<link href="' . $CFG->ROOT_DIR . 'Modules/Custom/LaneAssist/Common/css/shared.css" rel="stylesheet" type="text/css">',
     '<link href="' . $CFG->ROOT_DIR . 'Modules/Custom/LaneAssist/ChangeTargetFaces/css/style.css?v=' . $styleVersion . '" rel="stylesheet" type="text/css">',
+    '<script src="' . $CFG->ROOT_DIR . 'Modules/Custom/LaneAssist/ChangeTargetFaces/js/request-gate.js?v=' . $gateVersion . '"></script>',
     '<script src="' . $CFG->ROOT_DIR . 'Modules/Custom/LaneAssist/ChangeTargetFaces/js/app.js?v=' . $scriptVersion . '"></script>',
 );
 
