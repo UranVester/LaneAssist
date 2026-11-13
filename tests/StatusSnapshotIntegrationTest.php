@@ -385,4 +385,48 @@ final class StatusSnapshotIntegrationTest extends LaneAssistDbTestCase
         $this->assertContains('OTH', $fixable['fix']['params']['clubCode']);
         $this->assertStringNotContainsString('OTH', (string)($missing['detail'] ?? ''));
     }
+
+    /**
+     * Core creates an empty bracket grid (FinAthlete=0 / TfTeam=0) as soon as
+     * events have a first phase, long before anyone is placed in it. arhE26V
+     * showed Stage: Finals with no arrows shot because those rows counted.
+     */
+    private static function clearBrackets(): void
+    {
+        safe_w_sql('DELETE FROM Finals WHERE FinTournament=' . StrSafe_DB(self::SENTINEL));
+        safe_w_sql('DELETE FROM TeamFinals WHERE TfTournament=' . StrSafe_DB(self::SENTINEL));
+    }
+
+    public function testEmptyBracketGridDoesNotCountAsFinalsInitialized(): void
+    {
+        self::clearBrackets();
+        self::seedRow('Finals', [
+            'FinTournament' => self::SENTINEL, 'FinEvent' => 'RM', 'FinMatchNo' => 0, 'FinAthlete' => 0,
+        ]);
+        self::seedRow('TeamFinals', [
+            'TfTournament' => self::SENTINEL, 'TfEvent' => 'RM', 'TfMatchNo' => 0, 'TfTeam' => 0,
+        ]);
+
+        $this->assertFalse(finalsBracketsInitialized());
+    }
+
+    public function testBracketWithAPlacedArcherCountsAsFinalsInitialized(): void
+    {
+        self::clearBrackets();
+        self::seedRow('Finals', [
+            'FinTournament' => self::SENTINEL, 'FinEvent' => 'RM', 'FinMatchNo' => 0, 'FinAthlete' => 992010,
+        ]);
+
+        $this->assertTrue(finalsBracketsInitialized());
+    }
+
+    public function testBracketWithAPlacedTeamCountsAsFinalsInitialized(): void
+    {
+        self::clearBrackets();
+        self::seedRow('TeamFinals', [
+            'TfTournament' => self::SENTINEL, 'TfEvent' => 'RM', 'TfMatchNo' => 0, 'TfTeam' => 992011,
+        ]);
+
+        $this->assertTrue(finalsBracketsInitialized());
+    }
 }

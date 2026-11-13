@@ -465,13 +465,15 @@ function allFinalMatchesSnapshot() {
     return $visibleMatches;
 }
 
+// Core creates the empty bracket grid as soon as events have a first phase, so a
+// row existing proves nothing; finals have started once someone is placed in one.
 function finalsBracketsInitialized() {
     $tourId = StrSafe_DB($_SESSION['TourId']);
-    $individual = safe_fetch(safe_r_sql("SELECT 1 Initialized FROM Finals WHERE FinTournament=$tourId LIMIT 1"));
+    $individual = safe_fetch(safe_r_sql("SELECT 1 Initialized FROM Finals WHERE FinTournament=$tourId AND FinAthlete<>0 LIMIT 1"));
     if ($individual) {
         return true;
     }
-    return (bool)safe_fetch(safe_r_sql("SELECT 1 Initialized FROM TeamFinals WHERE TfTournament=$tourId LIMIT 1"));
+    return (bool)safe_fetch(safe_r_sql("SELECT 1 Initialized FROM TeamFinals WHERE TfTournament=$tourId AND TfTeam<>0 LIMIT 1"));
 }
 
 function liveSnapshot() {
