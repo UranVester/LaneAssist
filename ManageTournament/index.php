@@ -65,7 +65,6 @@ include('Common/Templates/head.php');
         <aside class="mt-tools">
             <section class="settings-card">
                 <h3><i class="fa fa-flag"></i> Tournament settings</h3>
-                <div id="mt-settings-status" class="status-message hidden"></div>
                 <?php if ($canEditSettings): ?>
                     <div class="settings-field">
                         <label for="competition-default-finals-length">Finals length (minutes) <span id="finals-length-default-tag" class="mt-default-tag" hidden>(default)</span></label>
@@ -95,6 +94,7 @@ include('Common/Templates/head.php');
                     </div>
                     <div class="settings-actions">
                         <button id="btn-save-competition-settings" class="btn btn-success"><i class="fa fa-save"></i> Save Tournament Settings</button>
+                        <span id="mt-settings-status" class="status-message mt-inline-status hidden" role="status"></span>
                     </div>
                 <?php else: ?>
                     <p class="inline-note">You need schedule edit access to change these settings.</p>
