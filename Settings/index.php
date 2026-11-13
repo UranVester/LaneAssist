@@ -21,7 +21,6 @@ if (!empty($CFG->USERAUTH) && !empty($_SESSION['AUTH_ENABLE']) && function_exist
 $isAdminOrDebugSettings = $isDebugMode || $isAdminSettings;
 $hasRootAcl = function_exists('hasFullACL') && hasFullACL(AclRoot, '', AclReadWrite);
 $canInstallUpdates = laneAssistCanApplyUpdates($isDebugMode, $hasRootAcl, !empty($INFO->ACLEnabled));
-$competitionCode = $hasCompetition ? getCodeFromId($_SESSION['TourId']) : '';
 $activeSettingsOwner = 'Shared default';
 if (!empty($CFG->USERAUTH)) {
     $activeSettingsOwner = !empty($_SESSION['AUTH_User'])
@@ -35,7 +34,7 @@ $IncludeFA = true;
 $assetVersion = rawurlencode(getLaneAssistModuleVersion());
 
 $JS_SCRIPT = array(
-    '<script type="text/javascript">var ROOT_DIR = "' . $CFG->ROOT_DIR . '"; var LANEASSIST_HAS_COMPETITION = ' . ($hasCompetition ? '1' : '0') . '; var LANEASSIST_DEBUG_MODE = ' . ($isDebugMode ? '1' : '0') . ';</script>',
+    '<script type="text/javascript">var ROOT_DIR = "' . $CFG->ROOT_DIR . '"; var LANEASSIST_DEBUG_MODE = ' . ($isDebugMode ? '1' : '0') . ';</script>',
     '<link href="' . $CFG->ROOT_DIR . 'Modules/Custom/LaneAssist/Common/css/shared.css" rel="stylesheet" type="text/css">',
     '<link href="' . $CFG->ROOT_DIR . 'Modules/Custom/LaneAssist/Settings/css/style.css" rel="stylesheet" type="text/css">',
     '<script src="' . $CFG->ROOT_DIR . 'Modules/Custom/LaneAssist/Common/js/update-status.js?v=' . $assetVersion . '"></script>',
@@ -95,54 +94,6 @@ include('Common/Templates/head.php');
             <div class="settings-actions">
                 <button id="btn-save-global-settings" class="btn btn-success"><i class="fa fa-save"></i> Save User Settings</button>
             </div>
-        </section>
-
-        <section class="settings-card">
-            <h3><i class="fa fa-flag"></i> Tournament settings</h3>
-            <?php if ($hasCompetition): ?>
-                <p class="inline-note">Current competition: <strong><?php echo htmlentities($competitionCode); ?></strong></p>
-                <div class="settings-field">
-                    <label for="competition-default-finals-length">Default finals length override (minutes)</label>
-                    <input id="competition-default-finals-length" type="number" min="0" max="480" step="1" value="0">
-                    <small>Set to 0 to use user/admin value.</small>
-                </div>
-                <div class="settings-field">
-                    <label for="competition-manage-targets-layout">Manage Targets default layout</label>
-                    <select id="competition-manage-targets-layout">
-                        <option value="">Auto (no saved preference)</option>
-                        <option value="layout_fallback_stacked">No layout</option>
-                        <option value="layout_60cm_3_abc">60cm ABC (3 archers, 2 lanes/mat)</option>
-                        <option value="layout_40cm_6_triangle">40cm Triangle (3 archers, 6 targets/mat)</option>
-                        <option value="layout_60cm_4_split">60cm Split (4 archers, 2 targets/mat)</option>
-                        <option value="layout_40cm_4_quad">40cm Quad (4 archers, 4 targets/mat)</option>
-                        <option value="layout_outdoor_mixed_2">Outdoor Mixed (2 archers)</option>
-                        <option value="layout_outdoor_mixed_3">Outdoor Mixed (3 archers)</option>
-                        <option value="layout_outdoor_mixed_4">Outdoor Mixed (4 archers)</option>
-                    </select>
-                    <small>Preselects the Manage Targets layout for this competition.</small>
-                </div>
-                <div class="settings-actions">
-                    <button id="btn-save-competition-settings" class="btn btn-success"><i class="fa fa-save"></i> Save Tournament Settings</button>
-                </div>
-            <?php else: ?>
-                <p>No competition is selected.</p>
-                <p class="inline-note">Competition settings appear here once a tournament session is active.</p>
-                <div class="settings-actions">
-                    <a href="<?php echo $CFG->ROOT_DIR; ?>index.php" class="btn btn-info"><i class="fa fa-list"></i> Select Competition</a>
-                </div>
-            <?php endif; ?>
-        </section>
-
-        <section class="settings-card">
-            <h3><i class="fa fa-random"></i> Change finals events</h3>
-            <p>Replace the selected tournament's individual final events with a new set, separated by gender, class, division or distance. Preview first; team events are not touched.</p>
-            <?php if ($hasCompetition): ?>
-                <div class="settings-actions">
-                    <a href="<?php echo $CFG->ROOT_DIR; ?>Modules/Custom/LaneAssist/ChangeEvents/index.php" class="btn btn-info"><i class="fa fa-random"></i> Open Change finals events</a>
-                </div>
-            <?php else: ?>
-                <p class="inline-note">Select a competition first.</p>
-            <?php endif; ?>
         </section>
 
         <section class="settings-card">

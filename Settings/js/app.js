@@ -1,7 +1,6 @@
 (function($) {
     'use strict';
 
-    const hasCompetition = parseInt((typeof LANEASSIST_HAS_COMPETITION !== 'undefined' ? LANEASSIST_HAS_COMPETITION : 0), 10) > 0;
     const isDebugMode = parseInt((typeof LANEASSIST_DEBUG_MODE !== 'undefined' ? LANEASSIST_DEBUG_MODE : 0), 10) > 0;
     let updateInfo = null;
 
@@ -13,7 +12,6 @@
     function bindEvents() {
         $('#btn-save-admin-settings').on('click', saveAdminSettings);
         $('#btn-save-global-settings').on('click', saveGlobalSettings);
-        $('#btn-save-competition-settings').on('click', saveCompetitionSettings);
         $('#btn-donate').on('click', donateIntent);
         $('#btn-apply-update-file').on('click', applyUpdateFromFile);
         $('#btn-check-updates').on('click', checkUpdates);
@@ -159,7 +157,6 @@
                 const settings = response.settings || {};
                 const adminSettings = settings.admin || {};
                 const userSettings = settings.user || {};
-                const tournamentSettings = settings.tournament || {};
 
                 if ($('#admin-default-finals-length').length) {
                     $('#admin-default-finals-length').val(adminSettings.defaultFinalsLength || 30);
@@ -171,12 +168,6 @@
                 }
 
                 $('#global-default-finals-length').val(userSettings.defaultFinalsLength || 30);
-                if ($('#competition-default-finals-length').length) {
-                    $('#competition-default-finals-length').val(tournamentSettings.defaultFinalsLength || 0);
-                }
-                if ($('#competition-manage-targets-layout').length) {
-                    $('#competition-manage-targets-layout').val((tournamentSettings.manageTargetsLayout || '').toString());
-                }
                 showStatus('Settings loaded', 'success');
             },
             error: function() {
@@ -206,39 +197,6 @@
             },
             error: function() {
                 showStatus('Failed to save settings', 'error');
-            }
-        });
-    }
-
-    function saveCompetitionSettings() {
-        if (!hasCompetition) {
-            showStatus('No competition selected', 'error');
-            return;
-        }
-
-        const defaultFinalsLength = parseInt($('#competition-default-finals-length').val(), 10);
-        const normalized = Number.isFinite(defaultFinalsLength) ? defaultFinalsLength : 0;
-        const manageTargetsLayout = ($('#competition-manage-targets-layout').val() || '').toString().trim();
-
-        $.ajax({
-            url: ROOT_DIR + 'Modules/Custom/LaneAssist/Settings/api.php',
-            method: 'POST',
-            dataType: 'json',
-            data: {
-                action: 'saveTournamentSettings',
-                defaultFinalsLength: normalized,
-                manageTargetsLayout: manageTargetsLayout
-            },
-            success: function(response) {
-                if (response.error) {
-                    showStatus(response.message || 'Failed to save competition settings', 'error');
-                    return;
-                }
-
-                showStatus(response.message || 'Competition settings saved', 'success');
-            },
-            error: function() {
-                showStatus('Failed to save competition settings', 'error');
             }
         });
     }

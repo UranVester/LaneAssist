@@ -60,8 +60,6 @@ $JS_SCRIPT = [
         . $badgeRenderVersion . '"></script>',
     '<script src="' . $CFG->ROOT_DIR . 'Modules/Custom/LaneAssist/Common/js/color-by.js?v='
         . $colorByVersion . '"></script>',
-    '<script src="' . $CFG->ROOT_DIR . 'Modules/Custom/LaneAssist/Common/js/finals-playability.js"></script>',
-    '<script src="' . $CFG->ROOT_DIR . 'Modules/Custom/LaneAssist/Common/js/status-logic.js"></script>',
     '<script src="' . $CFG->ROOT_DIR . 'Modules/Custom/LaneAssist/LiveView/js/app.js?v=' . $scriptVersion . '"></script>',
 ];
 
@@ -108,7 +106,6 @@ include('Common/Templates/head.php');
                 </div>
             </div>
             <div class="mode-switch" role="group" aria-label="Competition phase">
-                <button type="button" class="mode-button" data-mode="status">Status <span id="status-issue-count" class="count-badge" hidden>0</span></button>
                 <button type="button" class="mode-button active" data-mode="qualification">Qualification</button>
                 <button type="button" class="mode-button" data-mode="finals">Finals <span id="final-count" class="count-badge">0</span></button>
             </div>
@@ -128,7 +125,6 @@ include('Common/Templates/head.php');
     <div id="live-notices" class="live-notices" aria-live="polite"></div>
     <section id="qualification-view" class="live-grid" aria-label="Qualification targets"></section>
     <section id="finals-view" class="live-grid" aria-label="Final matches" hidden></section>
-    <section id="status-view" class="live-grid" aria-label="Tournament status" hidden></section>
     <div id="empty-state" class="empty-state" hidden>No live data is available for this view.</div>
 </main>
 <?php

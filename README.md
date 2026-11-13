@@ -4,8 +4,6 @@ LaneAssist is a custom IANSEO module focused on faster, easier tournament operat
 
 ## Screenshots
 
-![Live View - Status](docs/screenshots/LiveViewStatus.png)
-
 ![Live View - Qualification](docs/screenshots/LiveViewQualification.png)
 
 ![Live View - Finals](docs/screenshots/LiveViewFinals.png)
@@ -28,25 +26,35 @@ LaneAssist is a custom IANSEO module focused on faster, easier tournament operat
 
 LaneAssist adds practical tools on top of IANSEO, including:
 
+- Manage Tournament: where the tournament stands and what needs fixing, plus per-tournament settings (see below)
 - Live View: follow the whole field during the tournament (see below)
 - Interactive target management (Drag & drop + auto)
 - Interactive finals management (Drag & drop + auto)
 - Tournament cloning helpers (opened from the Settings page)
-- Change finals events: replace a tournament's individual final events with a new set split by gender, class, division or distance, with a preview and a warning listing what will be deleted (opened from the Settings page)
+- Change finals events: replace a tournament's individual final events with a new set split by gender, class, division or distance, with a preview and a warning listing what will be deleted (opened from Manage Tournament)
 - Module settings and update controls
+
+## Manage Tournament
+
+Open **Modules > Manage Tournament** once a tournament is selected. Use it while
+planning and while the event runs:
+
+- **Stage** — where the tournament is: Planning, Qualification, Finals or Over.
+- **Checklist** — what is not set up yet or is wrong, depending on the stage:
+  missing participants, target assignment errors, missing or wrong-sized
+  brackets, unscheduled finals, sessions without times, clubs without logos.
+  Problems are listed first. Some items have a **Fix** button that sets it up for
+  you (e.g. session times, club logos); you are asked to confirm first.
+- **Tournament settings** — finals length override and the default Manage
+  Targets layout for this tournament.
+- **Change finals events** — opens the tool that replaces the individual final
+  events.
 
 ## Live View
 
 Open **Modules > LaneAssist Live View** once a tournament is selected. The page
-refreshes by itself and has three modes, switched with the buttons at the top:
+refreshes by itself and has two modes, switched with the buttons at the top:
 
-- **Status** — a checklist of what is not set up yet, depending on where the
-  tournament is (planning, qualification, finals, or over): missing
-  participants, target assignment errors, missing or wrong-sized brackets,
-  unscheduled finals, sessions without times, clubs without logos. The number on
-  the button is how many items need attention. Some items have a **Fix** button
-  that sets it up for you (e.g. session times, club logos); you are asked to
-  confirm first.
 - **Qualification** — every target in the chosen session, with each archer's
   progress and score. The coloured border shows who is on pace, who needs
   attention, and who is behind or missing arrows. Archers who never showed up
@@ -89,6 +97,7 @@ develop modules, see [docs/BadgeProviders.md](docs/BadgeProviders.md).
    - The release zip already includes the `Modules/Custom/LaneAssist` folder path.
 6. Open IANSEO in your browser.
 7. Check that these entries are visible under Modules: (Some only when a tournament has been selected)
+   - Manage Tournament
    - LaneAssist Live View
    - Manage Targets - Interactive
    - Manage Finals - Interactive
