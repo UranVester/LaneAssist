@@ -422,6 +422,10 @@ function applySessionDefaultsForTest($sessionId) {
 }
 
 function pullClubLogo() {
+    if (IsBlocked(BIT_BLOCK_TOURDATA)) {
+        echo json_encode(['error' => 1, 'message' => 'Tournament data is locked']);
+        return;
+    }
     // clubCode may be a single code or (for the collapsed "fix all" button)
     // an array of them -- see the matching comment on applySessionDefaults().
     $clubCodes = $_POST['clubCode'] ?? '';

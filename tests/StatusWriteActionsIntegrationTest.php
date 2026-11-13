@@ -102,7 +102,7 @@ final class StatusWriteActionsIntegrationTest extends LaneAssistDbTestCase
         // tournament-scoped at all).
         safe_w_sql('DELETE FROM Tournament WHERE ToId=' . StrSafe_DB(self::SENTINEL));
         safe_w_sql("DELETE FROM Flags WHERE FlTournament=" . StrSafe_DB(self::SENTINEL)
-            . " OR (FlTournament=-1 AND FlCode IN ('ZZZ','YYY','AAA','BBB','ZQG'))"
+            . " OR (FlTournament=-1 AND FlCode IN ('ZZZ','YYY','AAA','BBB','CCC','ZQG'))"
             . ' OR FlTournament IN (' . self::OTHER_TOUR_OLD . ',' . self::OTHER_TOUR_NEW . ')');
     }
 
@@ -274,5 +274,25 @@ final class StatusWriteActionsIntegrationTest extends LaneAssistDbTestCase
 
         safe_w_sql("DELETE FROM Flags WHERE FlTournament=-1 AND FlCode IN ('AAA','BBB')");
         safe_w_sql('DELETE FROM Flags WHERE FlTournament=' . self::SENTINEL . " AND FlCode IN ('AAA','BBB')");
+    }
+
+    public function testPullClubLogoIsRefusedOnABlockedTournament(): void
+    {
+        self::seedRow('Flags', ['FlCode' => 'CCC', 'FlTournament' => -1, 'FlJPG' => 'c.jpg', 'FlSVG' => '']);
+        safe_w_sql('UPDATE Tournament SET ToBlock=' . BIT_BLOCK_TOURDATA . ' WHERE ToId=' . self::SENTINEL);
+
+        $_POST['clubCode'] = 'CCC';
+        ob_start();
+        pullClubLogo();
+        $response = json_decode(ob_get_clean(), true);
+        unset($_POST['clubCode']);
+        safe_w_sql('UPDATE Tournament SET ToBlock=0 WHERE ToId=' . self::SENTINEL);
+
+        $linked = safe_fetch(safe_r_sql("SELECT 1 FROM Flags WHERE FlCode='CCC' AND FlTournament=" . self::SENTINEL));
+        safe_w_sql("DELETE FROM Flags WHERE FlCode='CCC' AND FlTournament IN (-1, " . self::SENTINEL . ')');
+
+        $this->assertSame(1, $response['error']);
+        $this->assertStringContainsString('locked', $response['message']);
+        $this->assertNull($linked, 'no logo may be written into a locked tournament');
     }
 }
