@@ -1,9 +1,11 @@
 /**
- * Shared "color by attribute" palette. The same value (a club code, a class
- * id, a division's bow type) must render as the same color in every module
- * that offers a color-by control - ManageTargets and LiveView both key their
- * grouping through this module so a club's color never depends on which page
- * happens to be open. Pure, no jQuery/DOM, so it is unit-testable (tests/js/).
+ * Shared "color by attribute" palette. The same value (a club code, a bow
+ * type, a category, an event) must render as the same color in every page
+ * that offers a color-by control - ManageTargets, ManageFinals and LiveView.
+ * Colors are handed out in order from one fixed palette, by each key's
+ * position in a tournament-wide ordered list (ColorGroups, built server-side
+ * by Common/color-logic.php), never by what one page happens to show.
+ * Pure, no jQuery/DOM, so it is unit-testable (tests/js/).
  */
 (function(root, factory) {
     'use strict';
@@ -25,13 +27,26 @@
         return Math.abs(hash);
     }
 
-    function getColorPalette(key) {
-        const seed = hashString((key || '').toString());
-        const hue = seed % 360;
-        return {
-            color: 'hsl(' + hue + ', 60%, 40%)',
-            bg: 'hsl(' + hue + ', 85%, 94%)'
-        };
+    // Validated categorical palette (adjacent CVD dE >= 9.1, normal-vision
+    // dE >= 19.6). Past the end it repeats; never generate extra hues. The
+    // color is a border/stripe only - three slots are under 3:1 on white,
+    // so it must never be used as text color.
+    const PALETTE = [
+        { color: '#2a78d6', bg: '#e1ecf9' },
+        { color: '#eb6834', bg: '#fceae3' },
+        { color: '#1baf7a', bg: '#dff4ec' },
+        { color: '#eda100', bg: '#fcf2db' },
+        { color: '#e87ba4', bg: '#fcedf2' },
+        { color: '#008300', bg: '#dbeedb' },
+        { color: '#6250d6', bg: '#e9e6f9' },
+        { color: '#e34948', bg: '#fbe6e5' }
+    ];
+
+    const PHASE_ORDER = ['64', '48', '32', '24', '16', '12', '8', '4', '2', '1', '0'];
+
+    function paletteAt(index) {
+        const length = PALETTE.length;
+        return PALETTE[((index % length) + length) % length];
     }
 
     const BOW_TOKENS = [
@@ -64,9 +79,83 @@
         return code || 'Unknown Bow';
     }
 
+    function normalizeKey(key) {
+        if (key === null || key === undefined) {
+            return '';
+        }
+        return key.toString().trim();
+    }
+
+    /**
+     * Turns the server's ColorGroups payload into (group, key) -> palette
+     * entry. Positions live in a Map per group so integer-like keys ('1',
+     * '001') keep payload order. A key the payload lacks (an entry added
+     * after the page loaded) is appended on first sight, so it stays stable
+     * for the life of the page.
+     */
+    function createColorIndex(groups) {
+        const payload = (groups && typeof groups === 'object') ? groups : {};
+        const positions = {};
+
+        function addAll(group, keys) {
+            const map = positions[group] || (positions[group] = new Map());
+            (Array.isArray(keys) ? keys : []).forEach(function(key) {
+                const normalized = normalizeKey(key);
+                if (normalized !== '' && !map.has(normalized)) {
+                    map.set(normalized, map.size);
+                }
+            });
+        }
+
+        Object.keys(payload).forEach(function(group) {
+            if (group !== 'division') {
+                addAll(group, payload[group]);
+            }
+        });
+        addAll('bow', (Array.isArray(payload.division) ? payload.division : []).map(function(division) {
+            return extractBowType(division && division.description, division && division.id);
+        }));
+        addAll('phase', PHASE_ORDER);
+
+        function positionOf(group, key) {
+            const normalized = normalizeKey(key);
+            if (normalized === '') {
+                return null;
+            }
+            const map = positions[group] || (positions[group] = new Map());
+            if (!map.has(normalized)) {
+                map.set(normalized, map.size);
+            }
+            return map.get(normalized);
+        }
+
+        function colorFor(group, key) {
+            const position = positionOf(group, key);
+            return position === null ? null : paletteAt(position);
+        }
+
+        return { positionOf: positionOf, colorFor: colorFor };
+    }
+
+    /** The single distinct non-empty value, or null when there are none or several. */
+    function keyForMulti(values) {
+        const distinct = [];
+        (Array.isArray(values) ? values : []).forEach(function(value) {
+            const normalized = normalizeKey(value);
+            if (normalized !== '' && distinct.indexOf(normalized) === -1) {
+                distinct.push(normalized);
+            }
+        });
+        return distinct.length === 1 ? distinct[0] : null;
+    }
+
     return {
+        PALETTE: PALETTE,
+        PHASE_ORDER: PHASE_ORDER,
         hashString: hashString,
-        getColorPalette: getColorPalette,
+        paletteAt: paletteAt,
+        createColorIndex: createColorIndex,
+        keyForMulti: keyForMulti,
         extractBowType: extractBowType
     };
 }));
