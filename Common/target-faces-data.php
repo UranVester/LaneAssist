@@ -76,8 +76,9 @@ function tfFilterValue(array $filters, string $key): string
  * key matched against the archer's *current* face, legal or not.
  *
  * @param array $filters keys name, country, div, class, event, face (optional)
+ * @param int $onlyEnId limit to this one archer (0 = no limit)
  */
-function tfLoadArchers(int $tourId, array $filters, array $ctx): array
+function tfLoadArchers(int $tourId, array $filters, array $ctx, int $onlyEnId = 0): array
 {
     $tour = StrSafe_DB($tourId);
     $sql = "SELECT EnId, EnCode, EnFirstName, EnName, EnDivision, EnClass, EnTargetFace, CoCode, CoName
@@ -100,6 +101,9 @@ function tfLoadArchers(int $tourId, array $filters, array $ctx): array
         // EXISTS instead of ManEventAccess's LEFT JOIN + GROUP BY: same rows, no duplicates.
         $sql .= " AND EXISTS (SELECT 1 FROM EventClass WHERE EcTournament=EnTournament AND EcDivision=EnDivision
             AND EcClass=EnClass AND EcTeamEvent=0 AND EcCode LIKE " . StrSafe_DB($v) . ')';
+    }
+    if ($onlyEnId) {
+        $sql .= ' AND EnId=' . StrSafe_DB($onlyEnId);
     }
     $sql .= ' ORDER BY EnFirstName, EnName, EnId';
 
@@ -124,6 +128,12 @@ function tfLoadArchers(int $tourId, array $filters, array $ctx): array
         ] + tfDescribeArcher($legal, $ctx['groups'], $face);
     }
     return $rows;
+}
+
+/** One archer's fresh row (after a click), or null if not an athlete of this tournament. */
+function tfLoadArcher(int $tourId, int $enId, array $ctx): ?array
+{
+    return tfLoadArchers($tourId, [], $ctx, $enId)[0] ?? null;
 }
 
 /** The one write this page makes; leaves EnTimestamp alone, like core lib.php. */

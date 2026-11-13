@@ -1,0 +1,114 @@
+.change-faces-container {
+    padding: 20px;
+}
+
+.subtitle {
+    margin-top: 4px;
+    color: #666;
+    font-size: 13px;
+}
+
+.status-message {
+    margin: 0 0 12px;
+    padding: 10px 12px;
+    border-radius: 4px;
+    font-size: 13px;
+}
+
+.hidden {
+    display: none;
+}
+
+.status-info { background: #e7f3ff; color: #0b518d; border: 1px solid #9fc7ea; }
+.status-success { background: #eaf8ed; color: #1f6a36; border: 1px solid #a5dfb6; }
+.status-error { background: #fdecec; color: #8b1f1f; border: 1px solid #efb1b1; }
+
+.filter-group input.tf-short {
+    min-width: 60px;
+    width: 70px;
+}
+
+.tf-count {
+    font-size: 13px;
+    color: #555;
+    padding-bottom: 7px;
+}
+
+.tf-table {
+    border-collapse: collapse;
+    background: #fff;
+    border: 1px solid #dfe4ea;
+}
+
+.tf-table th,
+.tf-table td {
+    padding: 4px 10px;
+    border-bottom: 1px solid #eef1f4;
+    text-align: left;
+    font-size: 13px;
+}
+
+.tf-table thead th {
+    background: #f5f7f9;
+}
+
+.tf-table th.tf-group-head,
+.tf-set-all-row th,
+.tf-center {
+    text-align: center;
+}
+
+.tf-table tbody tr:hover {
+    background: #ffffd0;
+}
+
+.tf-set-all {
+    font-size: 12px;
+    padding: 3px 8px;
+}
+
+/* Radio-like face cell. */
+.tf-cell {
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    border: 2px solid #8a97a5;
+    background: #fff;
+    cursor: pointer;
+    padding: 0;
+}
+
+.tf-cell:hover:not(:disabled),
+.tf-cell:focus-visible {
+    border-color: #0b518d;
+    box-shadow: 0 0 0 3px #cfe3f7;
+}
+
+.tf-cell.tf-selected {
+    background: #0e9700;
+    border-color: #0b7a00;
+}
+
+.tf-cell:disabled {
+    cursor: default;
+}
+
+.tf-cell.tf-illegal {
+    background: #e4e6e9;
+    border-color: #e4e6e9;
+    opacity: 0.6;
+}
+
+.tf-marker {
+    margin-left: 6px;
+    padding: 1px 6px;
+    border-radius: 3px;
+    background: #fdecec;
+    color: #8b1f1f;
+    font-size: 11px;
+}
+
+.tf-empty {
+    color: #666;
+    font-style: italic;
+}

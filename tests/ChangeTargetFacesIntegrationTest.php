@@ -136,6 +136,16 @@ final class ChangeTargetFacesIntegrationTest extends LaneAssistDbTestCase
         $this->assertSame(2, self::faceOf(self::EN_C));
     }
 
+    public function testLoadArcherReturnsOneFreshRow(): void
+    {
+        $ctx = tfLoadContext(self::SENTINEL);
+        tfSetOne(self::SENTINEL, self::EN_C, 'full face', $ctx);
+        $row = tfLoadArcher(self::SENTINEL, self::EN_C, $ctx);
+        $this->assertSame(2, $row['face']);
+        $this->assertSame('full face', $row['selected']);
+        $this->assertNull(tfLoadArcher(self::SENTINEL, self::EN_STAFF, $ctx));
+    }
+
     public function testSetOneRefusesIllegalGroup(): void
     {
         $res = tfSetOne(self::SENTINEL, self::EN_T, 'trippel', tfLoadContext(self::SENTINEL));

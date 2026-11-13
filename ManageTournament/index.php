@@ -21,6 +21,7 @@ checkFullACL(AclCompetition, '', AclReadOnly);
 // Settings/api.php (which loads and saves the tournament settings card) needs
 // the same ACL Settings/index.php does.
 $canEditSettings = hasFullACL(AclCompetition, 'cSchedule', AclReadWrite);
+$canOpenTargetFaces = hasFullACL(AclParticipants, 'pEntries', AclReadOnly);
 $competitionCode = getCodeFromId($_SESSION['TourId']);
 
 $PAGE_TITLE = 'Manage Tournament';
@@ -107,6 +108,21 @@ include('Common/Templates/head.php');
                 <div class="settings-actions">
                     <a href="<?php echo $CFG->ROOT_DIR; ?>Modules/Custom/LaneAssist/ChangeEvents/index.php" class="btn btn-info"><i class="fa fa-random"></i> Open Change finals events</a>
                 </div>
+            </section>
+
+            <section class="settings-card">
+                <h3><i class="fa fa-bullseye"></i> Change target faces</h3>
+                <p>Filter archers and set their target face one at a time or for everyone in the view. Faces not allowed for an archer's division and class are greyed out.</p>
+                <div class="settings-actions">
+                    <?php if ($canOpenTargetFaces): ?>
+                        <a href="<?php echo $CFG->ROOT_DIR; ?>Modules/Custom/LaneAssist/ChangeTargetFaces/index.php" class="btn btn-info"><i class="fa fa-bullseye"></i> Open Change target faces</a>
+                    <?php else: ?>
+                        <button type="button" class="btn btn-info" disabled><i class="fa fa-bullseye"></i> Open Change target faces</button>
+                    <?php endif; ?>
+                </div>
+                <?php if (!$canOpenTargetFaces): ?>
+                    <p class="inline-note">You need participant access to open this.</p>
+                <?php endif; ?>
             </section>
         </aside>
     </div>
