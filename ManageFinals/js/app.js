@@ -29,37 +29,16 @@
         sharedTargetsScrollLeft: 0,
         syncingTargetsScroll: false,
         defaultFinalsLengthMinutes: 30,
-        colorBy: 'event',
-        colorMaps: {
-            event: {},
-            phase: {},
-            division: {},
-            class: {}
-        }
+        colorBy: 'event'
     };
 
-    const COLOR_PALETTE = [
-        { bg: '#e8f1ff', border: '#2f6fd3' },
-        { bg: '#eaf7ec', border: '#2f9e55' },
-        { bg: '#fff2e8', border: '#d96a1f' },
-        { bg: '#f3ecff', border: '#7b4bc2' },
-        { bg: '#e8fbfb', border: '#1f8f9a' },
-        { bg: '#fff0f5', border: '#c44579' },
-        { bg: '#f8f4e8', border: '#9a7b21' },
-        { bg: '#eef3e8', border: '#5d8a2f' },
-        { bg: '#f0ebff', border: '#5a54c8' },
-        { bg: '#e8f7f2', border: '#218a6b' },
-        { bg: '#fff1e6', border: '#c76a18' },
-        { bg: '#f4f0e8', border: '#8a6f33' },
-        { bg: '#e9eef9', border: '#375ea8' },
-        { bg: '#f0f9e9', border: '#4d8a2f' },
-        { bg: '#fdeef0', border: '#b33f54' },
-        { bg: '#edf5ff', border: '#3e79b8' },
-        { bg: '#eef8f1', border: '#3a8f58' },
-        { bg: '#fff4ea', border: '#c97a32' },
-        { bg: '#efeafd', border: '#6950b8' },
-        { bg: '#eaf9f7', border: '#2b8f85' }
-    ];
+    const ColorBy = window.LaneAssist && window.LaneAssist.colorBy;
+    const colorGroups = (typeof ColorGroups !== 'undefined' && ColorGroups) ? ColorGroups : {};
+    const colorIndex = ColorBy.createColorIndex(colorGroups);
+    const divisionDescriptions = {};
+    (Array.isArray(colorGroups.division) ? colorGroups.division : []).forEach(function(division) {
+        divisionDescriptions[division.id] = division.description;
+    });
 
     const PHASE_ORDER_TRACKED = [64, 32, 16, 8, 4, 2, 1, 0];
     const PHASE_DEPENDENCIES = [
@@ -634,7 +613,6 @@
                 state.editingTimeslotKey = '';
                 state.targetDistanceLocks = {};
                 clearValidationWarnings();
-                rebuildColorMaps();
                 renderAll();
                 showStatus('Loaded ' + state.rows.length + ' finals matches', 'success');
             },
@@ -1874,6 +1852,7 @@
                 map[row.bundleKey] = {
                     key: row.bundleKey,
                     timeslotKey: row.timeslotKey,
+                    teamEvent: row.teamEvent,
                     event: row.event,
                     eventName: row.eventName,
                     group: row.group,
@@ -2101,6 +2080,7 @@
                 invalidScheduledPairBundles.push({
                     key: syntheticKey,
                     timeslotKey: bundle.timeslotKey,
+                    teamEvent: bundle.teamEvent,
                     event: bundle.event,
                     eventName: bundle.eventName,
                     group: bundle.group,
@@ -2165,7 +2145,7 @@
 
         const distanceColorMap = {};
         uniqueDistances.forEach(function(distance, index) {
-            distanceColorMap[distance] = getPaletteColor(index);
+            distanceColorMap[distance] = ColorBy.paletteAt(index);
         });
 
         $board.empty();
@@ -2414,7 +2394,7 @@
                     $distanceCell.addClass('has-distance').text(segment.distance);
                     const color = distanceColorMap[segment.distance] || null;
                     if (color) {
-                        const borderColor = color.border;
+                        const borderColor = color.color;
                         const bgColor = color.bg || '#f8fbff';
                         $distanceCell.css({
                             'background': bgColor,
@@ -2547,9 +2527,15 @@
             $card.attr('data-row-keys', bundle.clearRowKeys.join(','));
         }
 
-        const colorStyle = getBundleColorStyle(bundle);
-        if (colorStyle) {
-            $card.attr('style', colorStyle);
+        const colorGrouping = getBundleColorGrouping(bundle);
+        const color = colorGrouping && colorGrouping.key !== null
+            ? colorIndex.colorFor(colorGrouping.group, colorGrouping.key)
+            : null;
+        if (color) {
+            $card.attr('style', 'border-color:' + color.color + ';background:' + color.bg + ';');
+        }
+        if (colorGrouping) {
+            $card.attr('title', colorGrouping.label);
         }
 
         const targetsUsed = Math.max(1, parseInt(bundle.targetsUsed, 10) || 1);
@@ -2917,113 +2903,65 @@
         state.targetWarnings = normalizedTargetWarnings;
     }
 
-    function getBundleColorStyle(bundle) {
+    function splitColorValues(value) {
+        return (value || '').toString().split(',').map(function(part) {
+            return part.trim();
+        }).filter(function(part) {
+            return part !== '';
+        });
+    }
+
+    /**
+     * Color-by grouping for a finals bundle: { group, key, label }. An event can span several
+     * divisions/classes (e.g. merged by Change finals events); then key is null and the card
+     * stays uncolored as "Mixed" rather than borrowing the first value's color.
+     */
+    function getBundleColorGrouping(bundle) {
         const mode = state.colorBy || 'none';
-        if (mode === 'none') {
-            return '';
-        }
+        const divisions = splitColorValues(bundle.division);
+        const classes = splitColorValues(bundle.classCode);
 
-        let key = '';
         if (mode === 'event') {
-            key = bundle.event || '';
-        } else if (mode === 'phase') {
-            key = bundle.phaseLabel || '';
-        } else if (mode === 'division') {
-            key = bundle.division || '';
+            if (!bundle.event) {
+                return null;
+            }
+            return {
+                group: 'event',
+                key: (parseInt(bundle.teamEvent, 10) ? 1 : 0) + '|' + String(bundle.event).trim(),
+                label: 'Event: ' + (bundle.eventName || bundle.event) + (parseInt(bundle.teamEvent, 10) ? ' (team)' : '')
+            };
+        }
+
+        if (mode === 'phase') {
+            if (bundle.phase === null || bundle.phase === undefined || bundle.phase === '') {
+                return null;
+            }
+            return { group: 'phase', key: String(bundle.phase), label: 'Phase: ' + (bundle.phaseLabel || bundle.phase) };
+        }
+
+        let key = null;
+        let label = '';
+        if (mode === 'bow') {
+            key = ColorBy.keyForMulti(divisions.map(function(division) {
+                return ColorBy.extractBowType(divisionDescriptions[division], division);
+            }));
+            label = 'Bow: ';
         } else if (mode === 'class') {
-            key = bundle.classCode || '';
+            key = ColorBy.keyForMulti(classes);
+            label = 'Class: ';
+        } else if (mode === 'category') {
+            const division = ColorBy.keyForMulti(divisions);
+            const classCode = ColorBy.keyForMulti(classes);
+            key = (division !== null && classCode !== null) ? division + classCode : null;
+            label = 'Category: ';
+        } else {
+            return null;
         }
 
-        if (!key) {
-            return '';
+        if (key === null && divisions.length === 0 && classes.length === 0) {
+            return null;
         }
-
-        const color = state.colorMaps[mode][key] || null;
-        if (!color) {
-            return '';
-        }
-
-        return 'border-color:' + color.border + ';background:' + color.bg + ';';
-    }
-
-    function rebuildColorMaps() {
-        state.colorMaps = {
-            event: buildColorMapForMode('event'),
-            phase: buildColorMapForMode('phase'),
-            division: buildColorMapForMode('division'),
-            class: buildColorMapForMode('class')
-        };
-    }
-
-    function buildColorMapForMode(mode) {
-        const keys = {};
-        const eventOrder = {};
-
-        state.rows.forEach(function(row) {
-            let value = '';
-            if (mode === 'event') {
-                value = row.event;
-            } else if (mode === 'phase') {
-                value = row.phaseLabel;
-            } else if (mode === 'division') {
-                value = row.division;
-            } else if (mode === 'class') {
-                value = row.classCode;
-            }
-
-            value = (value || '').toString().trim();
-            if (value !== '') {
-                keys[value] = true;
-                if (mode === 'event') {
-                    const divisionOrder = (row.eventDivisionOrder === null) ? Number.MAX_SAFE_INTEGER : row.eventDivisionOrder;
-                    const classOrder = (row.eventClassOrder === null) ? Number.MAX_SAFE_INTEGER : row.eventClassOrder;
-                    if (!eventOrder[value]) {
-                        eventOrder[value] = {
-                            divisionOrder: divisionOrder,
-                            classOrder: classOrder
-                        };
-                    } else {
-                        eventOrder[value].divisionOrder = Math.min(eventOrder[value].divisionOrder, divisionOrder);
-                        eventOrder[value].classOrder = Math.min(eventOrder[value].classOrder, classOrder);
-                    }
-                }
-            }
-        });
-
-        const ordered = Object.keys(keys).sort(function(a, b) {
-            if (mode !== 'event') {
-                return a.localeCompare(b);
-            }
-
-            const aOrder = eventOrder[a] || { divisionOrder: Number.MAX_SAFE_INTEGER, classOrder: Number.MAX_SAFE_INTEGER };
-            const bOrder = eventOrder[b] || { divisionOrder: Number.MAX_SAFE_INTEGER, classOrder: Number.MAX_SAFE_INTEGER };
-
-            if (aOrder.divisionOrder !== bOrder.divisionOrder) {
-                return aOrder.divisionOrder - bOrder.divisionOrder;
-            }
-            if (aOrder.classOrder !== bOrder.classOrder) {
-                return aOrder.classOrder - bOrder.classOrder;
-            }
-            return a.localeCompare(b);
-        });
-        const map = {};
-        ordered.forEach(function(key, index) {
-            map[key] = getPaletteColor(index);
-        });
-
-        return map;
-    }
-
-    function getPaletteColor(index) {
-        if (index < COLOR_PALETTE.length) {
-            return COLOR_PALETTE[index];
-        }
-
-        const hue = (index * 137.508) % 360;
-        return {
-            bg: 'hsl(' + hue + ', 85%, 95%)',
-            border: 'hsl(' + hue + ', 60%, 42%)'
-        };
+        return { group: mode, key: key, label: label + (key === null ? 'Mixed' : key) };
     }
 
     let activeDropGrid = null;

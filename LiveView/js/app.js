@@ -83,7 +83,7 @@
             return {
                 group: 'event',
                 key: (parseInt(match.teamEvent, 10) ? 1 : 0) + '|' + String(match.event).trim(),
-                label: 'Event: ' + (match.eventName || match.event)
+                label: 'Event: ' + (match.eventName || match.event) + (parseInt(match.teamEvent, 10) ? ' (team)' : '')
             };
         }
 

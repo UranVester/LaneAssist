@@ -20,6 +20,7 @@ if (!CheckTourSession()) {
 }
 
 checkFullACL(AclCompetition, 'cSchedule', AclReadWrite);
+require_once(dirname(__FILE__, 2) . '/Common/color-logic.php');
 
 if (!function_exists('getModuleParameter')) {
     require_once(dirname(__FILE__, 5) . '/Common/Lib/Fun_Modules.php');
@@ -109,12 +110,13 @@ $IncludeJquery = true;
 $IncludeFA = true;
 
 $JS_SCRIPT = array(
-    '<script type="text/javascript">var ROOT_DIR = "' . $CFG->ROOT_DIR . '"; var LANEASSIST_DEFAULT_FINALS_LENGTH = ' . intval($defaultFinalsLength) . ';</script>',
+    '<script type="text/javascript">var ROOT_DIR = "' . $CFG->ROOT_DIR . '"; var LANEASSIST_DEFAULT_FINALS_LENGTH = ' . intval($defaultFinalsLength) . '; var ColorGroups = ' . json_encode(laLoadColorGroups(intval($_SESSION['TourId'])), JSON_HEX_TAG | JSON_HEX_AMP) . ';</script>',
     '<link href="' . $CFG->ROOT_DIR . 'Modules/Custom/LaneAssist/Common/css/shared.css" rel="stylesheet" type="text/css">',
     '<link href="' . $CFG->ROOT_DIR . 'Modules/Custom/LaneAssist/ManageFinals/css/style.css" rel="stylesheet" type="text/css">',
     '<script src="' . $CFG->ROOT_DIR . 'Common/jQuery/jquery-ui.min.js"></script>',
     '<script src="' . $CFG->ROOT_DIR . 'Modules/Custom/LaneAssist/Common/js/jquery-ui-touch-bridge.js"></script>',
     '<script src="' . $CFG->ROOT_DIR . 'Modules/Custom/LaneAssist/Common/js/shared.js"></script>',
+    '<script src="' . $CFG->ROOT_DIR . 'Modules/Custom/LaneAssist/Common/js/color-by.js?v=' . filemtime(dirname(__DIR__) . '/Common/js/color-by.js') . '"></script>',
     '<script src="' . $CFG->ROOT_DIR . 'Modules/Custom/LaneAssist/Common/js/finals-playability.js"></script>',
     '<script src="' . $CFG->ROOT_DIR . 'Modules/Custom/LaneAssist/Common/js/distance-lane-plan.js"></script>',
     '<script src="' . $CFG->ROOT_DIR . 'Modules/Custom/LaneAssist/ManageFinals/js/app.js"></script>',
@@ -231,11 +233,12 @@ include('Common/Templates/head.php');
         <div class="filter-group inline compact-control">
             <label for="color-by">Color by:</label>
             <select id="color-by">
-                <option value="none" selected>none</option>
-                <option value="event">event</option>
-                <option value="phase">phase</option>
-                <option value="division">division</option>
-                <option value="class">class</option>
+                <option value="none">None</option>
+                <option value="bow">Bow</option>
+                <option value="class">Class</option>
+                <option value="category">Category</option>
+                <option value="event" selected>Event</option>
+                <option value="phase">Phase</option>
             </select>
         </div>
 
