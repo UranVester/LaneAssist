@@ -53,8 +53,12 @@ switch ($action) {
 function changeTargetFacesFilters(): array
 {
     $filters = [];
-    foreach (['name', 'country', 'div', 'class', 'event', 'face'] as $key) {
-        $filters[$key] = (string)($_REQUEST[$key] ?? '');
+    foreach (['name', 'face'] as $key) {
+        $filters[$key] = is_array($_REQUEST[$key] ?? '') ? '' : (string)($_REQUEST[$key] ?? '');
+    }
+    foreach (['country', 'div', 'class', 'event'] as $key) {
+        $v = $_REQUEST[$key] ?? [];
+        $filters[$key] = array_map('strval', array_filter(is_array($v) ? $v : [$v], 'is_scalar'));
     }
     return $filters;
 }

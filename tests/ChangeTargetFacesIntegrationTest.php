@@ -9,6 +9,7 @@ require_once __DIR__ . '/LaneAssistDbTestCase.php';
 final class ChangeTargetFacesIntegrationTest extends LaneAssistDbTestCase
 {
     private const CLUB = 994101;
+    private const CLUB2 = 994102;
     private const EN_R = 994001;
     private const EN_C = 994002;
     private const EN_L = 994003;
@@ -27,6 +28,11 @@ final class ChangeTargetFacesIntegrationTest extends LaneAssistDbTestCase
         parent::cleanupSentinel();
         safe_w_sql('DELETE FROM Countries WHERE CoTournament=' . StrSafe_DB(self::SENTINEL));
         safe_w_sql('DELETE FROM TargetFaces WHERE TfTournament=' . StrSafe_DB(self::SENTINEL));
+    }
+
+    private static function clubOf(string $div): int
+    {
+        return $div === 'C' ? self::CLUB2 : self::CLUB;
     }
 
     protected function setUp(): void
@@ -54,6 +60,16 @@ final class ChangeTargetFacesIntegrationTest extends LaneAssistDbTestCase
         }
 
         self::seedRow('Countries', ['CoId' => self::CLUB, 'CoTournament' => $tour, 'CoCode' => 'TFCLUB', 'CoName' => 'Face Club']);
+        self::seedRow('Countries', ['CoId' => self::CLUB2, 'CoTournament' => $tour, 'CoCode' => 'TFAAA', 'CoName' => 'Other Club']);
+        // A club with no athletes: not offered in the Club dropdown.
+        self::seedRow('Countries', ['CoId' => 994103, 'CoTournament' => $tour, 'CoCode' => 'TFEMPTY', 'CoName' => 'Empty']);
+
+        self::seedRow('Events', ['EvCode' => 'TFRS', 'EvTeamEvent' => 0, 'EvTournament' => $tour, 'EvEventName' => 'Recurve Senior', 'EvProgr' => 2]);
+        self::seedRow('Events', ['EvCode' => 'TFCS', 'EvTeamEvent' => 0, 'EvTournament' => $tour, 'EvEventName' => 'Compound Senior', 'EvProgr' => 1]);
+        self::seedRow('Events', ['EvCode' => 'TFTEAM', 'EvTeamEvent' => 1, 'EvTournament' => $tour, 'EvEventName' => 'Team', 'EvProgr' => 3]);
+        self::seedRow('EventClass', ['EcCode' => 'TFRS', 'EcTeamEvent' => 0, 'EcTournament' => $tour, 'EcDivision' => 'R', 'EcClass' => 'S']);
+        self::seedRow('EventClass', ['EcCode' => 'TFCS', 'EcTeamEvent' => 0, 'EcTournament' => $tour, 'EcDivision' => 'C', 'EcClass' => 'S']);
+        self::seedRow('EventClass', ['EcCode' => 'TFTEAM', 'EcTeamEvent' => 1, 'EcTournament' => $tour, 'EcDivision' => 'L', 'EcClass' => 'S']);
         $entries = [
             [self::EN_R, 'R', 7, 'Anna', 1],
             [self::EN_C, 'C', 4, 'Bo', 1],
@@ -63,7 +79,7 @@ final class ChangeTargetFacesIntegrationTest extends LaneAssistDbTestCase
         ];
         foreach ($entries as [$id, $div, $face, $first, $athlete]) {
             self::seedRow('Entries', [
-                'EnId' => $id, 'EnTournament' => $tour, 'EnCountry' => self::CLUB, 'EnDivision' => $div, 'EnClass' => 'S',
+                'EnId' => $id, 'EnTournament' => $tour, 'EnCountry' => self::clubOf($div), 'EnDivision' => $div, 'EnClass' => 'S',
                 'EnAthlete' => $athlete, 'EnTargetFace' => $face, 'EnFirstName' => $first, 'EnName' => 'Test',
                 'EnTimestamp' => self::STAMP,
             ]);
@@ -108,25 +124,79 @@ final class ChangeTargetFacesIntegrationTest extends LaneAssistDbTestCase
         $this->assertNull($rows[0]['selected']);
     }
 
-    public function testFilterSemanticsMatchOnLoadAndBulk(): void
+    private static function ids(array $filters): array
     {
-        $ctx = tfLoadContext(self::SENTINEL);
-        $rows = tfLoadArchers(self::SENTINEL, ['div' => 'r'], $ctx);
-        $this->assertSame([self::EN_R], array_column($rows, 'id'));
-        $this->assertCount(4, tfLoadArchers(self::SENTINEL, ['div' => '_'], $ctx));
-
-        $res = tfSetAll(self::SENTINEL, ['div' => 'r'], 'full face', 1, $ctx);
-        $this->assertSame(0, $res['error']);
-        $this->assertSame(1, $res['changed']);
-        $this->assertSame(1, self::faceOf(self::EN_R));
+        return array_column(tfLoadArchers(self::SENTINEL, $filters, tfLoadContext(self::SENTINEL)), 'id');
     }
 
-    public function testNameAndCountryFilters(): void
+    public function testMultiDivisionFilterMatchesAny(): void
     {
-        $ctx = tfLoadContext(self::SENTINEL);
-        $this->assertSame([self::EN_C], array_column(tfLoadArchers(self::SENTINEL, ['name' => 'bo'], $ctx), 'id'));
-        $this->assertCount(4, tfLoadArchers(self::SENTINEL, ['country' => 'face club'], $ctx));
-        $this->assertCount(0, tfLoadArchers(self::SENTINEL, ['event' => 'NOPE'], $ctx));
+        $this->assertSame([self::EN_R, self::EN_L], self::ids(['div' => ['R', 'L']]));
+    }
+
+    public function testDivisionFilterIsExactNotLike(): void
+    {
+        $this->assertSame([], self::ids(['div' => ['_']]));
+        $this->assertSame([], self::ids(['div' => ['%']]));
+    }
+
+    public function testAllOptionMeansNoFilter(): void
+    {
+        $this->assertCount(4, self::ids(['div' => [''], 'class' => [], 'country' => [''], 'event' => ['']]));
+    }
+
+    public function testClubFilterByCountryId(): void
+    {
+        $this->assertSame([self::EN_C], self::ids(['country' => [(string)self::CLUB2]]));
+        $this->assertCount(4, self::ids(['country' => [(string)self::CLUB, (string)self::CLUB2]]));
+    }
+
+    public function testClassFilter(): void
+    {
+        $this->assertCount(4, self::ids(['class' => ['S']]));
+        $this->assertSame([], self::ids(['class' => ['X']]));
+    }
+
+    public function testEventFilterMatchesAnyIndividualEvent(): void
+    {
+        $this->assertSame([self::EN_R, self::EN_C], self::ids(['event' => ['TFRS', 'TFCS']]));
+        // Team event classes don't count, same as ManEventAccess.
+        $this->assertSame([], self::ids(['event' => ['TFTEAM']]));
+    }
+
+    public function testFiltersCombineAcrossFields(): void
+    {
+        $this->assertSame([self::EN_R], self::ids(['div' => ['R', 'C'], 'country' => [(string)self::CLUB]]));
+    }
+
+    public function testNameFilter(): void
+    {
+        $this->assertSame([self::EN_C], self::ids(['name' => 'bo']));
+    }
+
+    public function testBulkUsesSameMultiFilter(): void
+    {
+        $res = tfSetAll(self::SENTINEL, ['div' => ['R', 'L']], 'full face', 2, tfLoadContext(self::SENTINEL));
+        $this->assertSame(0, $res['error']);
+        $this->assertSame(1, $res['changed']);
+        $this->assertSame(1, $res['unchanged']);
+        $this->assertSame(1, self::faceOf(self::EN_R));
+        $this->assertSame(4, self::faceOf(self::EN_C));
+    }
+
+    public function testLoadFilterOptions(): void
+    {
+        $o = tfLoadFilterOptions(self::SENTINEL);
+        $this->assertSame([
+            ['value' => (string)self::CLUB2, 'label' => 'TFAAA - Other Club'],
+            ['value' => (string)self::CLUB, 'label' => 'TFCLUB - Face Club'],
+        ], $o['country']);
+        $this->assertSame(['R', 'C', 'L', 'T'], array_column($o['div'], 'value'));
+        $this->assertSame([['value' => 'S', 'label' => 'S - Senior']], $o['class']);
+        $this->assertSame([
+            ['value' => 'TFCS', 'label' => 'TFCS - Compound Senior'],
+            ['value' => 'TFRS', 'label' => 'TFRS - Recurve Senior'],
+        ], $o['event']);
     }
 
     public function testSetOneWritesLegalMember(): void

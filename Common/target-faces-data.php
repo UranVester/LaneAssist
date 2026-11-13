@@ -67,15 +67,33 @@ function tfLoadContext(int $tourId): array
 /** Trimmed filter value, '' when absent. */
 function tfFilterValue(array $filters, string $key): string
 {
-    return trim((string)($filters[$key] ?? ''));
+    $v = $filters[$key] ?? '';
+    return is_array($v) ? '' : trim((string)$v);
+}
+
+/** Picked values of a multiselect filter; empty (or only the "All" option '') means no filter. */
+function tfFilterList(array $filters, string $key): array
+{
+    $v = $filters[$key] ?? [];
+    $list = array_map(fn($x) => trim((string)$x), is_array($v) ? $v : [$v]);
+    return array_values(array_unique(array_filter($list, fn($x) => $x !== '')));
+}
+
+/** SQL "IN (...)" list of escaped values. */
+function tfSqlIn(array $values): string
+{
+    return '(' . implode(',', array_map('StrSafe_DB', $values)) . ')';
 }
 
 /**
- * Archers (EnAthlete=1) matching the filters, with their row state. Filter
- * semantics follow core Partecipants/ManEventAccess.php. `face` is a group
- * key matched against the archer's *current* face, legal or not.
+ * Archers (EnAthlete=1) matching the filters, with their row state.
+ * `name` is a text search as in core Partecipants/ManEventAccess.php. Club
+ * (CoId of EnCountry), div, class and event (individual EcCode) are
+ * multiselects: any picked value matches, the fields combine with AND, and
+ * nothing picked means no filter. `face` is a group key matched against the
+ * archer's *current* face, legal or not.
  *
- * @param array $filters keys name, country, div, class, event, face (optional)
+ * @param array $filters keys name (string); country, div, class, event (string[]); face (string)
  * @param int $onlyEnId limit to this one archer (0 = no limit)
  */
 function tfLoadArchers(int $tourId, array $filters, array $ctx, int $onlyEnId = 0): array
@@ -88,19 +106,18 @@ function tfLoadArchers(int $tourId, array $filters, array $ctx, int $onlyEnId = 
     if (($v = tfFilterValue($filters, 'name')) !== '') {
         $sql .= ' AND ' . assembleWhereCondition(['EnFirstName', 'EnName'], [$v]);
     }
-    if (($v = tfFilterValue($filters, 'country')) !== '') {
-        $sql .= ' AND ' . assembleWhereCondition(['CoCode', 'CoName'], [$v]);
+    if ($list = tfFilterList($filters, 'country')) {
+        $sql .= ' AND EnCountry IN ' . tfSqlIn($list);
     }
-    if (($v = tfFilterValue($filters, 'div')) !== '') {
-        $sql .= ' AND EnDivision LIKE ' . StrSafe_DB($v);
+    if ($list = tfFilterList($filters, 'div')) {
+        $sql .= ' AND EnDivision IN ' . tfSqlIn($list);
     }
-    if (($v = tfFilterValue($filters, 'class')) !== '') {
-        $sql .= ' AND EnClass LIKE ' . StrSafe_DB($v);
+    if ($list = tfFilterList($filters, 'class')) {
+        $sql .= ' AND EnClass IN ' . tfSqlIn($list);
     }
-    if (($v = tfFilterValue($filters, 'event')) !== '') {
-        // EXISTS instead of ManEventAccess's LEFT JOIN + GROUP BY: same rows, no duplicates.
+    if ($list = tfFilterList($filters, 'event')) {
         $sql .= " AND EXISTS (SELECT 1 FROM EventClass WHERE EcTournament=EnTournament AND EcDivision=EnDivision
-            AND EcClass=EnClass AND EcTeamEvent=0 AND EcCode LIKE " . StrSafe_DB($v) . ')';
+            AND EcClass=EnClass AND EcTeamEvent=0 AND EcCode IN " . tfSqlIn($list) . ')';
     }
     if ($onlyEnId) {
         $sql .= ' AND EnId=' . StrSafe_DB($onlyEnId);
@@ -128,6 +145,33 @@ function tfLoadArchers(int $tourId, array $filters, array $ctx, int $onlyEnId = 
         ] + tfDescribeArcher($legal, $ctx['groups'], $face);
     }
     return $rows;
+}
+
+/**
+ * Choices for the multiselect filters, as [['value'=>string,'label'=>string], ...]:
+ * clubs that have athletes (by code), athlete divisions and classes (view
+ * order), and individual events (by code).
+ */
+function tfLoadFilterOptions(int $tourId): array
+{
+    $tour = StrSafe_DB($tourId);
+    $queries = [
+        'country' => "SELECT DISTINCT CoId v, CoCode c, CoName n FROM Countries
+            INNER JOIN Entries ON EnCountry=CoId AND EnTournament=CoTournament AND EnAthlete=1
+            WHERE CoTournament=$tour ORDER BY CoCode, CoId",
+        'div' => "SELECT DivId v, DivId c, DivDescription n FROM Divisions WHERE DivTournament=$tour AND DivAthlete='1' ORDER BY DivViewOrder, DivId",
+        'class' => "SELECT ClId v, ClId c, ClDescription n FROM Classes WHERE ClTournament=$tour AND ClAthlete='1' ORDER BY ClViewOrder, ClId",
+        'event' => "SELECT EvCode v, EvCode c, EvEventName n FROM Events WHERE EvTournament=$tour AND EvTeamEvent=0 ORDER BY EvCode",
+    ];
+    $options = [];
+    foreach ($queries as $key => $sql) {
+        $options[$key] = [];
+        $q = safe_r_sql($sql);
+        while ($r = safe_fetch($q)) {
+            $options[$key][] = ['value' => (string)$r->v, 'label' => $r->c . ($r->n !== '' ? ' - ' . $r->n : '')];
+        }
+    }
+    return $options;
 }
 
 /** One archer's fresh row (after a click), or null if not an athlete of this tournament. */

@@ -23,11 +23,6 @@
 .status-success { background: #eaf8ed; color: #1f6a36; border: 1px solid #a5dfb6; }
 .status-error { background: #fdecec; color: #8b1f1f; border: 1px solid #efb1b1; }
 
-.filter-group input.tf-short {
-    min-width: 60px;
-    width: 70px;
-}
-
 .tf-count {
     font-size: 13px;
     color: #555;

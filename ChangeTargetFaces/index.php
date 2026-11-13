@@ -22,6 +22,32 @@ if (!CheckTourSession()) {
 
 checkFullACL(AclParticipants, 'pEntries', AclReadOnly);
 
+require_once(dirname(__FILE__, 2) . '/Common/target-faces-data.php');
+$filterOptions = tfLoadFilterOptions(intval($_SESSION['TourId']));
+
+/**
+ * A multiselect filter: the shared LaneAssist dropdown plus the hidden
+ * <select multiple> it drives (the select is what app.js reads).
+ */
+function changeTargetFacesMultiFilter(string $key, string $label, array $options, bool $shortFromCode = false): string
+{
+    $h = fn($v) => htmlspecialchars((string)$v, ENT_QUOTES, 'UTF-8');
+    $id = 'f-' . $key;
+    $menu = '<label class="multi-option all-option"><input type="checkbox" value="" checked><span>All</span></label>';
+    $select = '<option value="" selected>All</option>';
+    foreach ($options as $o) {
+        $short = $shortFromCode ? ' data-short="' . $h(strtok($o['label'], ' ')) . '"' : '';
+        $menu .= '<label class="multi-option"><input type="checkbox" value="' . $h($o['value']) . '"' . $short . '><span>' . $h($o['label']) . '</span></label>';
+        $select .= '<option value="' . $h($o['value']) . '">' . $h($o['label']) . '</option>';
+    }
+    return '<div class="filter-group"><label for="' . $id . '">' . $h($label) . '</label>'
+        . '<div class="multi-dropdown" data-select-id="' . $id . '">'
+        . '<button type="button" class="multi-dropdown-toggle">All</button>'
+        . '<div class="multi-dropdown-menu">' . $menu . '</div></div>'
+        . '<select id="' . $id . '" class="tf-filter hidden-filter-select" data-key="' . $h($key) . '" multiple aria-hidden="true" tabindex="-1">' . $select . '</select>'
+        . '</div>';
+}
+
 $PAGE_TITLE = 'Change target faces';
 $IncludeJquery = true;
 $IncludeFA = true;
@@ -29,10 +55,12 @@ $IncludeFA = true;
 $styleVersion = filemtime(__DIR__ . '/css/style.css');
 $scriptVersion = filemtime(__DIR__ . '/js/app.js');
 $gateVersion = filemtime(__DIR__ . '/js/request-gate.js');
+$sharedVersion = filemtime(dirname(__DIR__) . '/Common/js/shared.js');
 $JS_SCRIPT = array(
     '<script type="text/javascript">var ROOT_DIR = ' . json_encode($CFG->ROOT_DIR, JSON_HEX_TAG | JSON_HEX_AMP) . ';</script>',
     '<link href="' . $CFG->ROOT_DIR . 'Modules/Custom/LaneAssist/Common/css/shared.css" rel="stylesheet" type="text/css">',
     '<link href="' . $CFG->ROOT_DIR . 'Modules/Custom/LaneAssist/ChangeTargetFaces/css/style.css?v=' . $styleVersion . '" rel="stylesheet" type="text/css">',
+    '<script src="' . $CFG->ROOT_DIR . 'Modules/Custom/LaneAssist/Common/js/shared.js?v=' . $sharedVersion . '"></script>',
     '<script src="' . $CFG->ROOT_DIR . 'Modules/Custom/LaneAssist/ChangeTargetFaces/js/request-gate.js?v=' . $gateVersion . '"></script>',
     '<script src="' . $CFG->ROOT_DIR . 'Modules/Custom/LaneAssist/ChangeTargetFaces/js/app.js?v=' . $scriptVersion . '"></script>',
 );
@@ -56,10 +84,12 @@ include('Common/Templates/head.php');
 
     <div class="filters-panel">
         <div class="filter-group"><label for="f-name">Archer</label><input type="text" id="f-name" class="tf-filter" data-key="name"></div>
-        <div class="filter-group"><label for="f-country">Club</label><input type="text" id="f-country" class="tf-filter" data-key="country"></div>
-        <div class="filter-group"><label for="f-div">Division</label><input type="text" id="f-div" class="tf-filter tf-short" data-key="div"></div>
-        <div class="filter-group"><label for="f-class">Class</label><input type="text" id="f-class" class="tf-filter tf-short" data-key="class"></div>
-        <div class="filter-group"><label for="f-event">Event</label><input type="text" id="f-event" class="tf-filter tf-short" data-key="event"></div>
+        <?php
+        echo changeTargetFacesMultiFilter('country', 'Club', $filterOptions['country'], true);
+        echo changeTargetFacesMultiFilter('div', 'Division', $filterOptions['div']);
+        echo changeTargetFacesMultiFilter('class', 'Class', $filterOptions['class']);
+        echo changeTargetFacesMultiFilter('event', 'Event', $filterOptions['event']);
+        ?>
         <div class="filter-group"><label for="f-face">Current face</label><select id="f-face" class="tf-filter" data-key="face"><option value="">All</option></select></div>
         <div class="filter-group"><span id="tf-count" class="tf-count"></span></div>
     </div>

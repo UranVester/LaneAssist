@@ -34,6 +34,7 @@
         $('#tf-head').on('click', 'button.tf-set-all', function() {
             setAll(String($(this).data('group')));
         });
+        window.LaneAssist.initMultiSelectDropdowns();
         load();
     }
 

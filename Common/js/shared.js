@@ -23,7 +23,12 @@
                     return;
                 }
 
-                $toggle.text(checkedValues.length + ' (' + checkedValues.join(', ') + ')');
+                // Opt-in data-short shows a readable code when the value is an id.
+                const shown = $menu.find('input[type="checkbox"]:checked').map(function() {
+                    const short = $(this).data('short');
+                    return short !== undefined ? String(short) : $(this).val();
+                }).get();
+                $toggle.text(checkedValues.length + ' (' + shown.join(', ') + ')');
             };
 
             const syncSelectValue = function(triggerChange) {
