@@ -75,6 +75,7 @@ final class StatusWriteActionsIntegrationTest extends LaneAssistDbTestCase
             if (!defined('LANEASSIST_LIVEVIEW_API_TEST_MODE')) {
                 define('LANEASSIST_LIVEVIEW_API_TEST_MODE', true);
             }
+            require_once dirname(__DIR__) . '/Common/live-view-data.php';
             require_once dirname(__DIR__) . '/LiveView/api.php';
         }
 

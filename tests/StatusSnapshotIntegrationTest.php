@@ -87,6 +87,7 @@ final class StatusSnapshotIntegrationTest extends LaneAssistDbTestCase
         require_once dirname(__DIR__) . '/Common/live-view-logic.php';
         require_once dirname(__DIR__) . '/Common/status-logic.php';
         define('LANEASSIST_LIVEVIEW_API_TEST_MODE', true);
+        require_once dirname(__DIR__) . '/Common/live-view-data.php';
         require_once dirname(__DIR__) . '/LiveView/api.php';
     }
 
