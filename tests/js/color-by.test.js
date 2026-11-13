@@ -51,10 +51,17 @@ test('bow derives from division order, first occurrence wins', () => {
     assert.strictEqual(idx.positionOf('bow', 'Compound'), 1);
 });
 
-test('phase uses the fixed phase order', () => {
+test('phase uses the fixed phase order, standard phases first', () => {
     const idx = colorBy.createColorIndex({});
-    assert.strictEqual(idx.positionOf('phase', '64'), 0);
-    assert.strictEqual(idx.positionOf('phase', '0'), 10);
+    assert.deepStrictEqual(['64', '32', '16', '8', '4', '2', '1', '0'].map(k => idx.positionOf('phase', k)),
+        [0, 1, 2, 3, 4, 5, 6, 7]);
+    assert.strictEqual(idx.positionOf('phase', '48'), 8);
+});
+
+test('the eight standard phases never share a color', () => {
+    const idx = colorBy.createColorIndex({});
+    const colors = ['64', '32', '16', '8', '4', '2', '1', '0'].map(k => idx.colorFor('phase', k).color);
+    assert.strictEqual(new Set(colors).size, 8);
 });
 
 test('unknown keys get the next index after known ones, stably', () => {

@@ -42,7 +42,8 @@
         { color: '#e34948', bg: '#fbe6e5' }
     ];
 
-    const PHASE_ORDER = ['64', '48', '32', '24', '16', '12', '8', '4', '2', '1', '0'];
+    // The eight standard bracket phases first so they never share a color; rare ones after.
+    const PHASE_ORDER = ['64', '32', '16', '8', '4', '2', '1', '0', '48', '24', '12'];
 
     function paletteAt(index) {
         const length = PALETTE.length;
