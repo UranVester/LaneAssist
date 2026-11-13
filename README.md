@@ -51,7 +51,8 @@ refreshes by itself and has three modes, switched with the buttons at the top:
   progress and score. The coloured border shows who is on pace, who needs
   attention, and who is behind or missing arrows. Archers who never showed up
   can be forfeited one at a time or all at once. Use **Color by** to group
-  archers by club, class or division.
+  archers by club, bow, class or category. A club, bow, category or event keeps
+  the same color on every LaneAssist page.
 - **Finals** — every match in the current round with its status. Matches with a
   bye or a decided winner can be advanced from here, one at a time or all byes
   at once.
