@@ -27,9 +27,10 @@
         '.print-header .print-filtered { margin-top: 4px; font-size: 12px; font-weight: bold; }',
         // A4 is narrow enough to trip every max-width screen query in style.css,
         // which collapses the grid to one mat per row; pin a print grid instead.
-        '.targets-grid { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; gap: 10px !important; padding: 0 !important; overflow: visible !important; max-height: none !important; height: auto !important; }',
+        '.targets-grid { grid-template-columns: repeat(4, minmax(0, 1fr)) !important; gap: 6px !important; padding: 0 !important; overflow: visible !important; max-height: none !important; height: auto !important; }',
         '.targets-grid.fallback-stacked { grid-template-columns: repeat(4, 170px) !important; }',
         '.target-mat { max-width: none !important; box-shadow: none !important; }',
+        '.mat-label { font-size: 11px; padding: 3px; margin-bottom: 6px; }',
         '.target-mat, .target-box { break-inside: avoid; page-break-inside: avoid; }',
         '.print-face-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; z-index: 0; }',
         '.target-drop-zone { z-index: 1; }',

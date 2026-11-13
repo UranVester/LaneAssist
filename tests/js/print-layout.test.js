@@ -51,10 +51,10 @@ function cssRule(html, selector) {
     return match ? match[2] : null;
 }
 
-test('mats print two per row, overriding the narrow-screen single column', () => {
+test('mats print four per row, overriding the narrow-screen single column', () => {
     const rule = cssRule(pl.buildPrintDocument(base), '.targets-grid');
     assert.ok(rule, 'expected a .targets-grid print rule');
-    assert.match(rule, /grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\)\s*!important/);
+    assert.match(rule, /grid-template-columns:\s*repeat\(4,\s*minmax\(0,\s*1fr\)\)\s*!important/);
 });
 
 test('mat width caps from the screen are lifted in print', () => {
@@ -93,4 +93,10 @@ test('a filtered sheet says so in the header, escaped', () => {
     const html = pl.buildPrintDocument(Object.assign({}, base, {filters: 'Divisions: <R>'}));
     assert.match(html, /Filtered: Divisions: &lt;R&gt;/);
     assert.doesNotMatch(pl.buildPrintDocument(base), /Filtered:/);
+});
+
+test('mat labels shrink to fit four mats per row', () => {
+    const rule = cssRule(pl.buildPrintDocument(base), '.mat-label');
+    assert.ok(rule, 'expected a .mat-label print rule');
+    assert.match(rule, /font-size:\s*11px/);
 });
