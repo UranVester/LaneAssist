@@ -152,6 +152,7 @@ $JS_SCRIPT = array(
         var ROOT_DIR = "' . $CFG->ROOT_DIR . '";
         var TourId = ' . intval($_SESSION['TourId']) . ';
         var TourCode = ' . json_encode(isset($_SESSION['TourCode']) ? $_SESSION['TourCode'] : '', JSON_HEX_TAG | JSON_HEX_AMP) . ';
+        var TournamentName = ' . json_encode(isset($_SESSION['TourName']) ? $_SESSION['TourName'] : '', JSON_HEX_TAG | JSON_HEX_AMP) . ';
         var TargetNoPadding = ' . intval(TargetNoPadding) . ';
         var DivisionMeta = ' . json_encode($divisionMeta, JSON_HEX_TAG | JSON_HEX_AMP) . ';
         var ClassMeta = ' . json_encode($classMeta, JSON_HEX_TAG | JSON_HEX_AMP) . ';
@@ -164,6 +165,7 @@ $JS_SCRIPT = array(
     '<script src="' . $CFG->ROOT_DIR . 'Modules/Custom/LaneAssist/Common/js/jquery-ui-touch-bridge.js"></script>',
     '<script src="' . $CFG->ROOT_DIR . 'Modules/Custom/LaneAssist/Common/js/shared.js"></script>',
     '<script src="' . $CFG->ROOT_DIR . 'Modules/Custom/LaneAssist/Common/js/color-by.js?v=' . filemtime(dirname(__DIR__) . '/Common/js/color-by.js') . '"></script>',
+    '<script src="' . $CFG->ROOT_DIR . 'Modules/Custom/LaneAssist/Common/js/print-layout.js?v=' . filemtime(dirname(__DIR__) . '/Common/js/print-layout.js') . '"></script>',
     '<script src="' . $CFG->ROOT_DIR . 'Modules/Custom/LaneAssist/ManageTargets/js/app.js"></script>',
 );
 
@@ -441,6 +443,9 @@ include('Common/Templates/head.php');
                         </button>
                         <div id="targets-validation-details" class="targets-validation-details" style="display:none;"></div>
                     </div>
+                    <button type="button" id="btn-print-layout" class="targets-actions-toggle" title="Print layout" aria-label="Print layout" disabled>
+                        <i class="fa fa-print"></i>
+                    </button>
                     <div class="targets-actions-menu" id="targets-actions-menu">
                         <button type="button" id="targets-actions-toggle" class="targets-actions-toggle" title="Actions" aria-label="Actions">
                             <i class="fa fa-ellipsis-v"></i>

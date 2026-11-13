@@ -626,6 +626,11 @@
     background: #f3f6fa;
 }
 
+.targets-actions-toggle:disabled {
+    opacity: .45;
+    cursor: default;
+}
+
 .targets-actions-dropdown {
     display: none;
     position: absolute;

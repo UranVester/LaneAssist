@@ -151,6 +151,11 @@
         // Run auto assign
         $('#btn-run-auto').on('click', runAutoAssign);
 
+        $('#btn-print-layout').on('click', function(e) {
+            e.preventDefault();
+            printLayout();
+        });
+
         // Target actions menu
         $('#targets-actions-toggle').on('click', function(e) {
             e.preventDefault();
@@ -2404,6 +2409,7 @@
      */
     function updateUI() {
         renderSwapArcherActions();
+        updatePrintButton();
 
         // Enable/disable buttons
         $('#btn-apply').prop('disabled', !state.hasChanges);
@@ -2430,6 +2436,92 @@
         } else {
             $('#changes-summary').hide();
         }
+    }
+
+    function getAssignedTargetFulls() {
+        return Object.keys(state.assignments).map(function(participantId) {
+            const assignment = state.assignments[participantId];
+            return assignment && assignment.targetFull ? assignment.targetFull : '';
+        }).filter(Boolean);
+    }
+
+    function updatePrintButton() {
+        $('#btn-print-layout').prop('disabled', !state.currentSession || getAssignedTargetFulls().length === 0);
+    }
+
+    /**
+     * Open a setup-only sheet of the in-use mats in a new tab and print it.
+     * Rendered by renderTargets() itself so the sheet matches the screen.
+     */
+    function printLayout() {
+        const rules = window.LaneAssist.printLayout;
+        // Open synchronously inside the click so popup blockers allow it
+        const win = window.open('', '_blank');
+        if (!win) {
+            showError('Allow pop-ups to print the layout');
+            return;
+        }
+
+        const assigned = getAssignedTargetFulls();
+        const $tmp = $('<div class="targets-grid"></div>');
+        if (state.currentLayout === 'layout_fallback_stacked') {
+            $tmp.addClass('fallback-stacked');
+        }
+        renderTargets($tmp, { skipInteractions: true, skipCounters: true });
+
+        $tmp.find('.target-mat, .target-box').each(function() {
+            const spots = $(this).find('.target-drop-zone[data-target-full]').map(function() {
+                return $(this).attr('data-target-full');
+            }).get();
+            if (!rules.isMatInUse(spots, assigned)) {
+                $(this).remove();
+            }
+        });
+
+        if ($tmp.find('.target-mat, .target-box').length === 0) {
+            win.close();
+            showError('No mats with archers to print');
+            return;
+        }
+
+        $tmp.find('.target-drop-zone[data-target-full]').each(function() {
+            if (rules.spotStatus($(this).attr('data-target-full'), assigned) === 'empty') {
+                $(this).addClass('print-empty').append('<div class="print-empty-label">No archer</div>');
+            }
+        });
+        $tmp.find('.participant-card, .lane-drop-zone').remove();
+        $tmp.find('.lane-chip').removeAttr('title');
+
+        $tmp.find('[style*="background-image"]').each(function() {
+            const $el = $(this);
+            const match = /url\(["']?([^"')]+)["']?\)/.exec(this.style.backgroundImage || '');
+            $el.css({ 'background-image': 'none', position: 'relative' });
+            if (!match) {
+                return;
+            }
+            $el.prepend($('<img class="print-face-img" alt="">').attr('src', new URL(match[1], window.location.href).href));
+            const faceId = $el.attr('data-target-face-id');
+            const face = faceId ? state.targetFaces[faceId] : null;
+            if (face && face.description) {
+                $el.append('<div class="print-face-caption">' + escapeHtml(face.description) + '</div>');
+            }
+        });
+
+        const base = new URL(ROOT_DIR, window.location.href).href;
+        win.document.open();
+        win.document.write(rules.buildPrintDocument({
+            tournament: typeof TournamentName !== 'undefined' ? TournamentName : '',
+            session: ($('#session-select option:selected').text() || '').trim(),
+            layout: ($('#layout-select option:selected').text() || '').trim(),
+            printedAt: new Date().toLocaleString(),
+            hasChanges: !!state.hasChanges,
+            stylesheets: [
+                base + 'Modules/Custom/LaneAssist/Common/css/shared.css',
+                base + 'Modules/Custom/LaneAssist/ManageTargets/css/style.css'
+            ],
+            matsHtml: '<div class="' + $tmp.attr('class') + '">' + $tmp.html() + '</div>'
+        }));
+        win.document.close();
     }
 
     /**
