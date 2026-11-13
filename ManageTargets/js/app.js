@@ -2515,6 +2515,12 @@
             layout: ($('#layout-select option:selected').text() || '').trim(),
             printedAt: new Date().toLocaleString(),
             hasChanges: !!state.hasChanges,
+            filters: rules.describeFilters({
+                divisions: $('#division-filter').val() || [],
+                classes: $('#class-filter').val() || [],
+                targetFrom: $('#target-from').val(),
+                targetTo: $('#target-to').val()
+            }),
             stylesheets: [
                 base + 'Modules/Custom/LaneAssist/Common/css/shared.css',
                 base + 'Modules/Custom/LaneAssist/ManageTargets/css/style.css'

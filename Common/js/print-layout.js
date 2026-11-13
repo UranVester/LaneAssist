@@ -24,13 +24,18 @@
         '.print-header h1 { font-size: 16px; margin: 0 0 4px; }',
         '.print-header .print-meta { font-size: 12px; }',
         '.print-header .print-unapplied { margin-top: 4px; font-size: 12px; font-weight: bold; color: #b00; }',
-        '.targets-grid { overflow: visible !important; max-height: none !important; height: auto !important; }',
+        '.print-header .print-filtered { margin-top: 4px; font-size: 12px; font-weight: bold; }',
+        // A4 is narrow enough to trip every max-width screen query in style.css,
+        // which collapses the grid to one mat per row; pin a print grid instead.
+        '.targets-grid { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; gap: 10px !important; padding: 0 !important; overflow: visible !important; max-height: none !important; height: auto !important; }',
+        '.targets-grid.fallback-stacked { grid-template-columns: repeat(4, 170px) !important; }',
+        '.target-mat { max-width: none !important; box-shadow: none !important; }',
         '.target-mat, .target-box { break-inside: avoid; page-break-inside: avoid; }',
         '.print-face-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; z-index: 0; }',
-        '.target-drop-zone { position: relative; z-index: 1; }',
+        '.target-drop-zone { z-index: 1; }',
         '.print-empty { background: rgba(255, 255, 255, 0.75); border: 1px dashed #888; }',
         '.print-empty-label { font-size: 11px; font-style: italic; color: #555; text-align: center; }',
-        '.print-face-caption { position: relative; z-index: 1; font-size: 10px; text-align: center; background: rgba(255, 255, 255, 0.85); }',
+        '.print-face-caption { position: absolute; left: 0; right: 0; bottom: 0; z-index: 2; font-size: 10px; text-align: center; background: rgba(255, 255, 255, 0.85); }',
         '* { -webkit-print-color-adjust: exact; print-color-adjust: exact; }'
     ].join('\n');
 
@@ -53,6 +58,32 @@
         return (assignedTargetFulls || []).indexOf(targetFull) !== -1 ? 'archer' : 'empty';
     }
 
+    /**
+     * One-line description of the active ManageTargets filters, or '' when the
+     * sheet covers the whole session. '' in a multiselect means "All".
+     */
+    function describeFilters(filters) {
+        const f = filters || {};
+        const pick = function(values) {
+            return (values || []).filter(function(value) { return value !== ''; });
+        };
+        const parts = [];
+        const divisions = pick(f.divisions);
+        const classes = pick(f.classes);
+        if (divisions.length) {
+            parts.push('Divisions: ' + divisions.join(', '));
+        }
+        if (classes.length) {
+            parts.push('Classes: ' + classes.join(', '));
+        }
+        const from = parseInt(f.targetFrom, 10) || 1;
+        const to = parseInt(f.targetTo, 10) || 99;
+        if (from !== 1 || to !== 99) {
+            parts.push('Targets ' + from + '\u2013' + to);
+        }
+        return parts.join(' \u00b7 ');
+    }
+
     function buildPrintDocument(opts) {
         const o = opts || {};
         const links = (o.stylesheets || []).map(function(url) {
@@ -68,6 +99,7 @@
             '<div class="print-meta">Session: ' + escapeHtml(o.session) +
             ' &middot; Layout: ' + escapeHtml(o.layout) +
             ' &middot; Printed: ' + escapeHtml(o.printedAt) + '</div>' +
+            (o.filters ? '<div class="print-filtered">Filtered: ' + escapeHtml(o.filters) + '</div>' : '') +
             (o.hasChanges ? '<div class="print-unapplied">Includes changes not applied yet</div>' : '') +
             '</div>' +
             (o.matsHtml || '') +
@@ -77,6 +109,7 @@
 
     return {
         isMatInUse: isMatInUse,
+        describeFilters: describeFilters,
         spotStatus: spotStatus,
         buildPrintDocument: buildPrintDocument
     };

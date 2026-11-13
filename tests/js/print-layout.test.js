@@ -43,3 +43,54 @@ test('document links stylesheets, avoids splitting mats, and prints on load', ()
     assert.match(html, /size:\s*A4 portrait/);
     assert.match(html, /window\.print\(\)/);
 });
+
+function cssRule(html, selector) {
+    const css = html.slice(html.indexOf('<style>'), html.indexOf('</style>'));
+    const escaped = selector.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const match = new RegExp('(^|\\n)' + escaped + '\\s*\\{([^}]*)\\}').exec(css);
+    return match ? match[2] : null;
+}
+
+test('mats print two per row, overriding the narrow-screen single column', () => {
+    const rule = cssRule(pl.buildPrintDocument(base), '.targets-grid');
+    assert.ok(rule, 'expected a .targets-grid print rule');
+    assert.match(rule, /grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\)\s*!important/);
+});
+
+test('mat width caps from the screen are lifted in print', () => {
+    const rule = cssRule(pl.buildPrintDocument(base), '.target-mat');
+    assert.ok(rule, 'expected a .target-mat print rule');
+    assert.match(rule, /max-width:\s*none\s*!important/);
+});
+
+test('drop zones keep their own absolute positioning', () => {
+    const html = pl.buildPrintDocument(base);
+    const css = html.slice(html.indexOf('<style>'), html.indexOf('</style>'));
+    assert.doesNotMatch(css, /\.target-drop-zone[^{]*\{[^}]*position:\s*relative/);
+});
+
+test('face caption sits at the bottom of the face, clear of the position letters', () => {
+    const rule = cssRule(pl.buildPrintDocument(base), '.print-face-caption');
+    assert.ok(rule, 'expected a .print-face-caption rule');
+    assert.match(rule, /position:\s*absolute/);
+    assert.match(rule, /bottom:\s*0/);
+});
+
+test('describeFilters is empty for the default view', () => {
+    assert.strictEqual(pl.describeFilters({divisions: [], classes: [''], targetFrom: '1', targetTo: '99'}), '');
+    assert.strictEqual(pl.describeFilters({divisions: [], classes: [], targetFrom: '', targetTo: ''}), '');
+});
+
+test('describeFilters names divisions, classes and a narrowed target range', () => {
+    assert.strictEqual(
+        pl.describeFilters({divisions: ['R', 'C'], classes: ['M'], targetFrom: '3', targetTo: '12'}),
+        'Divisions: R, C · Classes: M · Targets 3–12'
+    );
+    assert.strictEqual(pl.describeFilters({divisions: ['', 'R'], classes: [], targetFrom: '1', targetTo: '99'}), 'Divisions: R');
+});
+
+test('a filtered sheet says so in the header, escaped', () => {
+    const html = pl.buildPrintDocument(Object.assign({}, base, {filters: 'Divisions: <R>'}));
+    assert.match(html, /Filtered: Divisions: &lt;R&gt;/);
+    assert.doesNotMatch(pl.buildPrintDocument(base), /Filtered:/);
+});
