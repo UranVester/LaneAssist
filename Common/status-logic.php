@@ -73,6 +73,12 @@ function laneAssistFinalsPlanningIssues(array $event) {
     $finalFirstPhase = intval($event['finalFirstPhase'] ?? 0);
 
     if ($finalFirstPhase <= 0) {
+        // A lone entrant can't fill even a medal match (same rule as
+        // ceBracketForCount()); IANSEO's medal list ranks a no-finals event
+        // from qualification (IndRank), so they still get their medal.
+        if ($rawEntrantCount < 2) {
+            return [];
+        }
         $message = "Event {$code} ({$label}): {$rawEntrantCount} entrants but no finals bracket is configured";
         $suggested = laneAssistRecommendBracketSize($rawEntrantCount, $event['standardCapacities'] ?? []);
         if ($suggested > 0) {

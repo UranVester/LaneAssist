@@ -114,6 +114,28 @@ final class StatusLogicTest extends TestCase
         $this->assertStringContainsString('no finals bracket is configured', $issues[0]['message']);
     }
 
+    // A lone entrant can't fill even a medal match; IANSEO's medal list then
+    // ranks them from qualification (IndRank), so no bracket is correct.
+    public function testFinalsPlanningIsSilentWhenASingleEntrantHasNoBracket(): void
+    {
+        $issues = laneAssistFinalsPlanningIssues([
+            'code' => 'CK', 'label' => 'individual', 'finalFirstPhase' => 0,
+            'rawEntrantCount' => 1, 'hasAnyScheduled' => false, 'expectedSize' => 0,
+            'standardCapacities' => [4, 8, 16],
+        ]);
+        $this->assertSame([], $issues);
+    }
+
+    public function testFinalsPlanningStillFlagsMissingBracketForTwoEntrants(): void
+    {
+        $issues = laneAssistFinalsPlanningIssues([
+            'code' => 'CK', 'label' => 'individual', 'finalFirstPhase' => 0,
+            'rawEntrantCount' => 2, 'hasAnyScheduled' => false, 'expectedSize' => 0,
+        ]);
+        $this->assertCount(1, $issues);
+        $this->assertSame('no_bracket', $issues[0]['type']);
+    }
+
     public function testFinalsPlanningMissingBracketSuggestsStandardSize(): void
     {
         $issues = laneAssistFinalsPlanningIssues([
