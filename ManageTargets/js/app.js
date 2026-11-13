@@ -9,6 +9,7 @@
     const divisionMetaMap = (typeof DivisionMeta !== 'undefined' && DivisionMeta) ? DivisionMeta : {};
     const classMetaMap = (typeof ClassMeta !== 'undefined' && ClassMeta) ? ClassMeta : {};
     const ColorBy = window.LaneAssist && window.LaneAssist.colorBy;
+    const colorIndex = ColorBy.createColorIndex(typeof ColorGroups !== 'undefined' ? ColorGroups : undefined);
     const OUTDOOR_MIXED_CONFLICT_MESSAGE = 'Invalid move: 122cm and 80cm faces cannot be mixed on the same mat/lane.';
 
     // Application state
@@ -1625,8 +1626,8 @@
         const $card = $('<div class="participant-card draggable" data-id="' + participant.id + '"></div>');
 
         const grouping = getParticipantColorGrouping(participant);
-        if (grouping) {
-            const palette = ColorBy.getColorPalette(grouping.key);
+        const palette = grouping ? colorIndex.colorFor(grouping.group, grouping.key) : null;
+        if (palette) {
             $card.addClass('colorized').attr('title', grouping.label);
             $card.css({
                 '--group-color': palette.color,
@@ -1684,39 +1685,33 @@
         if (mode === 'country') {
             const key = normalize(participant.country || participant.countryName, 'No Country');
             const label = 'Country/Club: ' + normalize(participant.countryName || participant.country, 'No Country');
-            return { key: 'country|' + key, label: label };
+            return { group: 'country', key: key, label: label };
+        }
+
+        if (mode === 'bow') {
+            const divisionInfo = getDivisionInfo(participant.division);
+            const bowType = ColorBy.extractBowType(divisionInfo.description, divisionInfo.id);
+            return { group: 'bow', key: bowType, label: 'Bow: ' + bowType };
         }
 
         if (mode === 'class') {
             const classInfo = getClassInfo(participant.class);
-            return {
-                key: 'class|' + classInfo.id,
-                label: 'Class: ' + classInfo.label
-            };
+            return { group: 'class', key: classInfo.id, label: 'Class: ' + classInfo.label };
         }
 
-        if (mode === 'division') {
-            const divisionInfo = getDivisionInfo(participant.division);
-            const bowType = ColorBy.extractBowType(divisionInfo.description, divisionInfo.id);
-            return {
-                key: 'division|' + bowType,
-                label: 'Division (Bow): ' + bowType
-            };
-        }
-
-        if (mode === 'event') {
-            const key = normalize(participant.event, 'No Event');
-            return { key: 'event|' + key, label: 'Event: ' + key };
+        if (mode === 'category') {
+            const key = normalize((participant.division || '').toString().trim() + (participant.class || '').toString().trim(), 'No Category');
+            return { group: 'category', key: key, label: 'Category: ' + key };
         }
 
         if (mode === 'distance') {
             const key = normalize(participant.distanceProfile, 'No Distance');
-            return { key: 'distance|' + key, label: 'Distance: ' + key };
+            return { group: 'distance', key: key, label: 'Distance: ' + key };
         }
 
         if (mode === 'target-face') {
             const key = normalize(participant.targetFaceId, 'No Face');
-            return { key: 'target-face|' + key, label: 'Target Face: ' + key };
+            return { group: 'target-face', key: key, label: 'Target face: ' + key };
         }
 
         return null;

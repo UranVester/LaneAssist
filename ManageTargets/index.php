@@ -23,6 +23,7 @@ if (!CheckTourSession()) {
 
 checkFullACL(AclParticipants, 'pTarget', AclReadWrite);
 require_once('Common/Fun_Sessions.inc.php');
+require_once(dirname(__FILE__, 2) . '/Common/color-logic.php');
 
 // Prepare page variables
 $PAGE_TITLE = 'Manage Targets - Interactive';
@@ -154,6 +155,7 @@ $JS_SCRIPT = array(
         var TargetNoPadding = ' . intval(TargetNoPadding) . ';
         var DivisionMeta = ' . json_encode($divisionMeta, JSON_HEX_TAG | JSON_HEX_AMP) . ';
         var ClassMeta = ' . json_encode($classMeta, JSON_HEX_TAG | JSON_HEX_AMP) . ';
+        var ColorGroups = ' . json_encode(laLoadColorGroups(intval($_SESSION['TourId'])), JSON_HEX_TAG | JSON_HEX_AMP) . ';
         var TargetLayouts = ' . json_encode($targetLayouts, JSON_HEX_TAG | JSON_HEX_AMP) . ';
     </script>',
     '<link href="' . $CFG->ROOT_DIR . 'Modules/Custom/LaneAssist/Common/css/shared.css" rel="stylesheet" type="text/css">',
@@ -161,7 +163,7 @@ $JS_SCRIPT = array(
     '<script src="' . $CFG->ROOT_DIR . 'Common/jQuery/jquery-ui.min.js"></script>',
     '<script src="' . $CFG->ROOT_DIR . 'Modules/Custom/LaneAssist/Common/js/jquery-ui-touch-bridge.js"></script>',
     '<script src="' . $CFG->ROOT_DIR . 'Modules/Custom/LaneAssist/Common/js/shared.js"></script>',
-    '<script src="' . $CFG->ROOT_DIR . 'Modules/Custom/LaneAssist/Common/js/color-by.js"></script>',
+    '<script src="' . $CFG->ROOT_DIR . 'Modules/Custom/LaneAssist/Common/js/color-by.js?v=' . filemtime(dirname(__DIR__) . '/Common/js/color-by.js') . '"></script>',
     '<script src="' . $CFG->ROOT_DIR . 'Modules/Custom/LaneAssist/ManageTargets/js/app.js"></script>',
 );
 
@@ -234,11 +236,11 @@ include('Common/Templates/head.php');
                 <select id="color-by" name="color-by">
                     <option value="none">None</option>
                     <option value="country">Country/Club</option>
-                    <option value="class">Class (Age/Gender)</option>
-                    <option value="division">Division (Bow type)</option>
-                    <option value="event">Event</option>
+                    <option value="bow">Bow</option>
+                    <option value="class">Class</option>
+                    <option value="category">Category</option>
                     <option value="distance">Distance</option>
-                    <option value="target-face">Target Face</option>
+                    <option value="target-face">Target face</option>
                 </select>
             </div>
 
