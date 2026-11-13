@@ -14,6 +14,7 @@ if (!CheckTourSession()) {
 
 checkFullACL(AclCompetition, '', AclReadOnly);
 require_once('Common/Fun_Sessions.inc.php');
+require_once(dirname(__FILE__, 2) . '/Common/color-logic.php');
 
 $PAGE_TITLE = 'LaneAssist Live View';
 $IncludeJquery = true;
@@ -52,6 +53,7 @@ $JS_SCRIPT = [
     '<script>var ROOT_DIR=' . json_encode($CFG->ROOT_DIR, JSON_HEX_TAG | JSON_HEX_AMP) . ';
         var DivisionMeta = ' . json_encode($divisionMeta, JSON_HEX_TAG | JSON_HEX_AMP) . ';
         var ClassMeta = ' . json_encode($classMeta, JSON_HEX_TAG | JSON_HEX_AMP) . ';
+        var ColorGroups = ' . json_encode(laLoadColorGroups(intval($_SESSION['TourId'])), JSON_HEX_TAG | JSON_HEX_AMP) . ';
     </script>',
     '<link href="' . $CFG->ROOT_DIR . 'Modules/Custom/LaneAssist/LiveView/css/style.css?v=' . $styleVersion . '" rel="stylesheet" type="text/css">',
     '<script src="' . $CFG->ROOT_DIR . 'Modules/Custom/LaneAssist/Common/js/badge-render.js?v='

@@ -6,19 +6,22 @@
     var divisionMetaMap = (typeof DivisionMeta !== 'undefined' && DivisionMeta) ? DivisionMeta : {};
     var classMetaMap = (typeof ClassMeta !== 'undefined' && ClassMeta) ? ClassMeta : {};
     var ColorBy = window.LaneAssist && window.LaneAssist.colorBy;
+    var colorIndex = ColorBy.createColorIndex(typeof ColorGroups !== 'undefined' ? ColorGroups : undefined);
 
     var QUAL_COLOR_OPTIONS = [
         { value: 'none', label: 'None' },
         { value: 'country', label: 'Country/Club' },
-        { value: 'class', label: 'Class (Age/Gender)' },
-        { value: 'division', label: 'Division (Bow type)' }
+        { value: 'bow', label: 'Bow' },
+        { value: 'class', label: 'Class' },
+        { value: 'category', label: 'Category' }
     ];
     var FINALS_COLOR_OPTIONS = [
         { value: 'none', label: 'None' },
         { value: 'country', label: 'Country/Club' },
-        { value: 'event', label: 'Event' },
-        { value: 'division', label: 'Division (Bow type)' },
-        { value: 'class', label: 'Class (Age/Gender)' }
+        { value: 'bow', label: 'Bow' },
+        { value: 'class', label: 'Class' },
+        { value: 'category', label: 'Category' },
+        { value: 'event', label: 'Event' }
     ];
 
     function escapeHtml(value) {
@@ -50,39 +53,47 @@
         return { id: 'No Division', description: 'No Division' };
     }
 
-    function getColorGrouping(entity, mode) {
+    function getColorGrouping(entity, mode, match) {
         if (!mode || mode === 'none') return null;
 
         if (mode === 'country') {
             var club = normalizeColorValue(entity.club, 'No Club');
-            return { key: 'country|' + club, label: 'Country/Club: ' + club };
+            return { group: 'country', key: club, label: 'Country/Club: ' + club };
+        }
+
+        if (mode === 'bow') {
+            var divisionInfo = getDivisionInfo(entity.division);
+            var bowType = ColorBy.extractBowType(divisionInfo.description, divisionInfo.id);
+            return { group: 'bow', key: bowType, label: 'Bow: ' + bowType };
         }
 
         if (mode === 'class') {
             var classInfo = getClassInfo(entity.class);
-            return { key: 'class|' + classInfo.id, label: 'Class: ' + classInfo.label };
+            return { group: 'class', key: classInfo.id, label: 'Class: ' + classInfo.label };
         }
 
-        if (mode === 'division') {
-            var divisionInfo = getDivisionInfo(entity.division);
-            var bowType = ColorBy.extractBowType(divisionInfo.description, divisionInfo.id);
-            return { key: 'division|' + bowType, label: 'Division (Bow): ' + bowType };
-        }
-
-        if (mode === 'event') {
+        if (mode === 'category') {
             var div = (entity.division == null ? '' : String(entity.division)).trim();
             var cls = (entity.class == null ? '' : String(entity.class)).trim();
-            var key = normalizeColorValue(div + cls, 'No Event');
-            return { key: 'event|' + key, label: 'Event: ' + key };
+            var category = normalizeColorValue(div + cls, 'No Category');
+            return { group: 'category', key: category, label: 'Category: ' + category };
+        }
+
+        if (mode === 'event' && match && match.event) {
+            return {
+                group: 'event',
+                key: (parseInt(match.teamEvent, 10) ? 1 : 0) + '|' + String(match.event).trim(),
+                label: 'Event: ' + (match.eventName || match.event)
+            };
         }
 
         return null;
     }
 
-    function colorByAttrs(entity) {
-        var grouping = getColorGrouping(entity, state.colorBy);
-        if (!grouping) return { classAttr: '', styleAttr: '', titleAttr: '' };
-        var palette = ColorBy.getColorPalette(grouping.key);
+    function colorByAttrs(entity, match) {
+        var grouping = getColorGrouping(entity, state.colorBy, match);
+        var palette = grouping ? colorIndex.colorFor(grouping.group, grouping.key) : null;
+        if (!palette) return { classAttr: '', styleAttr: '', titleAttr: '' };
         return {
             classAttr: ' colorized',
             styleAttr: ' style="--group-color:' + palette.color + ';--group-bg:' + palette.bg + '"',
@@ -283,7 +294,7 @@
                 } else {
                     scores = '<div class="final-scores"><span><small>Total</small><b>' + side.score + '</b></span></div>';
                 }
-                var colorAttrs = colorByAttrs(side);
+                var colorAttrs = colorByAttrs(side, match);
                 return '<div class="final-side' + (winner ? ' winner' : '') + '"><div class="final-side-name' + colorAttrs.classAttr + '"' + colorAttrs.styleAttr + colorAttrs.titleAttr + '><strong>' + escapeHtml(side.name || 'Awaiting opponent') + '</strong><small>' + side.completedEnds + ' ends reported</small></div>' + scores + '</div>';
             }).join('');
             var canAct = match.canAdvance || match.canMarkBye;
