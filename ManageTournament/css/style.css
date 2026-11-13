@@ -1,0 +1,48 @@
+.manage-tournament { padding: 20px; color: #17202a; }
+
+.mt-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 14px; padding: 14px 16px; background: #fff; border: 1px solid #dce4ef; border-radius: 8px; }
+.mt-toolbar h2 { margin: 0 0 3px; font-size: 22px; }
+.mt-code { font-size: 13px; font-weight: 600; color: #5a6e89; }
+.mt-summary { color: #5a6e89; font-size: 13px; }
+.mt-toolbar-right { display: flex; align-items: center; gap: 10px; }
+.mt-stage { padding: 5px 10px; border-radius: 12px; background: #e7f3ff; color: #0b518d; font-weight: bold; font-size: 13px; white-space: nowrap; }
+.mt-icon-button { min-width: 36px; min-height: 36px; border: 1px solid #aab6c0; border-radius: 6px; background: #fff; cursor: pointer; }
+
+.mt-layout { display: grid; grid-template-columns: minmax(0, 2fr) minmax(300px, 1fr); gap: 14px; align-items: start; }
+.mt-checklist, .mt-tools { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+
+/* Checklist items */
+.status-item { background: #fff; border: 1px solid #dce4ef; border-left: 4px solid #18794e; border-radius: 8px; }
+.status-item-warning { border-left-color: #e6a700; }
+.status-item-danger { border-left-color: #b42318; }
+.status-item header { display: flex; align-items: flex-start; gap: 8px; padding: 10px 12px; }
+.status-item header small { color: #4e5f77; }
+.status-dot { display: inline-block; flex: 0 0 auto; width: 9px; height: 9px; margin-top: 5px; border-radius: 50%; background: #18794e; }
+.status-dot.warning { background: #e6a700; }
+.status-dot.danger { background: #b42318; }
+.status-item-rows { margin: 0; padding: 8px 12px; list-style: none; border-top: 1px solid #edf2f8; }
+.status-item-rows li { padding: 3px 0; font-size: 13px; }
+.status-item-rows a, .status-item footer a { color: #286fa0; }
+.status-item footer { padding: 8px 12px; text-align: right; font-size: 13px; }
+.status-fix-button { min-height: 32px; padding: 6px 12px; border: 1px solid #286fa0; border-radius: 6px; background: #286fa0; color: #fff; cursor: pointer; }
+.mt-empty { padding: 14px; color: #5a6e89; background: #fff; border: 1px solid #dce4ef; border-radius: 8px; }
+
+/* Tool cards: same look as Settings */
+.settings-card { background: #fff; border: 1px solid #dce4ef; border-radius: 8px; padding: 14px; }
+.settings-card h3 { display: flex; align-items: center; gap: 8px; margin: 0 0 10px; font-size: 16px; color: #2b3f5c; }
+.settings-card p { margin: 6px 0; color: #4e5f77; line-height: 1.4; }
+.settings-field { display: flex; flex-direction: column; gap: 6px; margin-bottom: 10px; }
+.settings-field label { font-size: 13px; font-weight: 600; color: #2f4767; }
+.settings-field input, .settings-field select { width: 100%; box-sizing: border-box; padding: 8px 10px; border: 1px solid #cfd9e6; border-radius: 6px; font-size: 13px; }
+.settings-field small { color: #6a7d95; font-size: 12px; }
+.settings-actions { display: flex; flex-wrap: wrap; gap: 10px; }
+.inline-note { margin-top: 8px; color: #5a6e89; font-size: 12px; }
+.status-message { margin: 0 0 12px; padding: 10px 12px; border-radius: 6px; font-size: 13px; }
+.status-message.hidden { display: none; }
+.status-message.status-success { background: #eaf8ed; color: #1f6a36; border: 1px solid #a5dfb6; }
+.status-message.status-error { background: #fdecec; color: #8b1f1f; border: 1px solid #efb1b1; }
+
+@media (max-width: 900px) {
+    .mt-layout { grid-template-columns: 1fr; }
+    .mt-toolbar { flex-wrap: wrap; }
+}

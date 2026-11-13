@@ -81,3 +81,20 @@ test('parseTargetNumber mirrors ManageFinals/js/app.js\'s helper', () => {
     assert.strictEqual(statusLogic.parseTargetNumber(undefined), null);
     assert.strictEqual(statusLogic.parseTargetNumber('abc'), null);
 });
+
+test('sortChecklistItems puts danger first, then warning, then info, keeping order within a severity', () => {
+    const items = [
+        { key: 'a', severity: 'info' },
+        { key: 'b', severity: 'warning' },
+        { key: 'c', severity: 'danger' },
+        { key: 'd', severity: 'info' },
+        { key: 'e', severity: 'danger' },
+    ];
+    assert.deepStrictEqual(statusLogic.sortChecklistItems(items).map((i) => i.key), ['c', 'e', 'b', 'a', 'd']);
+    assert.deepStrictEqual(items.map((i) => i.key), ['a', 'b', 'c', 'd', 'e'], 'input is not mutated');
+});
+
+test('sortChecklistItems puts an unknown severity after info', () => {
+    const items = [{ key: 'x', severity: 'odd' }, { key: 'i', severity: 'info' }];
+    assert.deepStrictEqual(statusLogic.sortChecklistItems(items).map((i) => i.key), ['i', 'x']);
+});

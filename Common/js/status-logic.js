@@ -1,9 +1,9 @@
 /**
- * Pure logic for the LiveView Status tab.
+ * Pure logic for the Manage Tournament status checklist.
  *
  * Mirrors the Common/js/finals-playability.js pattern: no jQuery/DOM, so it
- * can be unit-tested directly (tests/js/). LiveView/js/app.js calls into
- * this for the "unplayable finals" checklist items.
+ * can be unit-tested directly (tests/js/). ManageTournament/js/app.js calls
+ * into this for the "unplayable finals" items and the checklist order.
  */
 (function(root, factory) {
     'use strict';
@@ -83,8 +83,21 @@
         }];
     }
 
+    var SEVERITY_RANK = { danger: 0, warning: 1, info: 2 };
+
+    /** Problems first (danger, warning), then info; stable within a severity. */
+    function sortChecklistItems(items) {
+        function rank(item) {
+            return Object.prototype.hasOwnProperty.call(SEVERITY_RANK, item.severity) ? SEVERITY_RANK[item.severity] : 3;
+        }
+        return items.map(function(item, index) { return { item: item, index: index }; })
+            .sort(function(a, b) { return rank(a.item) - rank(b.item) || a.index - b.index; })
+            .map(function(entry) { return entry.item; });
+    }
+
     return {
         parseTargetNumber: parseTargetNumber,
-        computeUnplayableFinalsItems: computeUnplayableFinalsItems
+        computeUnplayableFinalsItems: computeUnplayableFinalsItems,
+        sortChecklistItems: sortChecklistItems
     };
 }));

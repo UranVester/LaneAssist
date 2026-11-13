@@ -59,6 +59,7 @@ if ($hideIanseoUpdateEntry) {
 
 $ret['MODS'][] = MENU_DIVIDER;
 if ($hasSelectedTour) {
+	$ret['MODS'][] = 'Manage Tournament' . '|' . $CFG->ROOT_DIR . 'Modules/Custom/LaneAssist/ManageTournament/index.php';
 	$ret['MODS'][] = 'LaneAssist Live View' . '|' . $CFG->ROOT_DIR . 'Modules/Custom/LaneAssist/LiveView/index.php';
 	$ret['MODS'][] = 'Manage Targets - Interactive' . '|' . $CFG->ROOT_DIR . 'Modules/Custom/LaneAssist/ManageTargets/index.php';
 	$ret['MODS'][] = 'Manage Finals - Interactive' . '|' . $CFG->ROOT_DIR . 'Modules/Custom/LaneAssist/ManageFinals/index.php';
