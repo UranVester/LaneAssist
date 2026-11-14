@@ -49,6 +49,7 @@ $styleVersion = filemtime(__DIR__ . '/css/style.css');
 $scriptVersion = filemtime(__DIR__ . '/js/app.js');
 $badgeRenderVersion = filemtime(dirname(__DIR__) . '/Common/js/badge-render.js');
 $colorByVersion = filemtime(dirname(__DIR__) . '/Common/js/color-by.js');
+$printLayoutVersion = filemtime(dirname(__DIR__) . '/Common/js/print-layout.js');
 $JS_SCRIPT = [
     '<script>var ROOT_DIR=' . json_encode($CFG->ROOT_DIR, JSON_HEX_TAG | JSON_HEX_AMP) . ';
         var DivisionMeta = ' . json_encode($divisionMeta, JSON_HEX_TAG | JSON_HEX_AMP) . ';
@@ -60,6 +61,8 @@ $JS_SCRIPT = [
         . $badgeRenderVersion . '"></script>',
     '<script src="' . $CFG->ROOT_DIR . 'Modules/Custom/LaneAssist/Common/js/color-by.js?v='
         . $colorByVersion . '"></script>',
+    '<script src="' . $CFG->ROOT_DIR . 'Modules/Custom/LaneAssist/Common/js/print-layout.js?v='
+        . $printLayoutVersion . '"></script>',
     '<script src="' . $CFG->ROOT_DIR . 'Modules/Custom/LaneAssist/LiveView/js/app.js?v=' . $scriptVersion . '"></script>',
 ];
 
@@ -109,6 +112,9 @@ include('Common/Templates/head.php');
                 <button type="button" class="mode-button active" data-mode="qualification">Qualification</button>
                 <button type="button" class="mode-button" data-mode="finals">Finals <span id="final-count" class="count-badge">0</span></button>
             </div>
+            <button type="button" id="print-qual" class="icon-button" title="Print target layout" aria-label="Print target layout">
+                <i class="fa fa-print" aria-hidden="true"></i>
+            </button>
             <button type="button" id="refresh-button" class="icon-button" title="Refresh now" aria-label="Refresh now">
                 <i class="fa fa-refresh" aria-hidden="true"></i>
             </button>

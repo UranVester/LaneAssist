@@ -337,6 +337,7 @@
         $('#finals-view').prop('hidden', !isFinals);
         $('.mode-button').removeClass('active').filter('[data-mode="' + state.mode + '"]').addClass('active');
         $('label[for="session-select"]').toggle(!isFinals);
+        $('#print-qual').prop('hidden', isFinals).prop('disabled', !$('#session-select').val());
         var rounds = (state.snapshot && state.snapshot.finalsRounds) || [];
         $('#round-control').prop('hidden', !isFinals || rounds.length < 2);
         updateColorByOptions();
@@ -573,6 +574,11 @@
             }
         });
         $('#refresh-button').on('click', function() { loadSnapshot(true); });
+        $('#print-qual').on('click', function() {
+            var session = $('#session-select').val();
+            if (!session) return;
+            window.open(window.LaneAssist.printLayout.qualPrintUrl(ROOT_DIR, session), '_blank');
+        });
         $(document).on('click', '.advance-button', function() { advanceMatch(this); });
         $(document).on('click', '.retire-toggle', function() { toggleArcherRetired(this); });
         $(document).on('click', '#advance-all-byes', function(event) { event.stopPropagation(); advanceAllByes(this); });

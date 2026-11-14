@@ -535,6 +535,11 @@
                     (state.sessionInfo.loadedFrom || '') + '-' + (state.sessionInfo.loadedTo || ''), 'success');
 
                 updateViewportLayout();
+
+                if (typeof PrintMode !== 'undefined' && PrintMode && !state.printModeDone) {
+                    state.printModeDone = true;
+                    printLayout(window);
+                }
             },
             error: function() {
                 showError('Failed to load data from server');
@@ -2452,11 +2457,13 @@
     /**
      * Open a setup-only sheet of the in-use mats in a new tab and print it.
      * Rendered by renderTargets() itself so the sheet matches the screen.
+     * With targetWin (print mode, ?print=1) the sheet replaces that window's page.
      */
-    function printLayout() {
+    function printLayout(targetWin) {
         const rules = window.LaneAssist.printLayout;
+        const sameTab = !!targetWin;
         // Open synchronously inside the click so popup blockers allow it
-        const win = window.open('', '_blank');
+        const win = targetWin || window.open('', '_blank');
         if (!win) {
             showError('Allow pop-ups to print the layout');
             return;
@@ -2479,6 +2486,19 @@
         });
 
         if ($tmp.find('.target-mat, .target-box').length === 0) {
+            if (sameTab) {
+                win.document.open();
+                win.document.write(rules.buildPrintDocument({
+                    tournament: typeof TournamentName !== 'undefined' ? TournamentName : '',
+                    session: ($('#session-select option:selected').text() || '').trim(),
+                    layout: ($('#layout-select option:selected').text() || '').trim(),
+                    printedAt: new Date().toLocaleString(),
+                    autoPrint: false,
+                    matsHtml: '<p>No mats with archers to print</p>'
+                }));
+                win.document.close();
+                return;
+            }
             win.close();
             showError('No mats with archers to print');
             return;

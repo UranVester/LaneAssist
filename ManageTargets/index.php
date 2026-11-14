@@ -32,7 +32,16 @@ $IncludeFA = true;
 
 // Get sessions for dropdown
 $sessions = GetSessions('Q');
-$sessionPreselected = (count($sessions) === 1);
+// ?session=<SesOrder> preselects a session (LiveView's print link uses it with print=1)
+$requestedSession = intval($_GET['session'] ?? 0);
+$preselectedSession = (count($sessions) === 1) ? intval($sessions[0]->SesOrder) : 0;
+foreach ($sessions as $s) {
+    if ($requestedSession > 0 && intval($s->SesOrder) === $requestedSession) {
+        $preselectedSession = $requestedSession;
+    }
+}
+$sessionPreselected = $preselectedSession > 0;
+$printMode = $sessionPreselected && ($_GET['print'] ?? '') === '1';
 
 // Get divisions and classes for filters
 $divisions = array();
@@ -154,6 +163,7 @@ $JS_SCRIPT = array(
         var TourCode = ' . json_encode(isset($_SESSION['TourCode']) ? $_SESSION['TourCode'] : '', JSON_HEX_TAG | JSON_HEX_AMP) . ';
         var TournamentName = ' . json_encode(isset($_SESSION['TourName']) ? $_SESSION['TourName'] : '', JSON_HEX_TAG | JSON_HEX_AMP) . ';
         var TargetNoPadding = ' . intval(TargetNoPadding) . ';
+        var PrintMode = ' . ($printMode ? 'true' : 'false') . ';
         var DivisionMeta = ' . json_encode($divisionMeta, JSON_HEX_TAG | JSON_HEX_AMP) . ';
         var ClassMeta = ' . json_encode($classMeta, JSON_HEX_TAG | JSON_HEX_AMP) . ';
         var ColorGroups = ' . json_encode(laLoadColorGroups(intval($_SESSION['TourId'])), JSON_HEX_TAG | JSON_HEX_AMP) . ';
@@ -187,7 +197,7 @@ include('Common/Templates/head.php');
                         <option value="">-- <?php echo get_text('Select', 'Tournament'); ?> --</option>
                         <?php endif; ?>
                         <?php foreach ($sessions as $s): ?>
-                            <option value="<?php echo intval($s->SesOrder); ?>"<?php echo (count($sessions) == 1) ? ' selected="selected"' : ''; ?>>
+                            <option value="<?php echo intval($s->SesOrder); ?>"<?php echo (intval($s->SesOrder) === $preselectedSession) ? ' selected="selected"' : ''; ?>>
                                 <?php echo intval($s->SesOrder) . ' - ' . htmlspecialchars($s->Descr, ENT_QUOTES, 'UTF-8'); ?>
                             </option>
                         <?php endforeach; ?>

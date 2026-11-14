@@ -109,11 +109,17 @@
             (o.hasChanges ? '<div class="print-unapplied">Includes changes not applied yet</div>' : '') +
             '</div>' +
             (o.matsHtml || '') +
-            '<script>window.addEventListener(\'load\', function () { window.print(); });<\/script>' +
+            (o.autoPrint === false ? '' : '<script>window.addEventListener(\'load\', function () { window.print(); });<\/script>') +
             '</body></html>';
     }
 
+    function qualPrintUrl(rootDir, session) {
+        return (rootDir || '') + 'Modules/Custom/LaneAssist/ManageTargets/index.php?session=' +
+            encodeURIComponent(session) + '&print=1';
+    }
+
     return {
+        qualPrintUrl: qualPrintUrl,
         isMatInUse: isMatInUse,
         describeFilters: describeFilters,
         spotStatus: spotStatus,
