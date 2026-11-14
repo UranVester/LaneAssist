@@ -32,16 +32,21 @@ $readiness = $round['readiness'];
 $tournament = $_SESSION['TourName'] ?? '';
 $slotTime = date('j M Y H:i', strtotime($slot));
 $printedAt = date('j M Y H:i');
-$origin = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off' ? 'https' : 'http') . '://' . ($_SERVER['HTTP_HOST'] ?? 'localhost');
-
-$scopes = [];
-foreach ($round['sides'] as $side) {
-    $scopes[$side['eventName'] . ' · ' . laneAssistPhaseLabel($side['phase'])] = true;
-}
 
 $lanes = ['lanes' => [], 'unassigned' => []];
 if ($readiness['ready']) {
     $lanes = fpBuildLanes($round['sides'], $round['sidesByEvent']);
+}
+
+// Scopes come from what is printed, so a phantom event (nobody entered) that is
+// scheduled in the slot doesn't appear in the header without any lanes.
+$printedSides = $lanes['unassigned'];
+foreach ($lanes['lanes'] as $lane) {
+    $printedSides = array_merge($printedSides, $lane['targets']);
+}
+$scopes = [];
+foreach ($readiness['ready'] ? $printedSides : $round['sides'] as $side) {
+    $scopes[$side['eventName'] . ' · ' . laneAssistPhaseLabel($side['phase'])] = true;
 }
 ?><!doctype html>
 <html><head><meta charset="utf-8">
@@ -88,7 +93,7 @@ td.lane { width: 14mm; font-size: 20px; font-weight: bold; text-align: center; v
                 <div class="target">
                     <div class="letter"><?php echo fpH($target['letterLabel']); ?></div>
                     <?php if ($target['faceUrl'] !== ''): ?>
-                        <img src="<?php echo fpH($origin . $target['faceUrl']); ?>" alt="">
+                        <img src="<?php echo fpH($target['faceUrl']); ?>" alt="">
                     <?php endif; ?>
                     <div class="face"><?php echo fpH($target['faceLabel']); ?></div>
                     <div class="meta"><?php echo fpH($target['eventName'] . ' · ' . laneAssistPhaseLabel($target['phase'])); ?></div>

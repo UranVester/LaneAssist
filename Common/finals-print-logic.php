@@ -65,13 +65,28 @@ function fpEventKey(array $row): string
 /**
  * @param array $roundMatches [['teamEvent'=>int,'event'=>string,'matchNo'=>int (even base)], ...]
  * @param array $sidesByEvent "team|event" => [matchNo => bool placed]
+ * @param array $projectedByEvent "team|event" => projected finalists; 0 means nobody is
+ *   entered (phantom bracket, skipped). Missing means unknown and is treated as waiting.
  * @return array{ready: bool, waiting: int}
  */
-function fpRoundReadiness(array $roundMatches, array $sidesByEvent): array
+function fpRoundReadiness(array $roundMatches, array $sidesByEvent, array $projectedByEvent = []): array
 {
     $waiting = 0;
+    $real = 0;
     foreach ($roundMatches as $match) {
-        $sides = $sidesByEvent[fpEventKey($match)] ?? [];
+        $key = fpEventKey($match);
+        $sides = $sidesByEvent[$key] ?? [];
+        // Core creates an event's whole empty bracket once it has a first phase,
+        // so before it is moved to finals every side would look like a bye.
+        if (!in_array(true, $sides, true)) {
+            if (array_key_exists($key, $projectedByEvent) && intval($projectedByEvent[$key]) === 0) {
+                continue;
+            }
+            $real++;
+            $waiting++;
+            continue;
+        }
+        $real++;
         $base = intval($match['matchNo']) - (intval($match['matchNo']) % 2);
         foreach ([$base, $base + 1] as $side) {
             if (empty($sides[$side]) && !fpSideIsBye($side, $sides)) {
@@ -80,7 +95,7 @@ function fpRoundReadiness(array $roundMatches, array $sidesByEvent): array
             }
         }
     }
-    return ['ready' => $waiting === 0 && count($roundMatches) > 0, 'waiting' => $waiting];
+    return ['ready' => $waiting === 0 && $real > 0, 'waiting' => $waiting];
 }
 
 /**

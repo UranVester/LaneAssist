@@ -154,4 +154,53 @@ final class FinalsPrintLogicTest extends TestCase
     {
         $this->assertFalse(fpRoundReadiness([], [])['ready']);
     }
+
+    public function testEventNotYetMovedToFinalsBlocksReadiness(): void
+    {
+        // Core creates an event's whole empty bracket as soon as it has a first
+        // phase; until it is moved to finals every first-phase side looks like a bye.
+        $rm = [8 => true, 9 => true];
+        $cm = [];
+        for ($m = 16; $m <= 31; $m++) {
+            $cm[$m] = false;
+        }
+        $this->assertSame(['ready' => false, 'waiting' => 2], fpRoundReadiness([
+            ['teamEvent' => 0, 'event' => 'RM', 'matchNo' => 8],
+            ['teamEvent' => 0, 'event' => 'CM', 'matchNo' => 16],
+            ['teamEvent' => 0, 'event' => 'CM', 'matchNo' => 18],
+        ], ['0|RM' => $rm, '0|CM' => $cm]));
+    }
+
+    public function testRealBothEmptyMatchStillReadyOncePopulated(): void
+    {
+        // A 1/8 with 5 entrants: 6 v 11 has nobody, which is a real bye pair.
+        $sides = [16 => true, 17 => false, 18 => false, 19 => false, 20 => true, 21 => true];
+        $this->assertTrue(fpRoundReadiness([
+            ['teamEvent' => 0, 'event' => 'RM', 'matchNo' => 18],
+            ['teamEvent' => 0, 'event' => 'RM', 'matchNo' => 20],
+        ], ['0|RM' => $sides])['ready']);
+    }
+
+    public function testPhantomEventWithNobodyEnteredDoesNotBlock(): void
+    {
+        // Projected finalists 0 = nobody is entered: the bracket is phantom and
+        // never fills, so it must not hold the round (or any other) hostage.
+        $matches = [
+            ['teamEvent' => 0, 'event' => 'RM', 'matchNo' => 8],
+            ['teamEvent' => 0, 'event' => '12R', 'matchNo' => 16],
+        ];
+        $sides = ['0|RM' => [8 => true, 9 => true], '0|12R' => [16 => false, 17 => false]];
+        $this->assertSame(['ready' => true, 'waiting' => 0], fpRoundReadiness($matches, $sides, ['0|12R' => 0]));
+        $this->assertSame(['ready' => false, 'waiting' => 1], fpRoundReadiness($matches, $sides, ['0|12R' => 6]));
+        $this->assertSame(['ready' => false, 'waiting' => 1], fpRoundReadiness($matches, $sides));
+    }
+
+    public function testRoundOfOnlyPhantomEventsIsNotReady(): void
+    {
+        $this->assertFalse(fpRoundReadiness(
+            [['teamEvent' => 0, 'event' => '12R', 'matchNo' => 16]],
+            ['0|12R' => [16 => false, 17 => false]],
+            ['0|12R' => 0]
+        )['ready']);
+    }
 }

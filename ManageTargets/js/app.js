@@ -517,8 +517,9 @@
                 
                 // Update target range defaults and values based on session
                 if (state.sessionInfo) {
-                    const sessionFirst = state.sessionInfo.firstTarget;
-                    const sessionLast = sessionFirst + state.sessionInfo.targetCount - 1;
+                    // The API sends these as strings; unparsed, "1" + "25" - 1 is 124
+                    const sessionFirst = parseInt(state.sessionInfo.firstTarget, 10) || 1;
+                    const sessionLast = sessionFirst + (parseInt(state.sessionInfo.targetCount, 10) || 1) - 1;
                     $('#target-from').attr('placeholder', sessionFirst).attr('min', sessionFirst);
                     $('#target-to').attr('placeholder', sessionLast).attr('min', sessionFirst);
                     
@@ -2541,7 +2542,7 @@
                 targetFrom: $('#target-from').val(),
                 targetTo: $('#target-to').val(),
                 sessionFirst: state.sessionInfo ? state.sessionInfo.firstTarget : undefined,
-                sessionLast: state.sessionInfo ? state.sessionInfo.firstTarget + state.sessionInfo.targetCount - 1 : undefined
+                sessionCount: state.sessionInfo ? state.sessionInfo.targetCount : undefined
             }),
             stylesheets: [
                 base + 'Modules/Custom/LaneAssist/Common/css/shared.css',

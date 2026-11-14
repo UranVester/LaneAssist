@@ -129,3 +129,8 @@ test('finalsPrintUrl encodes the slot', () => {
         '/ianseo/Modules/Custom/LaneAssist/LiveView/print-finals.php?slot=2026-11-14%2010%3A30%3A00'
     );
 });
+
+test('describeFilters copes with the session range arriving as strings', () => {
+    assert.strictEqual(pl.describeFilters({divisions: [], classes: [], targetFrom: '1', targetTo: '25', sessionFirst: '1', sessionCount: '25'}), '');
+    assert.strictEqual(pl.describeFilters({divisions: [], classes: [], targetFrom: '1', targetTo: '12', sessionFirst: '1', sessionCount: '25'}), 'Targets 1–12');
+});
