@@ -100,3 +100,8 @@ test('mat labels shrink to fit four mats per row', () => {
     assert.ok(rule, 'expected a .mat-label print rule');
     assert.match(rule, /font-size:\s*11px/);
 });
+
+test('describeFilters treats the session range as unfiltered', () => {
+    assert.strictEqual(pl.describeFilters({divisions: [], classes: [], targetFrom: '1', targetTo: '24', sessionFirst: 1, sessionLast: 24}), '');
+    assert.strictEqual(pl.describeFilters({divisions: [], classes: [], targetFrom: '1', targetTo: '12', sessionFirst: 1, sessionLast: 24}), 'Targets 1–12');
+});

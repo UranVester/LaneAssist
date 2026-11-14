@@ -168,4 +168,20 @@ final class TargetFaceLogicTest extends TestCase
         $this->expectException(InvalidArgumentException::class);
         tfPlanBulk([], tfBuildGroups(self::vjl24Names()), 'nope', []);
     }
+
+    public function testFaceLabelAddsSize(): void
+    {
+        $this->assertSame('Full face 40 cm', laFaceLabel('Full face', 40));
+    }
+
+    public function testFaceLabelWithoutSize(): void
+    {
+        $this->assertSame('Full face', laFaceLabel('Full face', 0));
+        $this->assertSame('Full face', laFaceLabel('Full face', null));
+    }
+
+    public function testFaceLabelWithBlankName(): void
+    {
+        $this->assertSame('80 cm', laFaceLabel('', 80));
+    }
 }

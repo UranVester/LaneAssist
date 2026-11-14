@@ -2519,7 +2519,9 @@
                 divisions: $('#division-filter').val() || [],
                 classes: $('#class-filter').val() || [],
                 targetFrom: $('#target-from').val(),
-                targetTo: $('#target-to').val()
+                targetTo: $('#target-to').val(),
+                sessionFirst: state.sessionInfo ? state.sessionInfo.firstTarget : undefined,
+                sessionLast: state.sessionInfo ? state.sessionInfo.firstTarget + state.sessionInfo.targetCount - 1 : undefined
             }),
             stylesheets: [
                 base + 'Modules/Custom/LaneAssist/Common/css/shared.css',

@@ -62,6 +62,7 @@
     /**
      * One-line description of the active ManageTargets filters, or '' when the
      * sheet covers the whole session. '' in a multiselect means "All".
+     * sessionFirst/sessionLast default to the page's 1-99 inputs.
      */
     function describeFilters(filters) {
         const f = filters || {};
@@ -77,9 +78,13 @@
         if (classes.length) {
             parts.push('Classes: ' + classes.join(', '));
         }
-        const from = parseInt(f.targetFrom, 10) || 1;
-        const to = parseInt(f.targetTo, 10) || 99;
-        if (from !== 1 || to !== 99) {
+        // ManageTargets writes the session's own range into the inputs on load,
+        // so only a range narrower than the session's counts as a filter.
+        const first = parseInt(f.sessionFirst, 10) || 1;
+        const last = parseInt(f.sessionLast, 10) || 99;
+        const from = parseInt(f.targetFrom, 10) || first;
+        const to = parseInt(f.targetTo, 10) || last;
+        if (from !== first || to !== last) {
             parts.push('Targets ' + from + '\u2013' + to);
         }
         return parts.join(' \u00b7 ');

@@ -54,6 +54,7 @@ if (!function_exists('getModuleParameter')) {
     require_once(dirname(__FILE__, 5) . '/Common/Lib/Fun_Modules.php');
 }
 require_once(dirname(__FILE__, 2) . '/Common/target-layout-info.php');
+require_once(dirname(__FILE__, 2) . '/Common/target-face-logic.php');
 
 function requestString($key, $default = '') {
     if (!isset($_REQUEST[$key])) {
@@ -363,7 +364,7 @@ function getCurrent() {
                 
                 $targetFaceImages[$tfRow->TarId] = array(
                     'id' => $tfRow->TarId,
-                    'description' => $tfRow->TarDescr,
+                    'description' => laFaceLabel(get_text($tfRow->TarDescr), $diameter),
                     'diameter' => $diameter,
                     'url' => $imgUrl
                 );

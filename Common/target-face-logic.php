@@ -143,3 +143,18 @@ function tfPlanBulk(array $archers, array $groups, string $groupKey, array $lega
     }
     return $plan;
 }
+
+/**
+ * Face label as core presents it (Fun_Scheduler.php): translated name plus
+ * size. The face id alone doesn't say the size (TrgOutdoor is 122 and 80 cm),
+ * so a setup sheet needs both.
+ */
+function laFaceLabel(string $translatedName, $sizeCm): string
+{
+    $size = intval($sizeCm);
+    $name = trim($translatedName);
+    if ($size <= 0) {
+        return $name;
+    }
+    return trim($name . ' ' . $size . ' cm');
+}
