@@ -2196,6 +2196,7 @@
         const drawType = $('#draw-type').val();
         const groupByDiv = $('#group-by-div').is(':checked') ? 1 : 0;
         const groupByClass = $('#group-by-class').is(':checked') ? 1 : 0;
+        const mixSameSizeFaces = $('#mix-same-size-faces').is(':checked') ? 1 : 0;
         const excludeAssigned = $('#exclude-assigned').is(':checked') ? 1 : 0;
         const packGroups = $('#pack-groups').is(':checked') ? 1 : 0;
 
@@ -2220,6 +2221,7 @@
             drawType: drawType,
             groupByDiv: groupByDiv,
             groupByClass: groupByClass,
+            mixSameSizeFaces: mixSameSizeFaces,
             excludeAssigned: excludeAssigned,
             packGroups: packGroups,
             layoutId: $('#layout-select').val() || 'layout_fallback_stacked'

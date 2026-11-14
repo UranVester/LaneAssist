@@ -614,6 +614,7 @@ function previewAutoAssign() {
     $drawType = requestInt('drawType', 0);
     $groupByDiv = requestBoolInt('groupByDiv', 0);
     $groupByClass = requestBoolInt('groupByClass', 0);
+    $mixSameSizeFaces = requestBoolInt('mixSameSizeFaces', 0);
     $excludeAssigned = requestBoolInt('excludeAssigned', 1);
     $packGroups = requestBoolInt('packGroups', 0);
     if (!isset($_REQUEST['packGroups']) && isset($_REQUEST['reserveGroupBlock'])) {
@@ -726,8 +727,8 @@ function previewAutoAssign() {
                 e.EnDivision, e.EnClass, e.EnTargetFace,
                 c.CoCode as EnCountry,
                 CONCAT(TRIM(e.EnDivision), TRIM(e.EnClass)) as Event,
-                CONCAT_WS('|', CONCAT_WS('-', tf.TfW1, tf.TfW2, tf.TfW3, tf.TfW4, tf.TfW5, tf.TfW6, tf.TfW7, tf.TfW8),
-                               CONCAT_WS('-', tf.TfT1, tf.TfT2, tf.TfT3, tf.TfT4, tf.TfT5, tf.TfT6, tf.TfT7, tf.TfT8)) as Target
+                CONCAT_WS('-', tf.TfW1, tf.TfW2, tf.TfW3, tf.TfW4, tf.TfW5, tf.TfW6, tf.TfW7, tf.TfW8) as TargetWidths,
+                CONCAT_WS('-', tf.TfT1, tf.TfT2, tf.TfT3, tf.TfT4, tf.TfT5, tf.TfT6, tf.TfT7, tf.TfT8) as TargetFaces
             FROM Entries e
             INNER JOIN Countries c ON e.EnCountry = c.CoId
             INNER JOIN Qualifications q ON e.EnId = q.QuId
@@ -754,15 +755,6 @@ function previewAutoAssign() {
     $participantIdsInQuery = array();
     $participantInfo = array();
 
-    $GroupIndex = '%1$s|';
-    if ($groupByDiv) {
-        $GroupIndex .= '%2$s';
-    }
-    if ($groupByClass) {
-        $GroupIndex .= '%3$s';
-    }
-    $GroupIndex .= '|%4$s';
-
     while ($row = safe_fetch($rs)) {
         $participantId = intval($row->EnId);
 
@@ -780,7 +772,8 @@ function previewAutoAssign() {
 
         $eventKey = trim((string)$row->Event);
         $distanceKey = isset($Distances[$eventKey]) ? $Distances[$eventKey] : '';
-        $index = sprintf($GroupIndex, $distanceKey, $row->EnDivision, $row->EnClass, $row->Target);
+        $index = laAutoAssignGroupKey($distanceKey, $row->EnDivision, $row->EnClass, $groupByDiv, $groupByClass,
+            $row->TargetWidths, $row->TargetFaces, $mixSameSizeFaces);
 
         if (!isset($Entries[$index])) {
             $Entries[$index] = array();

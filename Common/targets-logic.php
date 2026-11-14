@@ -106,3 +106,28 @@ function laIsTargetInSession($target, $letter, $firstTarget, $targetsInSession, 
         && $target < $firstTarget + intval($targetsInSession)
         && ord($letter) - 64 <= intval($archersPerTarget);
 }
+
+/**
+ * Auto-assign grouping key: archers with the same key are drawn onto the same
+ * block of mats. Matches the original SetTarget_auto.php index
+ * (distance|div class|widths|faces). With $mixSameSize the face ids are
+ * dropped, so faces of the same size (e.g. 40cm full, triple, CO triple)
+ * share mats; distance and size still split.
+ *
+ * @param string $widths TfW1..TfW8 joined with '-'
+ * @param string $faces  TfT1..TfT8 joined with '-'
+ */
+function laAutoAssignGroupKey($distanceKey, $division, $class, $groupByDiv, $groupByClass, $widths, $faces, $mixSameSize) {
+    $key = $distanceKey . '|';
+    if ($groupByDiv) {
+        $key .= $division;
+    }
+    if ($groupByClass) {
+        $key .= $class;
+    }
+    $key .= '|' . $widths;
+    if (!$mixSameSize) {
+        $key .= '|' . $faces;
+    }
+    return $key;
+}

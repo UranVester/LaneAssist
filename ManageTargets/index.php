@@ -345,6 +345,7 @@ include('Common/Templates/head.php');
                         <ul>
                             <li>Builds target slots for the selected session and target range.</li>
                             <li>Groups archers by target-face/distance profile and optional division/class splits.</li>
+                            <li><strong>Mix faces of the same size</strong>: groups by face size instead of face, so e.g. compound and recurve 40cm faces share mats. Distances never mix.</li>
                             <li>
                                 Draw modes (same behavior as original auto):
                                 <ul>
@@ -387,6 +388,12 @@ include('Common/Templates/head.php');
                         <label>
                             <input type="checkbox" id="group-by-class" name="group-by-class">
                             <?php echo get_text('SeparateClasses', 'Tournament'); ?>
+                        </label>
+                    </div>
+                    <div class="option-group">
+                        <label title="Faces of the same size share mats, e.g. 40cm full, triple and compound triple">
+                            <input type="checkbox" id="mix-same-size-faces" name="mix-same-size-faces">
+                            Mix faces of the same size
                         </label>
                     </div>
                     <div class="option-group">
