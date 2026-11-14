@@ -118,7 +118,31 @@
             encodeURIComponent(session) + '&print=1';
     }
 
+    /**
+     * LiveView finals print button state for a round from the snapshot
+     * (finalsRounds[] carries printReady/printWaiting from the server rule).
+     */
+    function finalsPrintState(round) {
+        if (!round || !round.slot) {
+            return {enabled: false, title: 'Unscheduled matches cannot be printed'};
+        }
+        if (round.printReady) {
+            return {enabled: true, title: 'Print lane layout for this round'};
+        }
+        const waiting = parseInt(round.printWaiting, 10) || 0;
+        if (waiting === 0) {
+            return {enabled: false, title: 'Nothing to print in this round'};
+        }
+        return {enabled: false, title: 'Waiting for ' + waiting + ' match' + (waiting === 1 ? '' : 'es') + ' to finish'};
+    }
+
+    function finalsPrintUrl(rootDir, slot) {
+        return (rootDir || '') + 'Modules/Custom/LaneAssist/LiveView/print-finals.php?slot=' + encodeURIComponent(slot);
+    }
+
     return {
+        finalsPrintState: finalsPrintState,
+        finalsPrintUrl: finalsPrintUrl,
         qualPrintUrl: qualPrintUrl,
         isMatInUse: isMatInUse,
         describeFilters: describeFilters,

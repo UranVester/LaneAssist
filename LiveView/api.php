@@ -48,6 +48,13 @@ function liveSnapshot() {
     $session = max(1, intval($_REQUEST['session'] ?? 1));
     $qualification = qualificationSnapshot($session);
     $finalRounds = laneAssistGroupFinalRounds(allFinalMatchesSnapshot());
+    require_once(dirname(__FILE__, 2) . '/Common/finals-print-data.php');
+    foreach ($finalRounds as &$round) {
+        $readiness = ($round['slot'] ?? '') !== '' ? fpSlotReadiness($round['slot']) : ['ready' => false, 'waiting' => 0];
+        $round['printReady'] = $readiness['ready'];
+        $round['printWaiting'] = $readiness['waiting'];
+    }
+    unset($round);
     $currentRoundMatches = [];
     foreach ($finalRounds as $round) {
         if ($round['isCurrent']) {

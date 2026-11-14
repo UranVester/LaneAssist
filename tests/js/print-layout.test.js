@@ -114,3 +114,18 @@ test('autoPrint false omits the print script', () => {
 test('qualPrintUrl builds the ManageTargets print link', () => {
     assert.strictEqual(pl.qualPrintUrl('/ianseo/', 3), '/ianseo/Modules/Custom/LaneAssist/ManageTargets/index.php?session=3&print=1');
 });
+
+test('finalsPrintState covers unscheduled, waiting and ready', () => {
+    assert.deepStrictEqual(pl.finalsPrintState(null), {enabled: false, title: 'Unscheduled matches cannot be printed'});
+    assert.deepStrictEqual(pl.finalsPrintState({slot: '', printReady: false, printWaiting: 0}), {enabled: false, title: 'Unscheduled matches cannot be printed'});
+    assert.deepStrictEqual(pl.finalsPrintState({slot: '2026-11-14 10:30:00', printReady: true, printWaiting: 0}), {enabled: true, title: 'Print lane layout for this round'});
+    assert.deepStrictEqual(pl.finalsPrintState({slot: '2026-11-14 10:30:00', printReady: false, printWaiting: 3}), {enabled: false, title: 'Waiting for 3 matches to finish'});
+    assert.deepStrictEqual(pl.finalsPrintState({slot: '2026-11-14 10:30:00', printReady: false, printWaiting: 1}), {enabled: false, title: 'Waiting for 1 match to finish'});
+});
+
+test('finalsPrintUrl encodes the slot', () => {
+    assert.strictEqual(
+        pl.finalsPrintUrl('/ianseo/', '2026-11-14 10:30:00'),
+        '/ianseo/Modules/Custom/LaneAssist/LiveView/print-finals.php?slot=2026-11-14%2010%3A30%3A00'
+    );
+});

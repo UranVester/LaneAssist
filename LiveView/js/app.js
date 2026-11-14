@@ -201,6 +201,15 @@
         return 'Current finals: ' + scopes.join(', ') + (time ? ' · ' + time : '');
     }
 
+    // The round the finals view is showing: the browsed one, else the current one.
+    function selectedFinalRound() {
+        var rounds = (state.snapshot && state.snapshot.finalsRounds) || [];
+        for (var i = 0; i < rounds.length; i++) {
+            if (rounds[i].slot === state.selectedRoundSlot) return rounds[i];
+        }
+        return currentFinalRound(rounds);
+    }
+
     function currentFinalRound(rounds) {
         var list = rounds || [];
         for (var i = 0; i < list.length; i++) {
@@ -338,6 +347,9 @@
         $('.mode-button').removeClass('active').filter('[data-mode="' + state.mode + '"]').addClass('active');
         $('label[for="session-select"]').toggle(!isFinals);
         $('#print-qual').prop('hidden', isFinals).prop('disabled', !$('#session-select').val());
+        var printState = window.LaneAssist.printLayout.finalsPrintState(selectedFinalRound());
+        $('#print-finals').prop('hidden', !isFinals).prop('disabled', !printState.enabled)
+            .attr('title', printState.title).attr('aria-label', printState.title);
         var rounds = (state.snapshot && state.snapshot.finalsRounds) || [];
         $('#round-control').prop('hidden', !isFinals || rounds.length < 2);
         updateColorByOptions();
@@ -574,6 +586,11 @@
             }
         });
         $('#refresh-button').on('click', function() { loadSnapshot(true); });
+        $('#print-finals').on('click', function() {
+            var round = selectedFinalRound();
+            if (!window.LaneAssist.printLayout.finalsPrintState(round).enabled) return;
+            window.open(window.LaneAssist.printLayout.finalsPrintUrl(ROOT_DIR, round.slot), '_blank');
+        });
         $('#print-qual').on('click', function() {
             var session = $('#session-select').val();
             if (!session) return;

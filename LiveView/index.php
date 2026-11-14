@@ -115,6 +115,9 @@ include('Common/Templates/head.php');
             <button type="button" id="print-qual" class="icon-button" title="Print target layout" aria-label="Print target layout">
                 <i class="fa fa-print" aria-hidden="true"></i>
             </button>
+            <button type="button" id="print-finals" class="icon-button" title="Print lane layout for this round" aria-label="Print lane layout for this round" hidden>
+                <i class="fa fa-print" aria-hidden="true"></i>
+            </button>
             <button type="button" id="refresh-button" class="icon-button" title="Refresh now" aria-label="Refresh now">
                 <i class="fa fa-refresh" aria-hidden="true"></i>
             </button>
