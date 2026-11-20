@@ -33,9 +33,10 @@
         '.mat-label { font-size: 11px; padding: 3px; margin-bottom: 6px; }',
         '.target-mat, .target-box { break-inside: avoid; page-break-inside: avoid; }',
         '.print-face-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; z-index: 0; }',
+        // The sheet reuses the screen render; drop zones are drag-and-drop UI, not part of the setup
         '.target-drop-zone { z-index: 1; }',
-        '.print-empty { background: rgba(255, 255, 255, 0.75); border: 1px dashed #888; }',
-        '.print-empty-label { font-size: 11px; font-style: italic; color: #555; text-align: center; }',
+        '.target-drop-zone, .target-drop-zone.droppable-zone, .target-drop-zone.synthetic-target { border: none !important; background: transparent !important; box-shadow: none !important; opacity: 1 !important; }',
+        '.print-empty-label { font-size: 11px; font-style: italic; color: #555; text-align: center; background: rgba(255, 255, 255, 0.85); padding: 1px 4px; border-radius: 3px; }',
         '.print-face-caption { position: absolute; left: 0; right: 0; bottom: 0; z-index: 2; font-size: 10px; text-align: center; background: rgba(255, 255, 255, 0.85); }',
         '* { -webkit-print-color-adjust: exact; print-color-adjust: exact; }'
     ].join('\n');

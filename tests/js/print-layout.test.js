@@ -134,3 +134,13 @@ test('describeFilters copes with the session range arriving as strings', () => {
     assert.strictEqual(pl.describeFilters({divisions: [], classes: [], targetFrom: '1', targetTo: '25', sessionFirst: '1', sessionCount: '25'}), '');
     assert.strictEqual(pl.describeFilters({divisions: [], classes: [], targetFrom: '1', targetTo: '12', sessionFirst: '1', sessionCount: '25'}), 'Targets 1–12');
 });
+
+test('drop zones print without their drag-and-drop chrome', () => {
+    const html = pl.buildPrintDocument(base);
+    const zone = cssRule(html, '.target-drop-zone, .target-drop-zone.droppable-zone, .target-drop-zone.synthetic-target');
+    assert.ok(zone, 'expected a print rule that strips drop zone styling');
+    assert.match(zone, /border:\s*none\s*!important/);
+    assert.match(zone, /background:\s*transparent\s*!important/);
+    const empty = cssRule(html, '.print-empty');
+    assert.ok(empty === null || !/dashed/.test(empty), 'empty spots must not draw a dashed drop box');
+});
