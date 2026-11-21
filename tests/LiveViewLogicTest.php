@@ -16,6 +16,14 @@ final class LiveViewLogicTest extends TestCase
         $this->assertSame(24, laneAssistLastEndPoints('987X', 3, $decode));
     }
 
+    public function testAverageArrowIsTotalOverArrowsShotRoundedToTwoDecimals(): void
+    {
+        $this->assertNull(laneAssistAverageArrow(0, 0));
+        $this->assertSame(0.0, laneAssistAverageArrow(0, 6));
+        $this->assertSame(8.67, laneAssistAverageArrow(52, 6));
+        $this->assertSame(9.0, laneAssistAverageArrow(27, 3));
+    }
+
     public function testPersonalBestMatchesNormalizedNameAndClubAndRequiresAHigherScore(): void
     {
         $archers = laneAssistAttachPersonalBests([

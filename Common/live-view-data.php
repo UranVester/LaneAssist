@@ -96,6 +96,7 @@ function qualificationSnapshot($session) {
                 return DecodeFromLetter($arrow);
             }),
             'totalPoints' => intval($row->QuScore),
+            'averageArrow' => laneAssistAverageArrow($row->QuScore, $arrowsShot),
             'retired' => intval($row->EnStatus) === 6,
         ];
     }

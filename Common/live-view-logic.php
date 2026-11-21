@@ -33,6 +33,14 @@ function laneAssistAttachPersonalBests(array $archers, array $historicalScores) 
     return $archers;
 }
 
+function laneAssistAverageArrow($totalPoints, $arrowsShot) {
+    $arrowsShot = intval($arrowsShot);
+    if ($arrowsShot <= 0) {
+        return null;
+    }
+    return round(intval($totalPoints) / $arrowsShot, 2);
+}
+
 function laneAssistLastEndPoints($arrowString, $arrowsPerEnd, callable $decodeArrow) {
     $arrowString = rtrim((string)$arrowString);
     $arrowsPerEnd = max(1, intval($arrowsPerEnd));

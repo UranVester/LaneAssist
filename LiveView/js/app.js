@@ -158,6 +158,9 @@
                 var problemClass = archer.isBehind ? ' danger' : (archer.isAhead ? ' warning' : '');
                 var retiredClass = archer.retired ? ' retired' : '';
                 var endPoints = archer.lastEndPoints === null ? '-' : archer.lastEndPoints;
+                var avgHtml = typeof archer.averageArrow === 'number'
+                    ? '<span class="competitor-avg" title="Average arrow score">avg ' + archer.averageArrow.toFixed(2) + '</span>'
+                    : '';
                 var badgeHtml = (window.LaneAssist && window.LaneAssist.badges)
                     ? window.LaneAssist.badges.render(archer.badges)
                     : {edge: '', inline: ''};
@@ -171,7 +174,7 @@
                 var clubEventLabel = clubLogoImgHtml(archer) + escapeHtml(archer.club) + (archer.event ? ' · ' + escapeHtml(archer.event) : '');
                 return '<div class="competitor' + problemClass + retiredClass + '" data-participant-id="' + archer.participantId + '">' + badgeHtml.edge +
                     '<div class="competitor-position"><span class="position-label">' + escapeHtml(archer.position) + '</span><span class="position-face"' + positionFaceStyleAttr(archer) + '></span></div>' +
-                    '<div class="competitor-main' + colorAttrs.classAttr + '"' + colorAttrs.styleAttr + colorAttrs.titleAttr + '><strong>' + escapeHtml(archer.name) + '</strong>' + badgeHtml.inline + '<small>' + clubEventLabel + endsSuffix + '</small></div>' +
+                    '<div class="competitor-main' + colorAttrs.classAttr + '"' + colorAttrs.styleAttr + colorAttrs.titleAttr + '><strong>' + escapeHtml(archer.name) + '</strong>' + badgeHtml.inline + '<small class="competitor-meta"><span class="competitor-meta-label">' + clubEventLabel + endsSuffix + '</span>' + avgHtml + '</small></div>' +
                     '<div class="competitor-actions"><div class="score-pair"><span><small>Last end</small><b>' + endPoints + '</b></span><span><small>Total</small><b>' + archer.totalPoints + '</b></span></div>' + toggleHtml + '</div></div>';
             }).join('');
             var paceLabel = mat.hasMultipleDistances
