@@ -1,0 +1,73 @@
+'use strict';
+// Every translation key the code uses must exist in Lang/en.php, every English key must
+// be used somewhere, and keys must be string literals so this scan can see them.
+const test = require('node:test');
+const assert = require('node:assert');
+const fs = require('fs');
+const path = require('path');
+
+const ROOT = path.join(__dirname, '..', '..');
+const SKIP_DIRS = new Set(['tests', 'tools', 'Settings', 'docs', 'node_modules', 'vendor', 'Lang']);
+// Keys that exist only for the i18n tests themselves. Removed once real keys exist.
+const UNUSED_OK = new Set(['common.languageCheck']);
+
+// The translator itself defines/forwards these functions with variable keys.
+const IMPLEMENTATION = new Set(['Common/i18n.php', path.join('Common', 'js', 'i18n.js')]);
+
+function sourceFiles(dir) {
+    let out = [];
+    for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+        if (entry.name.startsWith('.')) continue;
+        const full = path.join(dir, entry.name);
+        if (entry.isDirectory()) {
+            if (!SKIP_DIRS.has(entry.name)) out = out.concat(sourceFiles(full));
+        } else if (/\.(php|js)$/.test(entry.name)) {
+            out.push(full);
+        }
+    }
+    return out;
+}
+
+function englishKeys() {
+    const src = fs.readFileSync(path.join(ROOT, 'Lang', 'en.php'), 'utf8');
+    return new Set([...src.matchAll(/^\s*'([a-zA-Z0-9.]+)'\s*=>/gm)].map((m) => m[1]));
+}
+
+// la_t / laT / t / x.t take a key; laPlural / laTn / tn / x.tn take a base key.
+const SINGLE = /(?:\bla_t|\blaT|(?:^|[^\w$])t)\(\s*(['"])([a-zA-Z0-9.]+)\1/g;
+const PLURAL = /(?:\blaPlural|\blaTn|(?:^|[^\w$])tn)\(\s*(['"])([a-zA-Z0-9.]+)\1/g;
+const ANY_CALL = /(?:\bla_t|\blaT|\blaPlural|\blaTn)\(\s*([^)\s][^,)]*)/g;
+
+function scan() {
+    const used = new Map();
+    const nonLiteral = [];
+    for (const file of sourceFiles(ROOT)) {
+        const rel = path.relative(ROOT, file);
+        const src = fs.readFileSync(file, 'utf8');
+        const add = (key) => { if (!used.has(key)) used.set(key, rel); };
+        for (const m of src.matchAll(SINGLE)) if (m[2].includes('.')) add(m[2]);
+        for (const m of src.matchAll(PLURAL)) if (m[2].includes('.')) { add(m[2] + '.one'); add(m[2] + '.other'); }
+        if (IMPLEMENTATION.has(rel)) continue;
+        for (const m of src.matchAll(ANY_CALL)) {
+            if (!/^(['"])[a-zA-Z0-9.]+\1$/.test(m[1].trim())) nonLiteral.push(`${rel}: ${m[0]}`);
+        }
+    }
+    return { used, nonLiteral };
+}
+
+const { used, nonLiteral } = scan();
+const en = englishKeys();
+
+test('every key used in the code exists in Lang/en.php', () => {
+    const missing = [...used].filter(([key]) => !en.has(key)).map(([key, file]) => `${key} (${file})`);
+    assert.deepStrictEqual(missing, []);
+});
+
+test('every key in Lang/en.php is used somewhere', () => {
+    const unused = [...en].filter((key) => !used.has(key) && !UNUSED_OK.has(key));
+    assert.deepStrictEqual(unused, []);
+});
+
+test('translation keys are string literals', () => {
+    assert.deepStrictEqual(nonLiteral, []);
+});
