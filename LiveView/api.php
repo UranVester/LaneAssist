@@ -90,27 +90,28 @@ function advanceLiveMatch() {
             break;
         }
     }
-    if (!$eligibleMatch || (empty($eligibleMatch['canAdvance']) && empty($eligibleMatch['canMarkBye']))) {
+    $plan = $eligibleMatch ? laneAssistLiveMatchActionPlan($eligibleMatch) : null;
+    if (!$plan) {
         echo json_encode(['error' => 1, 'message' => 'The match is not complete and cannot be advanced']);
         return;
     }
 
     checkFullACL($teamEvent ? AclTeams : AclIndividuals, '', AclReadWrite, false);
     require_once('Final/Fun_ChangePhase.inc.php');
-    if ($eligibleMatch['status'] === 'bye') {
-        if (!markLiveMatchBye($eligibleMatch)) {
-            echo json_encode(['error' => 1, 'message' => 'The bye could not be marked complete']);
-            return;
-        }
-        if (empty($eligibleMatch['canAdvance'])) {
-            echo json_encode(['error' => 0, 'message' => 'Bye marked complete', 'advanced' => false]);
-            return;
-        }
+    if ($plan['markBye'] && !markLiveMatchBye($eligibleMatch)) {
+        echo json_encode(['error' => 1, 'message' => 'The bye could not be marked complete']);
+        return;
     }
+    // Also for a medal-match bye with no next match: move2NextPhase() is what
+    // recalculates final ranks, so without it the winner never reaches the medal list.
     if ($teamEvent) {
         move2NextPhaseTeam(null, $event, $matchNo, intval($_SESSION['TourId']), true);
     } else {
         move2NextPhase(null, $event, $matchNo, intval($_SESSION['TourId']), true);
+    }
+    if (!$plan['expectAdvance']) {
+        echo json_encode(['error' => 0, 'message' => 'Bye marked complete', 'advanced' => false]);
+        return;
     }
 
     $participantIndex = loadFinalParticipantIndex($teamEvent);

@@ -286,6 +286,22 @@ function laneAssistFinalMatchCanMarkBye(array $match) {
     return empty($match['advanced']) && ($match['status'] ?? '') === 'bye';
 }
 
+/**
+ * What LiveView's advance/bye action must do for a snapshot match, or null
+ * when it is not actionable. Every action ends in core's move2NextPhase(),
+ * even a medal-match bye that has no next match to fill: that call is also
+ * what runs the FinalInd rank calculation, so skipping it leaves the bye
+ * winner out of the medal list.
+ */
+function laneAssistLiveMatchActionPlan(array $match) {
+    $markBye = !empty($match['canMarkBye']) && ($match['status'] ?? '') === 'bye';
+    $advance = !empty($match['canAdvance']);
+    if (!$markBye && !$advance) {
+        return null;
+    }
+    return ['markBye' => $markBye, 'runPhaseUpdate' => true, 'expectAdvance' => $advance];
+}
+
 function laneAssistSelectCurrentFinalMatches(array $matches) {
     $scheduledSlots = [];
     foreach ($matches as $match) {

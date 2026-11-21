@@ -237,6 +237,32 @@ final class LiveViewLogicTest extends TestCase
         $this->assertFalse(laneAssistFinalMatchCanMarkBye(['status' => 'bye', 'advanced' => true]));
     }
 
+    public function testMedalByeRunsCorePhaseUpdateSoFinalRanksAreCalculated(): void
+    {
+        // Bug: a 3-archer bracket's lone bronze archer was marked bye but never
+        // reached the medal list, because core's move2NextPhase() (which runs
+        // the FinalInd rank calculation) was skipped when there is no next match.
+        $plan = laneAssistLiveMatchActionPlan(['phase' => 1, 'matchNo' => 2, 'status' => 'bye', 'advanced' => false, 'canMarkBye' => true, 'canAdvance' => false]);
+        $this->assertSame(['markBye' => true, 'runPhaseUpdate' => true, 'expectAdvance' => false], $plan);
+
+        $gold = laneAssistLiveMatchActionPlan(['phase' => 0, 'matchNo' => 0, 'status' => 'bye', 'advanced' => false, 'canMarkBye' => true, 'canAdvance' => false]);
+        $this->assertSame(['markBye' => true, 'runPhaseUpdate' => true, 'expectAdvance' => false], $gold);
+    }
+
+    public function testLiveMatchActionPlanForAdvancingMatches(): void
+    {
+        $this->assertSame(
+            ['markBye' => true, 'runPhaseUpdate' => true, 'expectAdvance' => true],
+            laneAssistLiveMatchActionPlan(['phase' => 2, 'matchNo' => 4, 'status' => 'bye', 'canMarkBye' => true, 'canAdvance' => true])
+        );
+        $this->assertSame(
+            ['markBye' => false, 'runPhaseUpdate' => true, 'expectAdvance' => true],
+            laneAssistLiveMatchActionPlan(['phase' => 2, 'matchNo' => 4, 'status' => 'complete', 'canMarkBye' => false, 'canAdvance' => true])
+        );
+        $this->assertNull(laneAssistLiveMatchActionPlan(['phase' => 1, 'matchNo' => 2, 'status' => 'complete', 'canMarkBye' => false, 'canAdvance' => false]));
+        $this->assertNull(laneAssistLiveMatchActionPlan(['phase' => 2, 'matchNo' => 4, 'status' => 'live', 'canMarkBye' => false, 'canAdvance' => false]));
+    }
+
     public function testSemifinalWinnersUseIanseoFinalDestinations(): void
     {
         $this->assertSame(0, laneAssistFinalWinnerDestination(2, 4));
