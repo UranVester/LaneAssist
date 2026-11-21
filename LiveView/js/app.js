@@ -1,7 +1,7 @@
 (function($) {
     'use strict';
 
-    var state = { mode: 'qualification', initialModeResolved: false, loading: false, refreshPending: false, bulkAdvancing: false, timer: null, actionMessage: '', snapshot: null, qualificationNotice: '', finalsNotice: '', qualificationForfeitEligible: [], colorBy: 'none', selectedRoundSlot: null, hasSelectedRound: false, finals: [] };
+    var state = { mode: 'qualification', initialModeResolved: false, loading: false, refreshPending: false, bulkAdvancing: false, timer: null, actionMessage: '', snapshot: null, qualificationNotice: '', finalsNotice: '', qualificationForfeitEligible: [], colorBy: 'none', totalMode: 'combined', selectedRoundSlot: null, hasSelectedRound: false, finals: [] };
     var apiUrl = ROOT_DIR + 'Modules/Custom/LaneAssist/LiveView/api.php';
     var divisionMetaMap = (typeof DivisionMeta !== 'undefined' && DivisionMeta) ? DivisionMeta : {};
     var classMetaMap = (typeof ClassMeta !== 'undefined' && ClassMeta) ? ClassMeta : {};
@@ -158,8 +158,12 @@
                 var problemClass = archer.isBehind ? ' danger' : (archer.isAhead ? ' warning' : '');
                 var retiredClass = archer.retired ? ' retired' : '';
                 var endPoints = archer.lastEndPoints === null ? '-' : archer.lastEndPoints;
-                var avgHtml = typeof archer.averageArrow === 'number'
-                    ? '<span class="competitor-avg" title="Average arrow score">avg ' + archer.averageArrow.toFixed(2) + '</span>'
+                var byDistance = state.totalMode === 'distance';
+                var shownTotal = byDistance ? archer.distancePoints : archer.totalPoints;
+                var shownAverage = byDistance ? archer.distanceAverageArrow : archer.averageArrow;
+                var totalLabel = byDistance && archer.distance ? 'Total D' + archer.distance : 'Total';
+                var avgHtml = typeof shownAverage === 'number'
+                    ? '<span class="competitor-avg" title="Average arrow score' + (byDistance ? ' (current distance)' : '') + '">avg ' + shownAverage.toFixed(2) + '</span>'
                     : '';
                 var badgeHtml = (window.LaneAssist && window.LaneAssist.badges)
                     ? window.LaneAssist.badges.render(archer.badges)
@@ -175,7 +179,7 @@
                 return '<div class="competitor' + problemClass + retiredClass + '" data-participant-id="' + archer.participantId + '">' + badgeHtml.edge +
                     '<div class="competitor-position"><span class="position-label">' + escapeHtml(archer.position) + '</span><span class="position-face"' + positionFaceStyleAttr(archer) + '></span></div>' +
                     '<div class="competitor-main' + colorAttrs.classAttr + '"' + colorAttrs.styleAttr + colorAttrs.titleAttr + '><strong>' + escapeHtml(archer.name) + '</strong>' + badgeHtml.inline + '<small class="competitor-meta"><span class="competitor-meta-label">' + clubEventLabel + endsSuffix + '</span>' + avgHtml + '</small></div>' +
-                    '<div class="competitor-actions"><div class="score-pair"><span><small>Last end</small><b>' + endPoints + '</b></span><span><small>Total</small><b>' + archer.totalPoints + '</b></span></div>' + toggleHtml + '</div></div>';
+                    '<div class="competitor-actions"><div class="score-pair"><span><small>Last end</small><b>' + endPoints + '</b></span><span><small>' + totalLabel + '</small><b>' + shownTotal + '</b></span></div>' + toggleHtml + '</div></div>';
             }).join('');
             var paceLabel = mat.hasMultipleDistances
                 ? 'Pace: distance ' + mat.expectedDistance + ' · end ' + mat.expectedEnds
@@ -338,6 +342,7 @@
     function updateVisibleView() {
         var isFinals = state.mode === 'finals';
         $('#qualification-view').prop('hidden', isFinals);
+        $('#total-mode-control').prop('hidden', isFinals);
         $('#finals-view').prop('hidden', !isFinals);
         $('.mode-button').removeClass('active').filter('[data-mode="' + state.mode + '"]').addClass('active');
         $('label[for="session-select"]').toggle(!isFinals);
@@ -579,6 +584,10 @@
             } else {
                 renderQualification(state.snapshot.qualification || []);
             }
+        });
+        $('#total-mode').on('change', function() {
+            state.totalMode = $(this).val() === 'distance' ? 'distance' : 'combined';
+            if (state.snapshot) renderQualification(state.snapshot.qualification || []);
         });
         $('#refresh-button').on('click', function() { loadSnapshot(true); });
         $('#print-finals').on('click', function() {

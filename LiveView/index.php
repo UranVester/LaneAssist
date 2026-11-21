@@ -90,6 +90,13 @@ include('Common/Templates/head.php');
                 <span>Color by</span>
                 <select id="color-by"></select>
             </label>
+            <label class="session-control" for="total-mode" id="total-mode-control">
+                <span>Total</span>
+                <select id="total-mode">
+                    <option value="combined" selected>Combined</option>
+                    <option value="distance">Current distance</option>
+                </select>
+            </label>
             <label class="session-control" for="session-select">
                 <span><?php echo get_text('Session'); ?></span>
                 <select id="session-select">

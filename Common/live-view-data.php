@@ -25,7 +25,8 @@ function qualificationSnapshot($session) {
             QuTarget, QuLetter, QuScore, EnTargetFace, ev.EvCode as EventCode,
             tf.TfT1 as TargetFaceId, tf.TfW1 as TargetDiameter,
             QuD1Arrowstring, QuD2Arrowstring, QuD3Arrowstring, QuD4Arrowstring,
-            QuD5Arrowstring, QuD6Arrowstring, QuD7Arrowstring, QuD8Arrowstring
+            QuD5Arrowstring, QuD6Arrowstring, QuD7Arrowstring, QuD8Arrowstring,
+            QuD1Score, QuD2Score, QuD3Score, QuD4Score, QuD5Score, QuD6Score, QuD7Score, QuD8Score
         FROM Qualifications
         INNER JOIN Entries ON EnId=QuId AND EnTournament=" . StrSafe_DB($_SESSION['TourId']) . "
         LEFT JOIN Countries ON CoId=EnCountry
@@ -54,12 +55,16 @@ function qualificationSnapshot($session) {
         $completedTotalEnds = 0;
         $totalArrows = 0;
         $totalEnds = 0;
+        $distancePoints = 0;
+        $distanceArrowsShot = 0;
         for ($distance = 1; $distance <= 8; $distance++) {
             $field = 'QuD' . $distance . 'Arrowstring';
             $distanceArrowString = (string)$row->{$field};
             if (strlen(rtrim($distanceArrowString)) > 0) {
                 $latestDistance = $distance;
                 $arrowString = $distanceArrowString;
+                $distancePoints = intval($row->{'QuD' . $distance . 'Score'});
+                $distanceArrowsShot = strlen(str_replace(' ', '', rtrim($distanceArrowString)));
             }
             if (isset($distanceInfo[$distance])) {
                 $distanceArrows = $distanceInfo[$distance]['arrows'];
@@ -97,6 +102,8 @@ function qualificationSnapshot($session) {
             }),
             'totalPoints' => intval($row->QuScore),
             'averageArrow' => laneAssistAverageArrow($row->QuScore, $arrowsShot),
+            'distancePoints' => $distancePoints,
+            'distanceAverageArrow' => laneAssistAverageArrow($distancePoints, $distanceArrowsShot),
             'retired' => intval($row->EnStatus) === 6,
         ];
     }
