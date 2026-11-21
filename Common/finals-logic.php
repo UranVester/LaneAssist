@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/i18n.php';
 /**
  * LaneAssist Finals — match/validation logic.
  *
@@ -303,8 +304,8 @@ function validateFinalRows($rows, $focus = null) {
     $errors = [];
 
     $phaseLabels = [
-        0 => 'Gold',
-        1 => 'Bronze',
+        0 => la_t('status.phaseGold'),
+        1 => la_t('status.phaseBronze'),
         2 => '1/2',
         4 => '1/4',
         8 => '1/8',
@@ -390,11 +391,16 @@ function validateFinalRows($rows, $focus = null) {
 
             if ($latestBefore >= $earliestAfter) {
                 list($teamEvent, $event) = explode('|', $eventKey, 2);
-                $beforeLabel = $phaseLabels[$beforePhase] ?? ('Phase ' . $beforePhase);
-                $afterLabel = $phaseLabels[$afterPhase] ?? ('Phase ' . $afterPhase);
+                $beforeLabel = $phaseLabels[$beforePhase] ?? la_t('finals.phaseNumber', ['phase' => $beforePhase]);
+                $afterLabel = $phaseLabels[$afterPhase] ?? la_t('finals.phaseNumber', ['phase' => $afterPhase]);
                 $errors[] = [
                     'type' => 'phase_order',
-                    'message' => 'Event ' . $event . ' (' . (intval($teamEvent) ? 'Team' : 'Individual') . '): ' . $beforeLabel . ' finals must be before ' . $afterLabel . ' finals',
+                    'message' => la_t('finals.phaseOrder', [
+                        'event' => $event,
+                        'type' => intval($teamEvent) ? la_t('finals.typeTeam') : la_t('finals.typeIndividual'),
+                        'before' => $beforeLabel,
+                        'after' => $afterLabel,
+                    ]),
                     '__priority' => (isset($focus['phasesByEvent'][$eventKey]) && (isset($focus['phasesByEvent'][$eventKey][$beforePhase]) || isset($focus['phasesByEvent'][$eventKey][$afterPhase]))) ? 0 : 1,
                 ];
             }
@@ -433,7 +439,7 @@ function validateFinalRows($rows, $focus = null) {
         if (count($usage['bundles']) > 1) {
             $errors[] = [
                 'type' => 'target_conflict',
-                'message' => 'Target ' . $usage['target'] . ' is assigned more than once in timeslot ' . $usage['dateTime'],
+                'message' => la_t('finals.targetConflict', ['target' => $usage['target'], 'slot' => $usage['dateTime']]),
                 '__priority' => 1,
             ];
         }

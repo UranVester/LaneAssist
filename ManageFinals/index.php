@@ -5,14 +5,15 @@
  */
 
 require_once(dirname(__FILE__, 3) . '/config.php');
+require_once(dirname(__FILE__, 2) . '/Common/i18n.php');
 
 if (!CheckTourSession()) {
-    $PAGE_TITLE = 'Manage Finals - No Tournament Selected';
+    $PAGE_TITLE = la_t('finals.pageTitle') . ' - ' . la_t('common.noTournamentSelected');
     include('Common/Templates/head.php');
     echo '<div style="padding: 20px; text-align: center;">';
-    echo '<h2>No Competition Selected</h2>';
-    echo '<p>Please select a tournament first:</p>';
-    echo '<p><a href="' . $CFG->ROOT_DIR . 'index.php" class="btn btn-primary">Select Tournament</a></p>';
+    echo '<h2>' . la_h('common.noTournamentSelected') . '</h2>';
+    echo '<p>' . la_h('common.selectTournamentFirst') . '</p>';
+    echo '<p><a href="' . $CFG->ROOT_DIR . 'index.php" class="btn btn-primary">' . la_h('common.selectTournament') . '</a></p>';
     echo '</div>';
     include(dirname(__FILE__, 2) . '/Common/disclaimer.php');
     include('Common/Templates/tail.php');
@@ -105,21 +106,23 @@ while ($cls = safe_fetch($clsRs)) {
     $classes[] = $cls;
 }
 
-$PAGE_TITLE = 'Manage Finals - Interactive';
+$PAGE_TITLE = la_t('finals.pageTitle');
 $IncludeJquery = true;
 $IncludeFA = true;
 
 $JS_SCRIPT = array(
     '<script type="text/javascript">var ROOT_DIR = "' . $CFG->ROOT_DIR . '"; var LANEASSIST_DEFAULT_FINALS_LENGTH = ' . intval($defaultFinalsLength) . '; var ColorGroups = ' . json_encode(laLoadColorGroups(intval($_SESSION['TourId'])), JSON_HEX_TAG | JSON_HEX_AMP) . ';</script>',
+    laJsCatalogScript(['common.', 'finals.', 'colorBy.', 'status.']),
+    '<script src="' . $CFG->ROOT_DIR . 'Modules/Custom/LaneAssist/Common/js/i18n.js?v=' . filemtime(dirname(__DIR__) . '/Common/js/i18n.js') . '"></script>',
     '<link href="' . $CFG->ROOT_DIR . 'Modules/Custom/LaneAssist/Common/css/shared.css" rel="stylesheet" type="text/css">',
     '<link href="' . $CFG->ROOT_DIR . 'Modules/Custom/LaneAssist/ManageFinals/css/style.css" rel="stylesheet" type="text/css">',
     '<script src="' . $CFG->ROOT_DIR . 'Common/jQuery/jquery-ui.min.js"></script>',
     '<script src="' . $CFG->ROOT_DIR . 'Modules/Custom/LaneAssist/Common/js/jquery-ui-touch-bridge.js"></script>',
-    '<script src="' . $CFG->ROOT_DIR . 'Modules/Custom/LaneAssist/Common/js/shared.js"></script>',
+    '<script src="' . $CFG->ROOT_DIR . 'Modules/Custom/LaneAssist/Common/js/shared.js?v=' . filemtime(dirname(__DIR__) . '/Common/js/shared.js') . '"></script>',
     '<script src="' . $CFG->ROOT_DIR . 'Modules/Custom/LaneAssist/Common/js/color-by.js?v=' . filemtime(dirname(__DIR__) . '/Common/js/color-by.js') . '"></script>',
     '<script src="' . $CFG->ROOT_DIR . 'Modules/Custom/LaneAssist/Common/js/finals-playability.js"></script>',
     '<script src="' . $CFG->ROOT_DIR . 'Modules/Custom/LaneAssist/Common/js/distance-lane-plan.js"></script>',
-    '<script src="' . $CFG->ROOT_DIR . 'Modules/Custom/LaneAssist/ManageFinals/js/app.js"></script>',
+    '<script src="' . $CFG->ROOT_DIR . 'Modules/Custom/LaneAssist/ManageFinals/js/app.js?v=' . filemtime(dirname(__DIR__) . '/ManageFinals/js/app.js') . '"></script>',
 );
 
 include('Common/Templates/head.php');
@@ -129,20 +132,20 @@ include('Common/Templates/head.php');
     <div class="toolbar">
         <div class="toolbar-top">
             <div class="toolbar-left">
-                <h2>Manage Finals - Interactive</h2>
+                <h2><?php echo la_h('finals.pageTitle'); ?></h2>
             </div>
             <div class="toolbar-right">
                 <div id="changes-summary" class="changes-summary compact" style="display:none;">
                     <div id="changes-list"></div>
                 </div>
                 <button id="btn-unassign-all" class="btn btn-warning" disabled>
-                    <i class="fa fa-times-circle"></i> Unassign All
+                    <i class="fa fa-times-circle"></i> <?php echo la_h('finals.unassignAll'); ?>
                 </button>
                 <button id="btn-reset" class="btn btn-warning" disabled>
-                    <i class="fa fa-undo"></i> Reset
+                    <i class="fa fa-undo"></i> <?php echo la_h('finals.reset'); ?>
                 </button>
                 <button id="btn-apply" class="btn btn-success" disabled>
-                    <i class="fa fa-save"></i> Apply Changes
+                    <i class="fa fa-save"></i> <?php echo la_h('finals.applyChanges'); ?>
                 </button>
             </div>
         </div>
@@ -150,10 +153,10 @@ include('Common/Templates/head.php');
         <div class="toolbar-controls-row">
             <div class="toolbar-popup-trigger">
                 <button type="button" id="btn-filters" class="btn btn-secondary" aria-expanded="false">
-                    <i class="fa fa-filter"></i> Filters <span id="filters-active-count" class="active-filter-indicator" style="display:none;">0</span>
+                    <i class="fa fa-filter"></i> <?php echo la_h('finals.filters'); ?> <span id="filters-active-count" class="active-filter-indicator" style="display:none;">0</span>
                 </button>
                 <div id="filters-popup" class="filters-popup-panel" style="display:none;">
-                    <h3>Participant Filters</h3>
+                    <h3><?php echo la_h('finals.participantFilters'); ?></h3>
                     <div class="filters-popup-grid">
                         <div class="filter-group">
                             <label for="division-filter"><?php echo get_text('Division'); ?>:</label>
@@ -217,89 +220,89 @@ include('Common/Templates/head.php');
             </div>
 
         <div class="filter-group inline compact-control">
-            <label for="team-event-filter">Type:</label>
+            <label for="team-event-filter"><?php echo la_h('finals.typeLabel'); ?></label>
             <select id="team-event-filter">
-                <option value="">All</option>
-                <option value="0">Individual</option>
-                <option value="1">Team</option>
+                <option value=""><?php echo la_h('common.all'); ?></option>
+                <option value="0"><?php echo la_h('finals.typeIndividualOption'); ?></option>
+                <option value="1"><?php echo la_h('finals.typeTeamOption'); ?></option>
             </select>
         </div>
 
         <div class="filter-group inline compact-control">
-            <label for="date-filter">Date:</label>
+            <label for="date-filter"><?php echo la_h('finals.dateLabel'); ?></label>
             <input type="date" id="date-filter">
         </div>
 
         <div class="filter-group inline compact-control">
-            <label for="color-by">Color by:</label>
+            <label for="color-by"><?php echo la_h('colorBy.label'); ?></label>
             <select id="color-by">
-                <option value="none">None</option>
-                <option value="bow">Bow</option>
-                <option value="class">Class</option>
-                <option value="category">Category</option>
-                <option value="event" selected>Event</option>
-                <option value="phase">Phase</option>
+                <option value="none"><?php echo la_h('colorBy.none'); ?></option>
+                <option value="bow"><?php echo la_h('colorBy.bow'); ?></option>
+                <option value="class"><?php echo la_h('colorBy.class'); ?></option>
+                <option value="category"><?php echo la_h('colorBy.category'); ?></option>
+                <option value="event" selected><?php echo la_h('colorBy.event'); ?></option>
+                <option value="phase"><?php echo la_h('colorBy.phase'); ?></option>
             </select>
         </div>
 
         <div class="filter-group inline checkbox-group compact-control">
-            <label for="show-empty-timeslots">Timeslots:</label>
+            <label for="show-empty-timeslots"><?php echo la_h('finals.timeslotsLabel'); ?></label>
             <label class="checkbox-inline">
                 <input type="checkbox" id="show-empty-timeslots" checked>
-                Show empty
+                <?php echo la_h('finals.showEmpty'); ?>
             </label>
         </div>
 
         <div class="auto-assign-trigger">
-            <button id="btn-auto-assign" class="btn btn-info" title="Auto assign finals to timeslots and targets">
-                <i class="fa fa-magic"></i> Auto Assign
+            <button id="btn-auto-assign" class="btn btn-info" title="<?php echo la_h('finals.autoAssignHelp'); ?>">
+                <i class="fa fa-magic"></i> <?php echo la_h('finals.autoAssign'); ?>
             </button>
 
             <div id="auto-assign-options" class="auto-assign-panel" style="display:none;">
-                <h3 class="auto-assign-title">Auto Assign Options</h3>
+                <h3 class="auto-assign-title"><?php echo la_h('finals.autoOptions'); ?></h3>
                 <div class="auto-assign-note">
-                    Default finals length: <strong id="auto-default-length">-</strong> min
+                    <?php echo la_h('finals.defaultLength'); ?> <strong id="auto-default-length">-</strong> <?php echo la_h('finals.minutesShort'); ?>
                 </div>
 
                 <div class="auto-options-grid">
                     <div class="option-group">
-                        <label for="auto-medal-mode">Medal slots:</label>
+                        <label for="auto-medal-mode"><?php echo la_h('finals.medalSlots'); ?></label>
                         <select id="auto-medal-mode">
-                            <option value="earliest" selected>Earliest possible</option>
-                            <option value="together">Gold + Bronze together</option>
-                            <option value="bronze-first">Bronze then Gold</option>
+                            <option value="earliest" selected><?php echo la_h('finals.medalEarliest'); ?></option>
+                            <option value="together"><?php echo la_h('finals.medalTogether'); ?></option>
+                            <option value="bronze-first"><?php echo la_h('finals.medalBronzeFirst'); ?></option>
                         </select>
                     </div>
 
                     <div class="option-group">
-                        <label for="auto-schedule-style">Scheduling:</label>
+                        <label for="auto-schedule-style"><?php echo la_h('finals.scheduling'); ?></label>
                         <select id="auto-schedule-style">
-                            <option value="compact" selected>Compact</option>
-                            <option value="alternating">Prefer alternating events</option>
+                            <option value="compact" selected><?php echo la_h('finals.schedulingCompact'); ?></option>
+                            <option value="alternating"><?php echo la_h('finals.schedulingAlternating'); ?></option>
                         </select>
                     </div>
 
                     <div class="option-group option-checkbox">
                         <label>
                             <input type="checkbox" id="auto-separate-streams" checked>
-                            Separate team/individual streams
+                            <?php echo la_h('finals.separateStreams'); ?>
                         </label>
                     </div>
 
                     <div class="option-group option-checkbox">
                         <label>
                             <input type="checkbox" id="auto-restrict-distance-lanes" checked>
-                            Restrict lane to specific distance
+                            <?php echo la_h('finals.restrictDistance'); ?>
                         </label>
                     </div>
                 </div>
 
                 <div class="option-actions">
                     <button id="btn-run-auto" class="btn btn-success">
-                        <i class="fa fa-play"></i> Run Auto Assign
+                        <i class="fa fa-play"></i> <?php echo la_h('finals.runAutoAssign'); ?>
                     </button>
                     <button id="btn-close-auto" class="btn btn-warning" type="button">
-                        <i class="fa fa-times"></i> Close
+                        <i class="fa fa-times"></i> <?php echo la_h('common.close'); ?>
                     </button>
                 </div>
             </div>
@@ -309,35 +312,35 @@ include('Common/Templates/head.php');
     </div>
 
     <div class="summary-bar">
-        <span>Rows: <strong id="row-count">0</strong></span>
-        <span>Visible / total: <strong id="visible-count">0</strong> / <strong id="total-count">0</strong></span>
-        <span>Changed: <strong id="changed-count">0</strong></span>
-        <span>Hidden non-playable: <strong id="hidden-count">0</strong></span>
+        <span><?php echo la_h('finals.summaryRows'); ?> <strong id="row-count">0</strong></span>
+        <span><?php echo la_h('finals.summaryVisible'); ?> <strong id="visible-count">0</strong> / <strong id="total-count">0</strong></span>
+        <span><?php echo la_h('finals.summaryChanged'); ?> <strong id="changed-count">0</strong></span>
+        <span><?php echo la_h('finals.summaryHidden'); ?> <strong id="hidden-count">0</strong></span>
     </div>
 
     <div class="content-area">
         <div class="unassigned-pool">
-            <h3><i class="fa fa-users"></i> Unassigned Match Groups (<span id="unassigned-count">0</span>)</h3>
+            <h3><i class="fa fa-users"></i> <?php echo la_h('finals.unassignedGroups'); ?> (<span id="unassigned-count">0</span>)</h3>
             <div id="unassigned-list" class="match-list">
-                <div class="empty">No data loaded</div>
+                <div class="empty"><?php echo la_h('finals.noData'); ?></div>
             </div>
         </div>
 
         <div class="targets-area">
             <h3>
-                <span class="targets-title-main"><i class="fa fa-bullseye"></i> Finals Targets</span>
+                <span class="targets-title-main"><i class="fa fa-bullseye"></i> <?php echo la_h('finals.finalsTargets'); ?></span>
                 <div class="targets-header-tools">
                     <div id="targets-validation-summary" class="targets-validation-summary" style="display:none;" data-error-count="0">
                         <button type="button" id="targets-validation-toggle" class="targets-validation-toggle" aria-expanded="false">
                             <i class="fa fa-exclamation-triangle"></i>
-                            <span id="targets-validation-text">Validation issues</span>
+                            <span id="targets-validation-text"><?php echo la_h('finals.validationIssues'); ?></span>
                             <i class="fa fa-chevron-down toggle-icon"></i>
                         </button>
                         <div id="targets-validation-details" class="targets-validation-details" style="display:none;"></div>
                     </div>
                     <div id="status-message" class="status-message hidden"></div>
                     <div class="targets-actions-menu">
-                        <button type="button" class="targets-actions-toggle" disabled title="Actions (coming soon)" aria-label="Actions" aria-disabled="true">
+                        <button type="button" class="targets-actions-toggle" disabled title="<?php echo la_h('finals.actionsSoon'); ?>" aria-label="<?php echo la_h('finals.actions'); ?>" aria-disabled="true">
                             <i class="fa fa-ellipsis-v"></i>
                         </button>
                     </div>
@@ -345,7 +348,7 @@ include('Common/Templates/head.php');
             </h3>
             <div id="drag-hint-message" class="drag-hint-message hidden"></div>
             <div id="visual-board" class="visual-board">
-                <div class="empty">No data loaded</div>
+                <div class="empty"><?php echo la_h('finals.noData'); ?></div>
             </div>
         </div>
     </div>

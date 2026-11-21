@@ -25,6 +25,12 @@ const CONVERTED = [
     'Common/js/print-layout.js',
     'Common/js/color-by.js',
     'Common/js/shared.js',
+    'ManageFinals/index.php',
+    'ManageFinals/js/app.js',
+    'ManageFinals/api.php',
+    'Common/finals-logic.php',
+    'Common/js/finals-playability.js',
+    'Common/js/distance-lane-plan.js',
 ];
 const ALLOW = JSON.parse(fs.readFileSync(path.join(__dirname, 'hardcoded-text-allowlist.json'), 'utf8'));
 

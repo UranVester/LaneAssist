@@ -4,6 +4,7 @@
  */
 
 require_once(dirname(__FILE__, 3) . '/config.php');
+require_once(dirname(__FILE__, 2) . '/Common/i18n.php');
 header('Content-Type: application/json');
 
 if (!CheckTourSession()) {
@@ -130,7 +131,7 @@ function applyChanges() {
     }
 
     if (count($changes) === 0) {
-        echo json_encode(['error' => 0, 'message' => 'No changes to apply', 'updated' => 0]);
+        echo json_encode(['error' => 0, 'message' => la_t('finals.noChangesToApply'), 'updated' => 0]);
         return;
     }
 
@@ -205,7 +206,7 @@ function applyChanges() {
 
     echo json_encode([
         'error' => 0,
-        'message' => 'Applied finals setup changes',
+        'message' => la_t('finals.appliedChanges'),
         'updated' => $updated
     ]);
 }

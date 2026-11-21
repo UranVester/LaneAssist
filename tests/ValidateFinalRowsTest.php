@@ -3,6 +3,24 @@ use PHPUnit\Framework\TestCase;
 
 final class ValidateFinalRowsTest extends TestCase
 {
+    protected function tearDown(): void
+    {
+        laSetLang('en');
+    }
+
+    public function testValidationMessagesFollowTheUserLanguage(): void
+    {
+        laSetLang('dk');
+        $a = $this->phase(8, 1, '2026-08-16', '10:00', 'RC-M');
+        $b = $this->phase(8, 1, '2026-08-16', '10:00', 'RC-W');
+        foreach ($a as &$r) { $r['target'] = '0005'; } unset($r);
+        foreach ($b as &$r) { $r['target'] = '0005'; } unset($r);
+        $order = array_merge($this->phase(8, 1, '2026-08-16', '11:00', 'CU-M'), $this->phase(4, 1, '2026-08-16', '10:00', 'CU-M'));
+        $messages = array_column(validateFinalRows(array_merge($a, $b, $order)), 'message', 'type');
+        $this->assertStringStartsWith('Skive 0005 er brugt mere end én gang i tidsrummet ', $messages['target_conflict']);
+        $this->assertSame('Gruppe CU-M (individuel): 1/8-finalerne skal ligge før 1/4-finalerne', $messages['phase_order']);
+    }
+
     /** Build one finals row. */
     private function row(array $over = []): array
     {

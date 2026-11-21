@@ -11,6 +11,10 @@
         throw new Error('LaneAssist distance-lane-plan.js must load before ManageFinals app.js');
     }
 
+    // Common/js/i18n.js (loaded before this file) puts the page's translator on window.
+    const laT = window.laT;
+    const laTn = window.laTn;
+
     let dragHintTimer = null;
 
     const state = {
@@ -207,16 +211,16 @@
             const normalizedLength = normalizeScheduledLen(newLenRaw);
 
             if (!/^\d{4}-\d{2}-\d{2}$/.test(newDate)) {
-                showDragHint('Invalid date format. Use YYYY-MM-DD');
+                showDragHint(laT('finals.invalidDate'));
                 return;
             }
             if (!normalizedTime) {
-                showDragHint('Invalid time format. Use HH:MM');
+                showDragHint(laT('finals.invalidTime'));
                 return;
             }
 
             if (normalizedLength <= 0) {
-                showDragHint('Invalid finals length. Use minutes > 0');
+                showDragHint(laT('finals.invalidLength'));
                 return;
             }
 
@@ -270,7 +274,7 @@
                     recomputeHasChanges();
                     syncValidationWarnings(getTimeslots(), buildBundles(state.rows));
                     renderAll();
-                    showStatus('Removed invalid scheduled match from planning board', 'success');
+                    showStatus(laT('finals.removedInvalidMatch'), 'success');
                 }
 
                 return;
@@ -299,7 +303,7 @@
             recomputeHasChanges();
             syncValidationWarnings(getTimeslots(), buildBundles(state.rows));
             renderAll();
-            showStatus('Removed invalid scheduled match from planning board', 'success');
+            showStatus(laT('finals.removedInvalidMatch'), 'success');
         }
 
         $('#unassigned-list').on('click', '.bundle-clear-btn', handleBundleClearClick);
@@ -418,7 +422,7 @@
 
     function validatePhaseOrderAfterMove(bundle, targetTimeslot) {
         if (!bundle || !targetTimeslot) {
-            return 'Invalid timeslot selected';
+            return laT('finals.invalidTimeslot');
         }
 
         const impactedEvent = (bundle.event || '').toString();
@@ -484,7 +488,7 @@
             const earliestLater = laterSlots.slice().sort()[0];
             if (latestEarlier >= earliestLater) {
                 const slot = normalizeDateTimeValue(targetTimeslot.scheduledDate, targetTimeslot.scheduledTime);
-                return 'Event ' + impactedEvent + ': ' + formatPhaseLabel(earlierPhase) + ' finals must be before ' + formatPhaseLabel(laterPhase) + ' finals (drop was to ' + slot + ')';
+                return laT('finals.phaseOrderDrop', { event: impactedEvent, before: formatPhaseLabel(earlierPhase), after: formatPhaseLabel(laterPhase), slot: slot });
             }
         }
 
@@ -513,8 +517,8 @@
     function formatPhaseLabel(phase) {
         const numericPhase = parseInt(phase, 10);
         const map = {
-            0: 'Gold',
-            1: 'Bronze',
+            0: laT('status.phaseGold'),
+            1: laT('status.phaseBronze'),
             2: '1/2',
             4: '1/4',
             8: '1/8',
@@ -522,11 +526,11 @@
             32: '1/32',
             64: '1/64'
         };
-        return map[numericPhase] || ('Phase ' + numericPhase);
+        return map[numericPhase] || laT('finals.phaseNumber', { phase: numericPhase });
     }
 
     function loadData() {
-        showStatus('Loading finals setup...', 'info');
+        showStatus(laT('finals.loading'), 'info');
 
         $.ajax({
             url: ROOT_DIR + 'Modules/Custom/LaneAssist/ManageFinals/api.php',
@@ -537,7 +541,7 @@
             },
             success: function(response) {
                 if (response.error) {
-                    showStatus(response.message || 'Failed to load finals setup', 'error');
+                    showStatus(response.message || laT('finals.loadFailed'), 'error');
                     return;
                 }
 
@@ -614,10 +618,10 @@
                 state.targetDistanceLocks = {};
                 clearValidationWarnings();
                 renderAll();
-                showStatus('Loaded ' + state.rows.length + ' finals matches', 'success');
+                showStatus(laTn('finals.loaded', state.rows.length), 'success');
             },
             error: function() {
-                showStatus('Failed to load finals setup', 'error');
+                showStatus(laT('finals.loadFailed'), 'error');
             }
         });
     }
@@ -831,7 +835,7 @@
     function editTimeslotDateTime(timeslotKey) {
         const timeslot = getTimeslotByKey(timeslotKey);
         if (!timeslot) {
-            showDragHint('Timeslot not found');
+            showDragHint(laT('finals.timeslotNotFound'));
             return;
         }
 
@@ -849,7 +853,7 @@
     function applyTimeslotDateTimeEdit(timeslotKey, newDate, normalizedTime, normalizedLength) {
         const timeslot = getTimeslotByKey(timeslotKey);
         if (!timeslot) {
-            showDragHint('Timeslot not found');
+            showDragHint(laT('finals.timeslotNotFound'));
             return;
         }
 
@@ -883,7 +887,7 @@
         });
 
         if (!affectedRows && !touchedManual) {
-            showDragHint('Nothing to update for this timeslot');
+            showDragHint(laT('finals.nothingToUpdate'));
             return;
         }
 
@@ -891,7 +895,7 @@
         recomputeHasChanges();
         syncValidationWarnings(getTimeslots(), buildBundles(state.rows));
         renderAll();
-        showStatus('Updated timeslot date/time/length', 'success');
+        showStatus(laT('finals.timeslotUpdated'), 'success');
     }
 
     function parseApiDateTime(value) {
@@ -910,13 +914,13 @@
 
     function addInitialTimeslotsFromQualificationEnd() {
         if (getTimeslots().length > 0) {
-            showDragHint('Timeslots already exist. Use + between rows to insert another one.');
+            showDragHint(laT('finals.timeslotsExist'));
             return;
         }
 
         const baseDate = parseApiDateTime(state.lastQualificationEnd);
         if (!baseDate) {
-            showDragHint('Could not determine the end of qualification sessions');
+            showDragHint(laT('finals.noQualEnd'));
             return;
         }
 
@@ -972,20 +976,20 @@
         });
 
         if (!createdCount) {
-            showDragHint('Initial timeslot already exists');
+            showDragHint(laT('finals.initialExists'));
             return;
         }
 
         recomputeHasChanges();
         syncValidationWarnings(getTimeslots(), buildBundles(state.rows));
         renderAll();
-        showStatus('Added ' + createdCount + ' initial finals timeslot' + (createdCount === 1 ? '' : 's'), 'success');
+        showStatus(laTn('finals.addedInitial', createdCount), 'success');
     }
 
     function insertTimeslotAt(insertIndex) {
         const timeslots = getTimeslots();
         if (!timeslots.length) {
-            showDragHint('No timeslots available to insert around');
+            showDragHint(laT('finals.noTimeslotsToInsert'));
             return;
         }
 
@@ -994,7 +998,7 @@
         const referenceForInsert = safeIndex < timeslots.length ? timeslots[safeIndex] : timeslots[timeslots.length - 1];
 
         if (!referenceForInsert) {
-            showDragHint('Could not determine insert position');
+            showDragHint(laT('finals.noInsertPosition'));
             return;
         }
 
@@ -1170,14 +1174,14 @@
 
         if (affectedRows > 0) {
             const shiftSuffix = shiftedTimeslots > 0
-                ? ('; shifted ' + shiftedTimeslots + ' following timeslot' + (shiftedTimeslots === 1 ? '' : 's') + ' up')
+                ? ('; ' + laTn('finals.shiftedUp', shiftedTimeslots))
                 : '';
-            showStatus('Removed timeslot and unassigned ' + affectedRows + ' match row' + (affectedRows === 1 ? '' : 's') + shiftSuffix, 'info');
+            showStatus(laTn('finals.removedTimeslotRows', affectedRows) + shiftSuffix, 'info');
         } else {
             const shiftSuffix = shiftedTimeslots > 0
-                ? ('; shifted ' + shiftedTimeslots + ' following timeslot' + (shiftedTimeslots === 1 ? '' : 's') + ' up')
+                ? ('; ' + laTn('finals.shiftedUp', shiftedTimeslots))
                 : '';
-            showStatus('Removed empty timeslot' + shiftSuffix, 'info');
+            showStatus(laT('finals.removedEmptyTimeslot') + shiftSuffix, 'info');
         }
     }
 
@@ -1363,7 +1367,7 @@
                     } else if (locks[targetNo] !== primaryDistance) {
                         return {
                             valid: false,
-                            message: 'Conflicting distance lanes on target ' + targetNo + ' (' + locks[targetNo] + ' vs ' + primaryDistance + ')'
+                            message: laT('finals.conflictingDistanceLanes', { target: targetNo, a: locks[targetNo], b: primaryDistance })
                         };
                     }
                 }
@@ -1524,7 +1528,7 @@
         const options = getAutoAssignOptions();
         const targetNumbers = getNumericTargetNumbers();
         if (!targetNumbers.length) {
-            showDragHint('No available targets configured');
+            showDragHint(laT('finals.noTargetsConfigured'));
             return;
         }
 
@@ -1534,7 +1538,7 @@
         });
 
         if (!playableBundles.length) {
-            showStatus('No playable finals bundles to auto assign', 'info');
+            showStatus(laT('finals.noBundlesToAssign'), 'info');
             return;
         }
 
@@ -1550,7 +1554,7 @@
         });
 
         if (!baseTimeslots.length) {
-            showDragHint('Create at least one timeslot before auto assign');
+            showDragHint(laT('finals.createTimeslotFirst'));
             return;
         }
 
@@ -1616,15 +1620,16 @@
                 return lanePlanByTeam[teamEvent] === null;
             });
             if (typeof invalidPlanTeam !== 'undefined') {
-                const label = (parseInt(invalidPlanTeam, 10) || 0) === 1 ? 'team' : 'individual';
-                showStatus('Auto assign failed: not enough targets to keep fixed distance lanes for ' + label + ' finals', 'error');
+                showStatus((parseInt(invalidPlanTeam, 10) || 0) === 1
+                    ? laT('finals.autoFailedLanesTeam')
+                    : laT('finals.autoFailedLanesIndividual'), 'error');
                 restoreRowState();
                 return;
             }
 
             const distanceLocksResult = buildDistanceLocksFromLanePlans(lanePlanByTeam);
             if (!distanceLocksResult.valid) {
-                showStatus('Auto assign failed: ' + (distanceLocksResult.message || 'distance lane conflict'), 'error');
+                showStatus(laT('finals.autoFailedReason', { reason: distanceLocksResult.message || laT('finals.distanceLaneConflict') }), 'error');
                 restoreRowState();
                 return;
             }
@@ -1718,7 +1723,7 @@
             const teamEvent = parseInt(bundle.rows[0] ? bundle.rows[0].teamEvent : 0, 10) || 0;
             const stream = ensureTeamStream(teamEvent);
             if (!stream) {
-                return { ok: false, message: 'Could not determine timeslot stream for team type ' + teamEvent };
+                return { ok: false, message: laT('finals.noTimeslotStream', { type: teamEvent }) };
             }
 
             const minIndex = getEventPhaseMinIndex(bundle);
@@ -1728,7 +1733,7 @@
                 if (slotIndex >= stream.length) {
                     const created = appendNextTimeslot(teamEvent);
                     if (!created) {
-                        return { ok: false, message: 'Could not create additional timeslots for auto assign' };
+                        return { ok: false, message: laT('finals.cannotCreateTimeslots') };
                     }
                 }
 
@@ -1779,7 +1784,7 @@
             for (let b = 0; b < ordered.length; b++) {
                 const result = placeBundle(ordered[b]);
                 if (!result.ok) {
-                    showStatus(result.message || 'Auto assign failed', 'error');
+                    showStatus(result.message || laT('finals.autoFailed'), 'error');
                     restoreRowState();
                     return;
                 }
@@ -1794,7 +1799,7 @@
             for (let m = 0; m < orderedMedals.length; m++) {
                 const result = placeBundle(orderedMedals[m]);
                 if (!result.ok) {
-                    showStatus(result.message || 'Auto assign failed', 'error');
+                    showStatus(result.message || laT('finals.autoFailed'), 'error');
                     restoreRowState();
                     return;
                 }
@@ -1807,7 +1812,7 @@
                 for (let b = 0; b < ordered.length; b++) {
                     const result = placeBundle(ordered[b]);
                     if (!result.ok) {
-                        showStatus(result.message || 'Auto assign failed', 'error');
+                        showStatus(result.message || laT('finals.autoFailed'), 'error');
                         return;
                     }
                 }
@@ -1820,7 +1825,7 @@
             for (let m = 0; m < orderedMedals.length; m++) {
                 const result = placeBundle(orderedMedals[m]);
                 if (!result.ok) {
-                    showStatus(result.message || 'Auto assign failed', 'error');
+                    showStatus(result.message || laT('finals.autoFailed'), 'error');
                     restoreRowState();
                     return;
                 }
@@ -1838,9 +1843,9 @@
         syncValidationWarnings(getTimeslots(), buildBundles(state.rows));
         renderAll();
         if (state.validationWarnings.length) {
-            showStatus('Auto assignment completed with ' + state.validationWarnings.length + ' validation issue(s): ' + state.validationWarnings[0], 'error');
+            showStatus(laTn('finals.autoDoneWithIssues', state.validationWarnings.length, { first: state.validationWarnings[0] }), 'error');
         } else {
-            showStatus('Auto assignment complete', 'success');
+            showStatus(laT('finals.autoDone'), 'success');
         }
     }
 
@@ -2034,7 +2039,7 @@
         $('#unassigned-count').text(combinedBundles.length);
 
         if (combinedBundles.length === 0) {
-            $list.append('<div class="empty">All match groups assigned</div>');
+            $list.append($('<div class="empty"></div>').text(laT('finals.allGroupsAssigned')));
             return;
         }
 
@@ -2075,7 +2080,7 @@
                 });
 
                 const syntheticKey = [bundle.key, 'nonPlayablePair', String(parseInt(pair.pairNo, 10) || pairIndex)].join('|');
-                const warningText = 'Scheduled pair should not be played from current participants';
+                const warningText = laT('finals.pairNotPlayable');
 
                 invalidScheduledPairBundles.push({
                     key: syntheticKey,
@@ -2152,21 +2157,19 @@
 
         if (timeslots.length === 0) {
             if (!state.rows.length) {
-                $board.append('<div class="empty">No data loaded</div>');
+                $board.append($('<div class="empty"></div>').text(laT('finals.noData')));
                 return;
             }
 
             const hasQualifierEnd = !!parseApiDateTime(state.lastQualificationEnd);
             const emptyHtml = [
                 '<div class="empty">',
-                '<div>No finals timeslots found.</div>',
+                '<div>' + escapeHtml(laT('finals.noTimeslots')) + '</div>',
                 '<div style="margin-top:6px;">',
-                hasQualifierEnd
-                    ? 'Create first timeslot from qualification end + default finals length.'
-                    : 'Set qualification session end time to auto-create first finals timeslot.',
+                escapeHtml(hasQualifierEnd ? laT('finals.createFirstFromQual') : laT('finals.setQualEnd')),
                 '</div>',
                 '<div style="margin-top:10px;">',
-                '<button type="button" class="timeslot-empty-add-btn timeslot-bootstrap-btn" title="Add first finals timeslot" aria-label="Add first finals timeslot"><i class="fa fa-plus"></i> Add first timeslot</button>',
+                '<button type="button" class="timeslot-empty-add-btn timeslot-bootstrap-btn" title="' + escapeHtml(laT('finals.addFirstTimeslotHelp')) + '" aria-label="' + escapeHtml(laT('finals.addFirstTimeslotHelp')) + '"><i class="fa fa-plus"></i> ' + escapeHtml(laT('finals.addFirstTimeslot')) + '</button>',
                 '</div>',
                 '</div>'
             ].join('');
@@ -2175,11 +2178,11 @@
         }
 
         if (state.availableTargets.length === 0) {
-            $board.append('<div class="empty">No available targets detected</div>');
+            $board.append($('<div class="empty"></div>').text(laT('finals.noTargetsDetected')));
             return;
         }
 
-        $board.append('<div class="timeslot-insert-anchor"><button type="button" class="timeslot-insert-btn" data-insert-index="0" title="Insert timeslot before first" aria-label="Insert timeslot before first"><i class="fa fa-plus"></i></button></div>');
+        $board.append('<div class="timeslot-insert-anchor"><button type="button" class="timeslot-insert-btn" data-insert-index="0" title="' + escapeHtml(laT('finals.insertBeforeFirst')) + '" aria-label="' + escapeHtml(laT('finals.insertBeforeFirst')) + '"><i class="fa fa-plus"></i></button></div>');
 
         let renderedSections = 0;
 
@@ -2198,7 +2201,7 @@
                 return;
             }
 
-            const typeText = timeslot.teamEvent === 1 ? 'Team' : 'Individual';
+            const typeText = timeslot.teamEvent === 1 ? laT('finals.typeTeamOption') : laT('finals.typeIndividualOption');
             const slotLenMinutes = normalizeScheduledLen(timeslot.scheduledLen);
             const startTimeDisplay = ((timeslot.scheduledTime || '').toString().trim() || '00:00:00').substring(0, 5);
             const endTimeData = addMinutesToTimeslot({
@@ -2224,18 +2227,18 @@
                     '<div class="timeslot-edit-inline">',
                     '<input type="date" class="timeslot-edit-date" value="' + escapeHtml(editDateValue) + '">',
                     '<input type="time" class="timeslot-edit-time" value="' + escapeHtml(editTimeValue) + '">',
-                    '<input type="number" min="1" step="1" class="timeslot-edit-length" value="' + escapeHtml(editLengthValue) + '" title="Length (minutes)">',
-                    '<button type="button" class="timeslot-edit-save-btn" data-timeslot-key="' + escapeHtml(timeslot.key) + '" title="Save date/time/length"><i class="fa fa-check"></i></button>',
-                    '<button type="button" class="timeslot-edit-cancel-btn" data-timeslot-key="' + escapeHtml(timeslot.key) + '" title="Cancel edit"><i class="fa fa-times"></i></button>',
+                    '<input type="number" min="1" step="1" class="timeslot-edit-length" value="' + escapeHtml(editLengthValue) + '" title="' + escapeHtml(laT('finals.lengthMinutes')) + '">',
+                    '<button type="button" class="timeslot-edit-save-btn" data-timeslot-key="' + escapeHtml(timeslot.key) + '" title="' + escapeHtml(laT('finals.saveTimeslot')) + '"><i class="fa fa-check"></i></button>',
+                    '<button type="button" class="timeslot-edit-cancel-btn" data-timeslot-key="' + escapeHtml(timeslot.key) + '" title="' + escapeHtml(laT('finals.cancelEdit')) + '"><i class="fa fa-times"></i></button>',
                     '</div>',
-                    '<button type="button" class="timeslot-delete-btn" data-timeslot-key="' + escapeHtml(timeslot.key) + '" title="Remove timeslot and unassign cards"><i class="fa fa-trash"></i></button>',
+                    '<button type="button" class="timeslot-delete-btn" data-timeslot-key="' + escapeHtml(timeslot.key) + '" title="' + escapeHtml(laT('finals.removeTimeslot')) + '"><i class="fa fa-trash"></i></button>',
                     '</div>'
                 ].join('');
             } else {
                 actionsHtml = [
                     '<div class="timeslot-actions">',
-                    '<button type="button" class="timeslot-edit-btn" data-timeslot-key="' + escapeHtml(timeslot.key) + '" title="Edit timeslot date, time and length"><i class="fa fa-pencil"></i></button>',
-                    '<button type="button" class="timeslot-delete-btn" data-timeslot-key="' + escapeHtml(timeslot.key) + '" title="Remove timeslot and unassign cards"><i class="fa fa-trash"></i></button>',
+                    '<button type="button" class="timeslot-edit-btn" data-timeslot-key="' + escapeHtml(timeslot.key) + '" title="' + escapeHtml(laT('finals.editTimeslot')) + '"><i class="fa fa-pencil"></i></button>',
+                    '<button type="button" class="timeslot-delete-btn" data-timeslot-key="' + escapeHtml(timeslot.key) + '" title="' + escapeHtml(laT('finals.removeTimeslot')) + '"><i class="fa fa-trash"></i></button>',
                     '</div>'
                 ].join('');
             }
@@ -2301,7 +2304,7 @@
                 if (laneDistanceChanged) {
                     $headerCell.addClass('distance-changed-lane');
                     if (!warningText) {
-                        $headerCell.attr('title', 'Distance changed on this lane in this timeslot');
+                        $headerCell.attr('title', laT('finals.distanceChanged'));
                     }
                 }
                 $targetsHeader.append($headerCell);
@@ -2454,7 +2457,7 @@
 
                             const $splitMarker = createBundleCard(bundle)
                                 .addClass('bundle-split-ghost drop-pass-through')
-                                .attr('title', 'Existing split placement');
+                                .attr('title', laT('finals.existingSplit'));
                             $splitMarkerWrapper.append($splitMarker);
                             $targetsAssign.append($splitMarkerWrapper);
                         });
@@ -2468,14 +2471,14 @@
             $section.append($targetsScroll);
             $board.append($section);
 
-            $board.append('<div class="timeslot-insert-anchor"><button type="button" class="timeslot-insert-btn" data-insert-index="' + (index + 1) + '" title="Insert timeslot here" aria-label="Insert timeslot here"><i class="fa fa-plus"></i></button></div>');
+            $board.append('<div class="timeslot-insert-anchor"><button type="button" class="timeslot-insert-btn" data-insert-index="' + (index + 1) + '" title="' + escapeHtml(laT('finals.insertHere')) + '" aria-label="' + escapeHtml(laT('finals.insertHere')) + '"><i class="fa fa-plus"></i></button></div>');
         });
 
         if (renderedSections === 0) {
             const showEmptyTimeslots = $('#show-empty-timeslots').is(':checked');
             const hintText = showEmptyTimeslots
-                ? 'No visible finals timeslots for the current filters.'
-                : 'No playable bundles in current timeslots. Enable "Show empty" to see and plan them.';
+                ? laT('finals.noVisibleTimeslots')
+                : laT('finals.noPlayableBundles');
             $board.append('<div class="empty">' + escapeHtml(hintText) + '</div>');
         }
 
@@ -2629,7 +2632,7 @@
         const warningText = state.bundleWarnings[bundle.key] || (bundle.warningText || '');
         if (!bundle.isPlayable && bundleHasAssignedTarget(bundle)) {
             $card.addClass('has-warning');
-            const nonPlayableMsg = 'Scheduled match should not be played (likely bye). Remove it from planning.';
+            const nonPlayableMsg = laT('finals.matchNotPlayable');
             if (warningText) {
                 $card.attr('title', warningText + ' | ' + nonPlayableMsg);
             } else {
@@ -2639,7 +2642,7 @@
             const clearKeyAttr = Array.isArray(bundle.clearRowKeys) && bundle.clearRowKeys.length
                 ? ' data-row-keys="' + escapeHtml(bundle.clearRowKeys.join(',')) + '"'
                 : '';
-            $card.append('<div class="card-warning-actions"><button type="button" class="bundle-clear-btn" data-bundle-key="' + escapeHtml(bundle.key) + '"' + clearKeyAttr + ' title="Remove this invalid scheduled match" aria-label="Remove invalid scheduled match"><i class="fa fa-times"></i></button></div>');
+            $card.append('<div class="card-warning-actions"><button type="button" class="bundle-clear-btn" data-bundle-key="' + escapeHtml(bundle.key) + '"' + clearKeyAttr + ' title="' + escapeHtml(laT('finals.removeInvalidMatch')) + '" aria-label="' + escapeHtml(laT('finals.removeInvalidMatch')) + '"><i class="fa fa-times"></i></button></div>');
         }
 
         if (warningText) {
@@ -2683,17 +2686,17 @@
                 bundle.rows[0] ? bundle.rows[0].scheduledDate : '',
                 bundle.rows[0] ? bundle.rows[0].scheduledTime : ''
             );
-            const message = 'Scheduled but not playable: ' + (bundle.event || '') + ' ' + (bundle.phaseLabel || '') + ' G' + (bundle.group || 0) + ' (' + slotLabel + ')';
+            const message = laT('finals.scheduledNotPlayable', { match: (bundle.event || '') + ' ' + (bundle.phaseLabel || '') + ' G' + (bundle.group || 0), slot: slotLabel });
             warnings.push(message);
 
             if (!bundleWarnings[bundle.key]) {
                 bundleWarnings[bundle.key] = [];
             }
-            bundleWarnings[bundle.key].push('This scheduled match should not be played from current participants');
+            bundleWarnings[bundle.key].push(laT('finals.matchNotPlayableNow'));
 
             if (Array.isArray(bundle.occupiedTargets) && bundle.occupiedTargets.length) {
                 bundle.occupiedTargets.forEach(function(targetNo) {
-                    addTargetWarning(bundle.timeslotKey, targetNo, 'Assigned match should not be played');
+                    addTargetWarning(bundle.timeslotKey, targetNo, laT('finals.assignedMatchNotPlayable'));
                 });
             }
         });
@@ -2714,21 +2717,21 @@
                     pairRows[0] ? pairRows[0].scheduledDate : '',
                     pairRows[0] ? pairRows[0].scheduledTime : ''
                 );
-                const message = 'Scheduled pair not playable: ' + (bundle.event || '') + ' ' + (bundle.phaseLabel || '') + ' G' + (bundle.group || 0) + ' (' + slotLabel + ')';
+                const message = laT('finals.scheduledPairNotPlayable', { match: (bundle.event || '') + ' ' + (bundle.phaseLabel || '') + ' G' + (bundle.group || 0), slot: slotLabel });
                 warnings.push(message);
 
                 const syntheticKey = [bundle.key, 'nonPlayablePair', String(parseInt(pair.pairNo, 10) || 0)].join('|');
                 if (!bundleWarnings[syntheticKey]) {
                     bundleWarnings[syntheticKey] = [];
                 }
-                bundleWarnings[syntheticKey].push('This scheduled pair should not be played from current participants');
+                bundleWarnings[syntheticKey].push(laT('finals.pairNotPlayableNow'));
 
                 pairRows.forEach(function(row) {
                     const targetNo = parseTargetNumber(row.target);
                     if (targetNo === null) {
                         return;
                     }
-                    addTargetWarning(bundle.timeslotKey, targetNo, 'Assigned pair should not be played');
+                    addTargetWarning(bundle.timeslotKey, targetNo, laT('finals.assignedPairNotPlayable'));
                 });
             });
         });
@@ -2786,7 +2789,12 @@
                 const latestEarlier = earlierSlots.slice().sort().pop();
                 const earliestLater = laterSlots.slice().sort()[0];
                 if (latestEarlier >= earliestLater) {
-                    const message = 'Event ' + phaseInfo.event + ' (' + (parseInt(phaseInfo.teamEvent, 10) ? 'Team' : 'Individual') + '): ' + formatPhaseLabel(earlierPhase) + ' finals must be before ' + formatPhaseLabel(laterPhase) + ' finals';
+                    const message = laT('finals.phaseOrder', {
+                        event: phaseInfo.event,
+                        type: parseInt(phaseInfo.teamEvent, 10) ? laT('finals.typeTeam') : laT('finals.typeIndividual'),
+                        before: formatPhaseLabel(earlierPhase),
+                        after: formatPhaseLabel(laterPhase)
+                    });
                     warnings.push(message);
 
                     const impactedBundles = [];
@@ -2801,7 +2809,7 @@
                         if (!bundleWarnings[bundleKey]) {
                             bundleWarnings[bundleKey] = [];
                         }
-                        const phaseMessage = 'Phase order conflict: ' + formatPhaseLabel(earlierPhase) + ' must be before ' + formatPhaseLabel(laterPhase);
+                        const phaseMessage = laT('finals.phaseOrderConflict', { before: formatPhaseLabel(earlierPhase), after: formatPhaseLabel(laterPhase) });
                         bundleWarnings[bundleKey].push(phaseMessage);
 
                         const impactedBundle = bundleList.find(function(item) { return item.key === bundleKey; });
@@ -2839,7 +2847,7 @@
                 }
 
                 const slotLabel = normalizeDateTimeValue(timeslot.scheduledDate, timeslot.scheduledTime);
-                const warningMessage = 'Target ' + targetKey + ' is assigned more than once in timeslot ' + slotLabel;
+                const warningMessage = laT('finals.targetConflict', { target: targetKey, slot: slotLabel });
                 warnings.push(warningMessage);
                 addTargetWarning(timeslot.key, targetKey, warningMessage);
 
@@ -2847,7 +2855,7 @@
                     if (!bundleWarnings[bundle.key]) {
                         bundleWarnings[bundle.key] = [];
                     }
-                    bundleWarnings[bundle.key].push('Target ' + targetKey + ' conflicts in ' + slotLabel);
+                    bundleWarnings[bundle.key].push(laT('finals.targetConflictShort', { target: targetKey, slot: slotLabel }));
                 });
             });
         });
@@ -2928,7 +2936,7 @@
             return {
                 group: 'event',
                 key: (parseInt(bundle.teamEvent, 10) ? 1 : 0) + '|' + String(bundle.event).trim(),
-                label: 'Event: ' + (bundle.eventName || bundle.event) + (parseInt(bundle.teamEvent, 10) ? ' (team)' : '')
+                label: laT('colorBy.event') + ': ' + (bundle.eventName || bundle.event) + (parseInt(bundle.teamEvent, 10) ? ' (' + laT('finals.typeTeam') + ')' : '')
             };
         }
 
@@ -2936,7 +2944,7 @@
             if (bundle.phase === null || bundle.phase === undefined || bundle.phase === '') {
                 return null;
             }
-            return { group: 'phase', key: String(bundle.phase), label: 'Phase: ' + (bundle.phaseLabel || bundle.phase) };
+            return { group: 'phase', key: String(bundle.phase), label: laT('colorBy.phase') + ': ' + (bundle.phaseLabel || bundle.phase) };
         }
 
         let key = null;
@@ -2945,15 +2953,15 @@
             key = ColorBy.keyForMulti(divisions.map(function(division) {
                 return ColorBy.extractBowType(divisionDescriptions[division], division);
             }));
-            label = 'Bow: ';
+            label = laT('colorBy.bow') + ': ';
         } else if (mode === 'class') {
             key = ColorBy.keyForMulti(classes);
-            label = 'Class: ';
+            label = laT('colorBy.class') + ': ';
         } else if (mode === 'category') {
             const division = ColorBy.keyForMulti(divisions);
             const classCode = ColorBy.keyForMulti(classes);
             key = (division !== null && classCode !== null) ? division + classCode : null;
-            label = 'Category: ';
+            label = laT('colorBy.category') + ': ';
         } else {
             return null;
         }
@@ -2961,7 +2969,7 @@
         if (key === null && divisions.length === 0 && classes.length === 0) {
             return null;
         }
-        return { group: mode, key: key, label: label + (key === null ? 'Mixed' : key) };
+        return { group: mode, key: key, label: label + (key === null ? laT('colorBy.mixed') : key) };
     }
 
     let activeDropGrid = null;
@@ -3131,18 +3139,18 @@
         const bundleKey = $dragged.data('bundle-key');
         const bundle = buildBundles(state.rows).find(function(item) { return item.key === bundleKey; });
         if (!bundle) {
-            return { valid: false, message: 'Invalid dragged item' };
+            return { valid: false, message: laT('finals.invalidDragItem') };
         }
 
         const targetTimeslot = $grid.data('timeslot-key');
         const timeslotInfo = getTimeslotByKey(targetTimeslot);
         if (!timeslotInfo) {
-            return { valid: false, message: 'Invalid target timeslot' };
+            return { valid: false, message: laT('finals.invalidTimeslot') };
         }
 
         const sourceTeamEvent = parseInt(bundle.rows[0] ? bundle.rows[0].teamEvent : bundle.teamEvent, 10);
         if (sourceTeamEvent !== parseInt(timeslotInfo.teamEvent, 10)) {
-            return { valid: false, message: 'Cannot move between individual and team finals timeslots' };
+            return { valid: false, message: laT('finals.cannotMixTeamIndividual') };
         }
 
         const phaseValidationMessage = validatePhaseOrderAfterMove(bundle, timeslotInfo);
@@ -3205,7 +3213,7 @@
                 return {
                     valid: false,
                     startTargetNum: preferredStart,
-                    message: 'Target ' + distanceMismatch.targetNo + ' is fixed to ' + distanceMismatch.expected + ' (card is ' + distanceMismatch.actual + ')'
+                    message: laT('finals.targetFixedDistance', { target: distanceMismatch.targetNo, expected: distanceMismatch.expected, actual: distanceMismatch.actual })
                 };
             }
         }
@@ -3214,7 +3222,7 @@
             return {
                 valid: false,
                 startTargetNum: preferredStart,
-                message: getPlacementErrorMessage(bundle, preferredStart, bundles, timeslotInfo) || 'Selected timeslot already uses one or more of those targets'
+                message: getPlacementErrorMessage(bundle, preferredStart, bundles, timeslotInfo) || laT('finals.targetsInUse')
             };
         }
 
@@ -3263,14 +3271,14 @@
     function getPlacementErrorMessage(bundle, startTargetNum, bundles, timeslotInfo) {
         const targetNumbers = state.availableTargets.map(parseTargetNumber).filter(function(v) { return v !== null; });
         if (targetNumbers.length === 0) {
-            return 'No available targets configured';
+            return laT('finals.noTargetsConfigured');
         }
 
         if (isDistanceLaneRestrictionEnabled()) {
             const targetDistanceMap = buildAssignedTargetDistanceMap(bundle.key);
             const distanceMismatch = getDistancePlacementMismatch(bundle, startTargetNum, targetDistanceMap);
             if (distanceMismatch) {
-                return 'Target ' + distanceMismatch.targetNo + ' is fixed to ' + distanceMismatch.expected + ' (card is ' + distanceMismatch.actual + ')';
+                return laT('finals.targetFixedDistance', { target: distanceMismatch.targetNo, expected: distanceMismatch.expected, actual: distanceMismatch.actual });
             }
         }
 
@@ -3278,7 +3286,7 @@
         const maxTarget = Math.max.apply(null, targetNumbers);
 
         if (startTargetNum < minTarget || (startTargetNum + bundle.targetsUsed - 1) > maxTarget) {
-            return 'Not enough free targets from ' + startTargetNum + ' (needs ' + bundle.targetsUsed + ' targets)';
+            return laT('finals.notEnoughFreeTargets', { from: startTargetNum, needed: bundle.targetsUsed });
         }
 
         const conflicts = getPlacementConflictDetails(bundle, startTargetNum, bundles);
@@ -3291,9 +3299,9 @@
         });
         const firstConflict = conflicts[0].conflict;
         const conflictLabel = (firstConflict.event || '') + ' ' + (firstConflict.phaseLabel || '') + ' G' + (firstConflict.group || '');
-        const slotLabel = timeslotInfo ? normalizeDateTimeValue(timeslotInfo.scheduledDate, timeslotInfo.scheduledTime) : 'selected timeslot';
+        const slotLabel = timeslotInfo ? normalizeDateTimeValue(timeslotInfo.scheduledDate, timeslotInfo.scheduledTime) : laT('finals.selectedTimeslot');
 
-        return 'Targets ' + targetList.join(', ') + ' are already used in ' + slotLabel + ' by ' + conflictLabel;
+        return laT('finals.targetsUsedBy', { targets: targetList.join(', '), slot: slotLabel, by: conflictLabel });
     }
 
     function normalizeDateTimeValue(dateValue, timeValue) {
@@ -3341,7 +3349,7 @@
             dragHintTimer = null;
         }
 
-        $hint.removeClass('hidden').text(message || 'Invalid move');
+        $hint.removeClass('hidden').text(message || laT('finals.invalidMove'));
 
         dragHintTimer = setTimeout(function() {
             $hint.addClass('hidden').text('');
@@ -3435,7 +3443,7 @@
                 if (!currentDropEvaluation) return;
 
                 if (!currentDropEvaluation.valid) {
-                    const message = currentDropEvaluation.message || 'Selected timeslot already uses one or more of those targets';
+                    const message = currentDropEvaluation.message || laT('finals.targetsInUse');
                     showDragHint(message);
                     syncValidationWarnings(getTimeslots(), buildBundles(state.rows));
                     renderAll();
@@ -3505,7 +3513,7 @@
         $('#btn-run-auto').prop('disabled', !hasRows || state.availableTargets.length === 0 || getTimeslots().length === 0);
 
         if (state.hasChanges) {
-            const summaryHtml = '<div class="line-1">Will save: ' + changedCount + ' finals change' + (changedCount === 1 ? '' : 's') + '</div>';
+            const summaryHtml = '<div class="line-1">' + escapeHtml(laTn('finals.willSave', changedCount)) + '</div>';
             $('#changes-summary').show();
             $('#changes-list').html(summaryHtml);
         } else {
@@ -3527,7 +3535,7 @@
 
         recomputeHasChanges();
         renderAll();
-        showStatus('All finals match groups unassigned', 'info');
+        showStatus(laT('finals.allUnassigned'), 'info');
     }
 
     function resetChanges() {
@@ -3548,7 +3556,7 @@
 
         state.hasChanges = false;
         renderAll();
-        showStatus('Reset to loaded values', 'info');
+        showStatus(laT('finals.resetDone'), 'info');
     }
 
     function applyChanges() {
@@ -3569,7 +3577,7 @@
             });
 
         if (changes.length === 0) {
-            showStatus('No changes to apply', 'info');
+            showStatus(laT('finals.noChangesToApply'), 'info');
             return;
         }
 
@@ -3583,7 +3591,7 @@
             },
             success: function(validationResponse) {
                 if (validationResponse.error) {
-                    showStatus(validationResponse.message || 'Validation failed', 'error');
+                    showStatus(validationResponse.message || laT('finals.validationFailed'), 'error');
                     return;
                 }
 
@@ -3591,16 +3599,16 @@
                 if (!validationResponse.valid) {
                     const errors = validationResponse.errors || [];
                     if (!errors.length) {
-                        showStatus('Validation failed', 'error');
+                        showStatus(laT('finals.validationFailed'), 'error');
                         return;
                     }
 
-                    showStatus(errors[0].message || 'Validation failed', 'error');
+                    showStatus(errors[0].message || laT('finals.validationFailed'), 'error');
                     renderAll();
                     return;
                 }
 
-                showStatus('Applying finals setup changes...', 'info');
+                showStatus(laT('finals.applying'), 'info');
 
                 $.ajax({
                     url: ROOT_DIR + 'Modules/Custom/LaneAssist/ManageFinals/api.php',
@@ -3615,10 +3623,10 @@
                             const errors = response.errors || [];
                             clearValidationWarnings();
                             if (errors.length) {
-                                showStatus(errors[0].message || 'Apply failed', 'error');
+                                showStatus(errors[0].message || laT('finals.applyFailed'), 'error');
                                 renderAll();
                             } else {
-                                showStatus(response.message || 'Apply failed', 'error');
+                                showStatus(response.message || laT('finals.applyFailed'), 'error');
                             }
                             return;
                         }
@@ -3635,15 +3643,15 @@
                         state.hasChanges = false;
                         clearValidationWarnings();
                         renderAll();
-                        showStatus((response.message || 'Changes applied') + ' (' + (response.updated || 0) + ' rows)', 'success');
+                        showStatus(laTn('finals.appliedRows', response.updated || 0, { message: response.message || laT('finals.applied') }), 'success');
                     },
                     error: function() {
-                        showStatus('Apply failed', 'error');
+                        showStatus(laT('finals.applyFailed'), 'error');
                     }
                 });
             },
             error: function() {
-                showStatus('Validation failed', 'error');
+                showStatus(laT('finals.validationFailed'), 'error');
             }
         });
     }
@@ -3695,7 +3703,7 @@
             $details.hide();
         } else {
             $summary.removeClass('single-line');
-            $text.text(state.validationWarnings.length + ' validation issues (click to view)');
+            $text.text(laT('finals.issuesClickToView', { count: state.validationWarnings.length }));
             state.validationWarnings.forEach(function(message) {
                 const $item = $('<div class="error-item"></div>');
                 $item.append('<i class="fa fa-exclamation-triangle"></i> ');

@@ -36,5 +36,12 @@
   ],
   "Common/js/shared.js": [
     "All"
+  ],
+  "ManageFinals/api.php": [
+    "Invalid action",
+    "Invalid changes payload"
+  ],
+  "Common/finals-logic.php": [
+    "Td"
   ]
 }
