@@ -17,6 +17,7 @@
  * time side effects beyond function/constant definitions.
  */
 
+require_once __DIR__ . '/i18n.php';
 require_once __DIR__ . '/events-logic.php';
 require_once __DIR__ . '/finals-logic.php';
 if (!function_exists('deleteEvent')) {
@@ -468,7 +469,7 @@ function ceGuardedApply(int $tourId, array $criteria, string $fingerprint): arra
     $preview = cePreviewFromInput($tourId, $input, $criteria);
 
     if (empty($preview['plan']['events'])) {
-        return ['error' => 1, 'message' => 'These settings would create no events, so nothing was changed.'];
+        return ['error' => 1, 'message' => la_t('events.noEventsCreated')];
     }
 
     if (!hash_equals($preview['fingerprint'], $fingerprint)) {

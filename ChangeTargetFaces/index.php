@@ -6,14 +6,15 @@
  */
 
 require_once(dirname(__FILE__, 3) . '/config.php');
+require_once(dirname(__FILE__, 2) . '/Common/i18n.php');
 
 if (!CheckTourSession()) {
-    $PAGE_TITLE = 'Change target faces - No Tournament Selected';
+    $PAGE_TITLE = la_t('tournament.changeFacesTitle') . ' - ' . la_t('common.noTournamentSelected');
     include('Common/Templates/head.php');
     echo '<div style="padding: 20px; text-align: center;">';
-    echo '<h2>No Competition Selected</h2>';
-    echo '<p>Please select a tournament first:</p>';
-    echo '<p><a href="' . $CFG->ROOT_DIR . 'index.php" class="btn btn-primary">Select Tournament</a></p>';
+    echo '<h2>' . la_h('common.noTournamentSelected') . '</h2>';
+    echo '<p>' . la_h('common.selectTournamentFirst') . '</p>';
+    echo '<p><a href="' . $CFG->ROOT_DIR . 'index.php" class="btn btn-primary">' . la_h('common.selectTournament') . '</a></p>';
     echo '</div>';
     include(dirname(__FILE__, 2) . '/Common/disclaimer.php');
     include('Common/Templates/tail.php');
@@ -33,8 +34,8 @@ function changeTargetFacesMultiFilter(string $key, string $label, array $options
 {
     $h = fn($v) => htmlspecialchars((string)$v, ENT_QUOTES, 'UTF-8');
     $id = 'f-' . $key;
-    $menu = '<label class="multi-option all-option"><input type="checkbox" value="" checked><span>All</span></label>';
-    $select = '<option value="" selected>All</option>';
+    $menu = '<label class="multi-option all-option"><input type="checkbox" value="" checked><span>' . la_h('common.all') . '</span></label>';
+    $select = '<option value="" selected>' . la_h('common.all') . '</option>';
     foreach ($options as $o) {
         $short = $shortFromCode ? ' data-short="' . $h(strtok($o['label'], ' ')) . '"' : '';
         $menu .= '<label class="multi-option"><input type="checkbox" value="' . $h($o['value']) . '"' . $short . '><span>' . $h($o['label']) . '</span></label>';
@@ -42,13 +43,13 @@ function changeTargetFacesMultiFilter(string $key, string $label, array $options
     }
     return '<div class="filter-group"><label for="' . $id . '">' . $h($label) . '</label>'
         . '<div class="multi-dropdown" data-select-id="' . $id . '">'
-        . '<button type="button" class="multi-dropdown-toggle">All</button>'
+        . '<button type="button" class="multi-dropdown-toggle">' . la_h('common.all') . '</button>'
         . '<div class="multi-dropdown-menu">' . $menu . '</div></div>'
         . '<select id="' . $id . '" class="tf-filter hidden-filter-select" data-key="' . $h($key) . '" multiple aria-hidden="true" tabindex="-1">' . $select . '</select>'
         . '</div>';
 }
 
-$PAGE_TITLE = 'Change target faces';
+$PAGE_TITLE = la_t('tournament.changeFacesTitle');
 $IncludeJquery = true;
 $IncludeFA = true;
 
@@ -58,6 +59,8 @@ $gateVersion = filemtime(__DIR__ . '/js/request-gate.js');
 $sharedVersion = filemtime(dirname(__DIR__) . '/Common/js/shared.js');
 $JS_SCRIPT = array(
     '<script type="text/javascript">var ROOT_DIR = ' . json_encode($CFG->ROOT_DIR, JSON_HEX_TAG | JSON_HEX_AMP) . ';</script>',
+    laJsCatalogScript(['common.', 'faces.']),
+    '<script src="' . $CFG->ROOT_DIR . 'Modules/Custom/LaneAssist/Common/js/i18n.js?v=' . filemtime(dirname(__DIR__) . '/Common/js/i18n.js') . '"></script>',
     '<link href="' . $CFG->ROOT_DIR . 'Modules/Custom/LaneAssist/Common/css/shared.css" rel="stylesheet" type="text/css">',
     '<link href="' . $CFG->ROOT_DIR . 'Modules/Custom/LaneAssist/ChangeTargetFaces/css/style.css?v=' . $styleVersion . '" rel="stylesheet" type="text/css">',
     '<script src="' . $CFG->ROOT_DIR . 'Modules/Custom/LaneAssist/Common/js/shared.js?v=' . $sharedVersion . '"></script>',
@@ -71,11 +74,11 @@ include('Common/Templates/head.php');
 <div class="change-faces-container">
     <div class="toolbar">
         <div class="toolbar-left">
-            <h2>Change target faces</h2>
-            <div class="subtitle">Set the target face of archers in <strong><?php echo htmlspecialchars($_SESSION['TourName'] ?? '', ENT_QUOTES, 'UTF-8'); ?></strong>. Greyed-out faces aren't allowed for that archer's division and class.</div>
+            <h2><?php echo la_h('tournament.changeFacesTitle'); ?></h2>
+            <div class="subtitle"><?php echo str_replace('{tournament}', '<strong>' . htmlspecialchars($_SESSION['TourName'] ?? '', ENT_QUOTES, 'UTF-8') . '</strong>', la_h('faces.subtitle')); ?></div>
         </div>
         <div class="toolbar-right">
-            <a href="<?php echo $CFG->ROOT_DIR; ?>Modules/Custom/LaneAssist/ManageTournament/index.php" class="btn btn-secondary"><i class="fa fa-arrow-left"></i> Manage Tournament</a>
+            <a href="<?php echo $CFG->ROOT_DIR; ?>Modules/Custom/LaneAssist/ManageTournament/index.php" class="btn btn-secondary"><i class="fa fa-arrow-left"></i> <?php echo la_h('menu.manageTournament'); ?></a>
         </div>
     </div>
 
@@ -83,14 +86,14 @@ include('Common/Templates/head.php');
     <div id="status-message" class="status-message hidden" role="status"></div>
 
     <div class="filters-panel">
-        <div class="filter-group"><label for="f-name">Archer</label><input type="text" id="f-name" class="tf-filter" data-key="name"></div>
+        <div class="filter-group"><label for="f-name"><?php echo la_h('faces.archer'); ?></label><input type="text" id="f-name" class="tf-filter" data-key="name"></div>
         <?php
-        echo changeTargetFacesMultiFilter('country', 'Club', $filterOptions['country'], true);
-        echo changeTargetFacesMultiFilter('div', 'Division', $filterOptions['div']);
-        echo changeTargetFacesMultiFilter('class', 'Class', $filterOptions['class']);
-        echo changeTargetFacesMultiFilter('event', 'Event', $filterOptions['event']);
+        echo changeTargetFacesMultiFilter('country', la_t('faces.club'), $filterOptions['country'], true);
+        echo changeTargetFacesMultiFilter('div', la_t('faces.division'), $filterOptions['div']);
+        echo changeTargetFacesMultiFilter('class', la_t('faces.class'), $filterOptions['class']);
+        echo changeTargetFacesMultiFilter('event', la_t('faces.event'), $filterOptions['event']);
         ?>
-        <div class="filter-group"><label for="f-face">Current face</label><select id="f-face" class="tf-filter" data-key="face"><option value="">All</option></select></div>
+        <div class="filter-group"><label for="f-face"><?php echo la_h('faces.currentFace'); ?></label><select id="f-face" class="tf-filter" data-key="face"><option value=""><?php echo la_h('common.all'); ?></option></select></div>
         <div class="filter-group"><span id="tf-count" class="tf-count"></span></div>
     </div>
 

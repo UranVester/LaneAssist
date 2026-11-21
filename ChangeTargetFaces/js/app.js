@@ -1,6 +1,10 @@
 (function($) {
     'use strict';
 
+    // Common/js/i18n.js (loaded before this file) puts the page's translator on window.
+    const laT = window.laT;
+    const laTn = window.laTn;
+
     const API_URL = ROOT_DIR + 'Modules/Custom/LaneAssist/ChangeTargetFaces/api.php';
     const FILTER_DELAY_MS = 300;
 
@@ -75,7 +79,7 @@
                     return; // a newer filter or a write overtook this response
                 }
                 if (response.error) {
-                    showStatus(response.message || 'Loading archers failed', 'error');
+                    showStatus(response.message || laT('faces.loadFailed'), 'error');
                     return;
                 }
                 state.groups = response.groups;
@@ -87,7 +91,7 @@
             },
             error: function() {
                 state.gate.failLoad(token);
-                showStatus('Loading archers failed', 'error');
+                showStatus(laT('faces.loadFailed'), 'error');
             }
         });
     }
@@ -96,7 +100,7 @@
     function renderFaceFilter() {
         const $select = $('#f-face');
         const current = $select.val();
-        let html = '<option value="">All</option>';
+        let html = '<option value="">' + escapeHtml(laT('common.all')) + '</option>';
         state.groups.forEach(function(g) {
             html += '<option value="' + escapeHtml(g.key) + '">' + escapeHtml(g.label) + '</option>';
         });
@@ -105,23 +109,24 @@
 
     function render() {
         const n = state.archers.length;
-        $('#tf-count').text(n + ' shown');
+        $('#tf-count').text(laT('faces.shown', { count: n }));
 
-        let head = '<tr><th>Code</th><th>Archer</th><th>Club</th><th>Div</th><th>Cl</th>';
+        let head = '<tr><th>' + escapeHtml(laT('faces.colCode')) + '</th><th>' + escapeHtml(laT('faces.archer')) + '</th><th>'
+            + escapeHtml(laT('faces.club')) + '</th><th>' + escapeHtml(laT('faces.colDiv')) + '</th><th>' + escapeHtml(laT('faces.colClass')) + '</th>';
         state.groups.forEach(function(g) {
             head += '<th class="tf-group-head">' + escapeHtml(g.label) + '</th>';
         });
         head += '</tr><tr class="tf-set-all-row"><th colspan="5"></th>';
         state.groups.forEach(function(g) {
             head += '<th><button type="button" class="btn btn-secondary tf-set-all" data-group="' + escapeHtml(g.key) + '"'
-                + (n ? '' : ' disabled') + '>Set all ' + n + '</button></th>';
+                + (n ? '' : ' disabled') + '>' + escapeHtml(laT('faces.setAll', { count: n })) + '</button></th>';
         });
         $('#tf-head').html(head + '</tr>');
 
         if (!state.groups.length) {
-            $('#tf-body').html('<tr><td colspan="5" class="tf-empty">This tournament has no target faces defined.</td></tr>');
+            $('#tf-body').html('<tr><td colspan="5" class="tf-empty">' + escapeHtml(laT('faces.noFacesDefined')) + '</td></tr>');
         } else if (!n) {
-            $('#tf-body').html('<tr><td colspan="' + (5 + state.groups.length) + '" class="tf-empty">No archers match the filter.</td></tr>');
+            $('#tf-body').html('<tr><td colspan="' + (5 + state.groups.length) + '" class="tf-empty">' + escapeHtml(laT('faces.noArchersMatch')) + '</td></tr>');
         } else {
             $('#tf-body').html(state.archers.map(rowHtml).join(''));
         }
@@ -131,9 +136,10 @@
     function rowHtml(a) {
         let marker = '';
         if (a.noFace) {
-            marker = ' <span class="tf-marker" title="No target face is defined for ' + escapeHtml(a.div + a.cls) + '">no face defined</span>';
+            marker = ' <span class="tf-marker" title="' + escapeHtml(laT('faces.noFaceForCategory', { category: a.div + a.cls })) + '">'
+                + escapeHtml(laT('faces.noFaceMarker')) + '</span>';
         } else if (a.currentIllegal) {
-            marker = ' <span class="tf-marker" title="IANSEO will reset this to the default">current face not allowed</span>';
+            marker = ' <span class="tf-marker" title="' + escapeHtml(laT('faces.illegalHelp')) + '">' + escapeHtml(laT('faces.illegalMarker')) + '</span>';
         }
         let html = '<tr data-en="' + a.id + '"><td>' + escapeHtml(a.code) + '</td>'
             + '<td>' + escapeHtml(a.name) + marker + '</td>'
@@ -144,7 +150,7 @@
             const legal = !!a.cells[g.key];
             const selected = a.selected === g.key;
             const cls = 'tf-cell' + (selected ? ' tf-selected' : '') + (legal ? '' : ' tf-illegal');
-            const title = legal ? g.label : g.label + ' is not allowed for ' + a.div + a.cls;
+            const title = legal ? g.label : laT('faces.notAllowedFor', { face: g.label, category: a.div + a.cls });
             html += '<td class="tf-center"><button type="button" class="' + cls + '" data-en="' + a.id + '" data-group="' + escapeHtml(g.key) + '"'
                 + ' title="' + escapeHtml(title) + '" aria-pressed="' + (selected ? 'true' : 'false') + '"></button></td>';
         });
@@ -163,7 +169,7 @@
             data: { action: 'set', enId: enId, group: groupKey },
             success: function(response) {
                 if (response.error) {
-                    showStatus(response.message || 'Changing the face failed', 'error');
+                    showStatus(response.message || laT('faces.setFailed'), 'error');
                     return;
                 }
                 hideStatus();
@@ -178,7 +184,7 @@
                 load();
             },
             error: function() {
-                showStatus('Changing the face failed', 'error');
+                showStatus(laT('faces.setFailed'), 'error');
             },
             complete: function() {
                 setBusy(false);
@@ -195,10 +201,10 @@
         // Only the filters of the rows on screen; refuse while a newer filter is pending.
         const request = state.gate.setAllRequest(n);
         if (!request) {
-            showStatus('The list is still updating. Try again in a moment.', 'info');
+            showStatus(laT('faces.stillUpdating'), 'info');
             return;
         }
-        if (!window.confirm('Set ' + group.label + ' for ' + n + ' archers?\nArchers it isn\'t allowed for are skipped.')) {
+        if (!window.confirm(laTn('faces.confirmSetAll', n, { face: group.label }) + '\n' + laT('faces.confirmSkipped'))) {
             return;
         }
         setBusy(true);
@@ -209,7 +215,7 @@
             data: $.extend({ action: 'setAll', group: groupKey, expectedCount: request.expectedCount }, request.filters),
             success: function(response) {
                 if (response.error) {
-                    showStatus(response.message || 'Changing faces failed', 'error');
+                    showStatus(response.message || laT('faces.setAllFailed'), 'error');
                     if (response.stale) {
                         load();
                     }
@@ -220,7 +226,7 @@
                 load();
             },
             error: function() {
-                showStatus('Changing faces failed', 'error');
+                showStatus(laT('faces.setAllFailed'), 'error');
             },
             complete: function() {
                 setBusy(false);
@@ -232,9 +238,9 @@
     function summary(r) {
         const skippedCats = Object.keys(r.skipped || {});
         const skipped = skippedCats.reduce(function(sum, k) { return sum + r.skipped[k]; }, 0);
-        let text = 'Changed ' + r.changed + ', unchanged ' + r.unchanged + ', skipped ' + skipped;
+        let text = laT('faces.summary', { changed: r.changed, unchanged: r.unchanged, skipped: skipped });
         if (skipped) {
-            text += ' (not allowed: ' + skippedCats.join(', ') + ')';
+            text += ' ' + laT('faces.summaryNotAllowed', { categories: skippedCats.join(', ') });
         }
         return text;
     }

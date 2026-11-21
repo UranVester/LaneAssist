@@ -31,6 +31,16 @@ const CONVERTED = [
     'Common/finals-logic.php',
     'Common/js/finals-playability.js',
     'Common/js/distance-lane-plan.js',
+    'ChangeEvents/index.php',
+    'ChangeEvents/js/app.js',
+    'ChangeEvents/api.php',
+    'Common/events-rebuild.php',
+    'Common/events-logic.php',
+    'ChangeTargetFaces/index.php',
+    'ChangeTargetFaces/js/app.js',
+    'ChangeTargetFaces/api.php',
+    'Common/target-faces-data.php',
+    'Common/target-face-logic.php',
 ];
 const ALLOW = JSON.parse(fs.readFileSync(path.join(__dirname, 'hardcoded-text-allowlist.json'), 'utf8'));
 
@@ -49,7 +59,7 @@ const LITERAL = /'([A-Z][a-z]+(?:[ ,.!?:…][^'\n]*)?)'|"([A-Z][a-z]+(?:[ ,.!?:�
 // One line only, so PHP comparisons (`$a > 0 ... <`) don't read as text.
 const TEXT_NODE = />[ \t]*([A-Z][a-z]{2,}[^<\n]*?|[A-Z][a-z]?[ ,.!?:…][^<\n]*?[a-z]{2,}[^<\n]*?|[(0-9][^<>\n]*?[a-z]{4,}[^<\n]*?)[ \t]*</g;
 // Hits directly inside these calls are a key or IANSEO's own get_text() word.
-const EXEMPT_CALL = /(?:(?:get_text|la_t|la_h|laT|laPlural|laTn|define)\(\s*|get_text\(\s*'[^']*',\s*)$/;
+const EXEMPT_CALL = /(?:(?:get_text|la_t|la_h|laT|laPlural|laTn|define)\(\s*|get_text\([^()]*,\s*)$/;
 
 function hits(rel) {
     const src = stripComments(fs.readFileSync(path.join(ROOT, rel), 'utf8'));

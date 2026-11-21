@@ -5,14 +5,15 @@
  */
 
 require_once(dirname(__FILE__, 3) . '/config.php');
+require_once(dirname(__FILE__, 2) . '/Common/i18n.php');
 
 if (!CheckTourSession()) {
-    $PAGE_TITLE = 'Change finals events - No Tournament Selected';
+    $PAGE_TITLE = la_t('tournament.changeEventsTitle') . ' - ' . la_t('common.noTournamentSelected');
     include('Common/Templates/head.php');
     echo '<div style="padding: 20px; text-align: center;">';
-    echo '<h2>No Competition Selected</h2>';
-    echo '<p>Please select a tournament first:</p>';
-    echo '<p><a href="' . $CFG->ROOT_DIR . 'index.php" class="btn btn-primary">Select Tournament</a></p>';
+    echo '<h2>' . la_h('common.noTournamentSelected') . '</h2>';
+    echo '<p>' . la_h('common.selectTournamentFirst') . '</p>';
+    echo '<p><a href="' . $CFG->ROOT_DIR . 'index.php" class="btn btn-primary">' . la_h('common.selectTournament') . '</a></p>';
     echo '</div>';
     include(dirname(__FILE__, 2) . '/Common/disclaimer.php');
     include('Common/Templates/tail.php');
@@ -23,15 +24,17 @@ checkFullACL(AclCompetition, 'cData', AclReadWrite);
 
 $isBlocked = IsBlocked(BIT_BLOCK_TOURDATA);
 
-$PAGE_TITLE = 'Change finals events';
+$PAGE_TITLE = la_t('tournament.changeEventsTitle');
 $IncludeJquery = true;
 $IncludeFA = true;
 
 $JS_SCRIPT = array(
     '<script type="text/javascript">var ROOT_DIR = "' . $CFG->ROOT_DIR . '";</script>',
+    laJsCatalogScript(['common.', 'events.', 'status.']),
+    '<script src="' . $CFG->ROOT_DIR . 'Modules/Custom/LaneAssist/Common/js/i18n.js?v=' . filemtime(dirname(__DIR__) . '/Common/js/i18n.js') . '"></script>',
     '<link href="' . $CFG->ROOT_DIR . 'Modules/Custom/LaneAssist/Common/css/shared.css" rel="stylesheet" type="text/css">',
     '<link href="' . $CFG->ROOT_DIR . 'Modules/Custom/LaneAssist/ChangeEvents/css/style.css" rel="stylesheet" type="text/css">',
-    '<script src="' . $CFG->ROOT_DIR . 'Modules/Custom/LaneAssist/ChangeEvents/js/app.js"></script>',
+    '<script src="' . $CFG->ROOT_DIR . 'Modules/Custom/LaneAssist/ChangeEvents/js/app.js?v=' . filemtime(dirname(__DIR__) . '/ChangeEvents/js/app.js') . '"></script>',
 );
 
 include('Common/Templates/head.php');
@@ -40,38 +43,38 @@ include('Common/Templates/head.php');
 <div class="change-events-container">
     <div class="toolbar">
         <div class="toolbar-left">
-            <h2>Change finals events</h2>
-            <div class="subtitle">Replace the individual final events of <strong><?php echo htmlspecialchars($_SESSION['TourName'] ?? '', ENT_QUOTES, 'UTF-8'); ?></strong> with a new set. Team events are not touched.</div>
+            <h2><?php echo la_h('tournament.changeEventsTitle'); ?></h2>
+            <div class="subtitle"><?php echo str_replace('{tournament}', '<strong>' . htmlspecialchars($_SESSION['TourName'] ?? '', ENT_QUOTES, 'UTF-8') . '</strong>', la_h('events.subtitle')); ?></div>
         </div>
     </div>
 
     <div id="status-message" class="status-message hidden"></div>
 
     <?php if ($isBlocked): ?>
-        <div class="status-message status-error">This tournament's data is blocked; events cannot be changed. You can still preview.</div>
+        <div class="status-message status-error"><?php echo la_h('events.blockedCanPreview'); ?></div>
     <?php endif; ?>
 
     <div class="panel grouping-panel">
-        <h3><i class="fa fa-sliders"></i> Separate events by:</h3>
+        <h3><i class="fa fa-sliders"></i> <?php echo la_h('events.separateBy'); ?></h3>
         <div class="criteria">
-            <label><input type="checkbox" id="ce-gender" class="ce-criterion" checked> Gender</label>
-            <label><input type="checkbox" id="ce-class" class="ce-criterion" checked> Class (age group)</label>
-            <label><input type="checkbox" id="ce-division" class="ce-criterion" checked> Division</label>
-            <label id="ce-distance-label"><input type="checkbox" id="ce-distance" class="ce-criterion"> Distance <i id="ce-distance-hint">(not used when Division is ticked)</i></label>
+            <label><input type="checkbox" id="ce-gender" class="ce-criterion" checked> <?php echo la_h('events.gender'); ?></label>
+            <label><input type="checkbox" id="ce-class" class="ce-criterion" checked> <?php echo la_h('events.classAgeGroup'); ?></label>
+            <label><input type="checkbox" id="ce-division" class="ce-criterion" checked> <?php echo la_h('events.division'); ?></label>
+            <label id="ce-distance-label"><input type="checkbox" id="ce-distance" class="ce-criterion"> <?php echo la_h('events.distance'); ?> <i id="ce-distance-hint"><?php echo la_h('events.distanceHint'); ?></i></label>
         </div>
         <div class="actions">
-            <button id="btn-preview" class="btn btn-info"><i class="fa fa-eye"></i> Preview changes</button>
+            <button id="btn-preview" class="btn btn-info"><i class="fa fa-eye"></i> <?php echo la_h('events.preview'); ?></button>
         </div>
     </div>
 
     <div id="preview" class="hidden">
         <div class="content-grid">
             <div class="panel">
-                <h3><i class="fa fa-trash"></i> Current events (will be deleted)</h3>
+                <h3><i class="fa fa-trash"></i> <?php echo la_h('events.currentEvents'); ?></h3>
                 <div id="old-events"></div>
             </div>
             <div class="panel">
-                <h3><i class="fa fa-plus-circle"></i> New events (will be created)</h3>
+                <h3><i class="fa fa-plus-circle"></i> <?php echo la_h('events.newEvents'); ?></h3>
                 <div id="new-events"></div>
             </div>
         </div>
@@ -79,9 +82,9 @@ include('Common/Templates/head.php');
         <div id="warning-box" class="warning-box"></div>
 
         <div class="panel confirm-panel">
-            <label><input type="checkbox" id="ce-confirm"> I understand this data will be deleted</label>
+            <label><input type="checkbox" id="ce-confirm"> <?php echo la_h('events.confirmDelete'); ?></label>
             <div class="actions">
-                <button id="btn-apply" class="btn btn-danger" disabled><i class="fa fa-random"></i> Replace events</button>
+                <button id="btn-apply" class="btn btn-danger" disabled><i class="fa fa-random"></i> <?php echo la_h('events.replace'); ?></button>
             </div>
         </div>
     </div>

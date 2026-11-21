@@ -1,12 +1,16 @@
 (function($) {
     'use strict';
 
+    // Common/js/i18n.js (loaded before this file) puts the page's translator on window.
+    const laT = window.laT;
+    const laTn = window.laTn;
+
     const API_URL = ROOT_DIR + 'Modules/Custom/LaneAssist/ChangeEvents/api.php';
     const LIST_LIMIT = 20;
     const BRACKET_LABELS = {
-        0: 'none',
-        1: 'Gold',
-        2: 'Semi',
+        0: laT('events.bracketNone'),
+        1: laT('status.phaseGold'),
+        2: laT('events.bracketSemi'),
         4: '1/4',
         8: '1/8',
         16: '1/16',
@@ -89,7 +93,7 @@
     function loadPreview() {
         clearPreview();
         setBusy(true);
-        showStatus('Loading preview...', 'info');
+        showStatus(laT('events.loadingPreview'), 'info');
 
         $.ajax({
             url: API_URL,
@@ -98,14 +102,14 @@
             data: $.extend({ action: 'preview' }, criteria()),
             success: function(response) {
                 if (response.error) {
-                    showStatus(response.message || 'Preview failed', 'error');
+                    showStatus(response.message || laT('events.previewFailed'), 'error');
                     return;
                 }
                 hideStatus();
                 renderPreview(response);
             },
             error: function() {
-                showStatus('Preview failed', 'error');
+                showStatus(laT('events.previewFailed'), 'error');
             },
             complete: function() {
                 setBusy(false);
@@ -119,7 +123,7 @@
         }
         const sent = state.preview;
         setBusy(true);
-        showStatus('Replacing events...', 'info');
+        showStatus(laT('events.replacing'), 'info');
 
         $.ajax({
             url: API_URL,
@@ -129,17 +133,17 @@
             success: function(response) {
                 if (response.stale && response.preview) {
                     renderPreview(response.preview);
-                    showStatus('Something changed since the preview — please check again.', 'error');
+                    showStatus(laT('events.stale'), 'error');
                     return;
                 }
                 if (response.error) {
-                    showStatus(response.message || 'Replacing events failed', 'error');
+                    showStatus(response.message || laT('events.replaceFailed'), 'error');
                     return;
                 }
                 renderResult(response);
             },
             error: function() {
-                showStatus('Replacing events failed', 'error');
+                showStatus(laT('events.replaceFailed'), 'error');
             },
             complete: function() {
                 setBusy(false);
@@ -170,14 +174,13 @@
 
     function renderEventTable(events, isNew) {
         if (!events.length) {
-            return isNew
-                ? '<div class="empty-note">No events would be created with these settings, so there is nothing to replace.</div>'
-                : '<div class="empty-note">There are no individual events yet.</div>';
+            return '<div class="empty-note">' + escapeHtml(isNew ? laT('events.noneCreated') : laT('events.noneYet')) + '</div>';
         }
 
         const cols = isNew ? 4 : 3;
-        let html = '<table class="events-table"><thead><tr><th>Code</th><th>Name</th><th class="num">Archers</th>'
-            + (isNew ? '<th>Bracket</th>' : '') + '</tr></thead><tbody>';
+        let html = '<table class="events-table"><thead><tr><th>' + escapeHtml(laT('events.colCode')) + '</th><th>'
+            + escapeHtml(laT('events.colName')) + '</th><th class="num">' + escapeHtml(laT('events.colArchers')) + '</th>'
+            + (isNew ? '<th>' + escapeHtml(laT('events.colBracket')) + '</th>' : '') + '</tr></thead><tbody>';
 
         events.forEach(function(ev, idx) {
             const extra = idx >= LIST_LIMIT ? ' class="more-row hidden"' : '';
@@ -188,11 +191,10 @@
 
         if (events.length > LIST_LIMIT) {
             html += '<tr class="show-more-row"><td colspan="' + cols + '"><a href="#" class="show-more">… '
-                + (events.length - LIST_LIMIT) + ' more</a></td></tr>';
+                + escapeHtml(laT('events.more', { count: events.length - LIST_LIMIT })) + '</a></td></tr>';
         }
         html += '</tbody></table>';
-        html += '<div class="table-total">' + events.length + ' event' + (events.length === 1 ? '' : 's')
-            + ', ' + sumCounts(events) + ' archers</div>';
+        html += '<div class="table-total">' + escapeHtml(laTn('events.total', events.length, { archers: sumCounts(events) })) + '</div>';
         return html;
     }
 
@@ -214,8 +216,9 @@
         return Object.prototype.hasOwnProperty.call(BRACKET_LABELS, key) ? BRACKET_LABELS[key] : String(phase);
     }
 
-    function plural(n, one, many) {
-        return n + ' ' + (n === 1 ? one : many);
+    /** One warning line: bold label, then plain (escaped) text. */
+    function warningLine(label, text) {
+        return '<b>' + escapeHtml(label) + ':</b> ' + escapeHtml(text);
     }
 
     function renderWarning(preview) {
@@ -224,43 +227,38 @@
         const oldCount = (preview.oldEvents || []).length;
         let html = '';
 
-        if (oldCount > 0) {
-            html += '<div class="warning-title"><i class="fa fa-exclamation-triangle"></i> This permanently deletes all '
-                + plural(oldCount, 'current individual event', 'current individual events') + ':</div>';
-        } else {
-            html += '<div class="warning-title"><i class="fa fa-exclamation-triangle"></i> There are no current individual events to delete.</div>';
-        }
+        html += '<div class="warning-title"><i class="fa fa-exclamation-triangle"></i> '
+            + escapeHtml(oldCount > 0 ? laTn('events.wDeletesAll', oldCount) : laT('events.wNothingToDelete')) + '</div>';
 
         const lines = [];
         if (del.scoredMatches > 0) {
             const scoredEvents = del.scoredEvents || [];
-            lines.push('<b>Finals results:</b> ' + plural(del.scoredMatches, 'match', 'matches') + ' with scores in '
-                + plural(scoredEvents.length, 'event', 'events')
-                + (scoredEvents.length ? ' (' + escapeHtml(scoredEvents.join(', ')) + ')' : ''));
+            lines.push(warningLine(laT('events.wFinalsResults'),
+                laTn('events.wScoredMatches', del.scoredMatches, { events: laTn('events.nEvents', scoredEvents.length) })
+                + (scoredEvents.length ? ' (' + scoredEvents.join(', ') + ')' : '')));
         }
         if (del.scheduledMatches > 0) {
-            lines.push('<b>Finals schedule:</b> ' + plural(del.scheduledMatches, 'scheduled match', 'scheduled matches')
-                + ' (times + targets, incl. ManageFinals work)');
+            lines.push(warningLine(laT('events.wFinalsSchedule'), laTn('events.wScheduledMatches', del.scheduledMatches)));
         }
         if (del.rankedRows > 0 || del.shootOffRows > 0) {
-            let text = '<b>Event rankings + shoot-off decisions:</b> ' + plural(del.rankedRows, 'ranking row', 'ranking rows');
+            let text = laTn('events.wRankingRows', del.rankedRows);
             if (del.shootOffRows > 0) {
-                text += ', ' + plural(del.shootOffRows, 'shoot-off decision', 'shoot-off decisions');
+                text += ', ' + laTn('events.wShootOffs', del.shootOffRows);
             }
-            lines.push(text + ' (qualification scores are kept and re-ranked)');
+            lines.push(warningLine(laT('events.wRankings'), text + ' ' + laT('events.wRankingsKept')));
         }
         if (del.eliminationRows > 0) {
-            lines.push('<b>Eliminations:</b> ' + plural(del.eliminationRows, 'elimination row', 'elimination rows'));
+            lines.push(warningLine(laT('events.wEliminations'), laTn('events.wEliminationRows', del.eliminationRows)));
         }
         const elimTypeEvents = del.elimTypeEvents || [];
         if (elimTypeEvents.length > 0) {
-            lines.push('<b>Elimination/round-robin setup</b> on ' + plural(elimTypeEvents.length, 'event', 'events')
-                + ': ' + escapeHtml(elimTypeEvents.join(', ')) + ' (new events are created without it)');
+            lines.push(warningLine(laT('events.wElimSetup'),
+                laTn('events.wElimSetupEvents', elimTypeEvents.length, { events: elimTypeEvents.join(', ') })));
         }
         const collapsed = del.collapsed || [];
         if (collapsed.length > 0) {
-            lines.push('<b>Subclass / multi-event mappings:</b> ' + plural(collapsed.length, 'event', 'events')
-                + ' (' + escapeHtml(collapsed.join(', ')) + ') use subclass/extras rules or share a division+class with another event; new events map by division+class only');
+            lines.push(warningLine(laT('events.wMappings'),
+                laTn('events.wMappingsEvents', collapsed.length, { events: collapsed.join(', ') })));
         }
         if (lines.length) {
             html += '<ul>' + lines.map(function(l) { return '<li>' + l + '</li>'; }).join('') + '</ul>';
@@ -268,25 +266,25 @@
 
         const redo = [];
         if (stale.awards > 0) {
-            redo.push('award setup (refers to ' + plural(stale.awards, 'old event', 'old events') + ')');
+            redo.push(laTn('events.redoAwards', stale.awards));
         }
         if (stale.tvRules > 0) {
-            redo.push(plural(stale.tvRules, 'TV rule', 'TV rules'));
+            redo.push(laTn('events.redoTvRules', stale.tvRules));
         }
         if (stale.iskPending > 0) {
-            redo.push(plural(stale.iskPending, 'pending ISK arrow', 'pending ISK arrows'));
+            redo.push(laTn('events.redoIsk', stale.iskPending));
         }
         if (stale.hhtEvents > 0) {
-            redo.push(plural(stale.hhtEvents, 'HHT finals config row', 'HHT finals config rows'));
+            redo.push(laTn('events.redoHht', stale.hhtEvents));
         }
         if (redo.length) {
-            html += '<div class="warning-line"><b>Needs redoing afterwards:</b> ' + escapeHtml(redo.join(', ')) + '.</div>';
+            html += '<div class="warning-line">' + warningLine(laT('events.wRedo'), redo.join(', ') + '.') + '</div>';
         }
 
-        html += '<div class="warning-line"><b>Not touched:</b> archers, qualification scores, sessions, qualification targets, team events.</div>';
+        html += '<div class="warning-line">' + warningLine(laT('events.wNotTouched'), laT('events.wNotTouchedList')) + '</div>';
 
         if (preview.blocked) {
-            html += '<div class="warning-line"><b>This tournament\'s data is blocked; events cannot be changed.</b></div>';
+            html += '<div class="warning-line"><b>' + escapeHtml(laT('events.blocked')) + '</b></div>';
         }
         return html;
     }
@@ -294,9 +292,11 @@
     function renderResult(response) {
         clearPreview();
         const listUrl = ROOT_DIR + 'Final/Individual/ListEvents.php';
-        const summary = 'Created ' + plural(parseInt(response.created, 10) || 0, 'event', 'events')
-            + ', deleted ' + (parseInt(response.deleted, 10) || 0)
-            + ', placed ' + plural(parseInt(response.placed, 10) || 0, 'archer', 'archers');
+        const summary = laT('events.resultSummary', {
+            created: laTn('events.nEvents', parseInt(response.created, 10) || 0),
+            deleted: parseInt(response.deleted, 10) || 0,
+            placed: laTn('events.nArchers', parseInt(response.placed, 10) || 0)
+        });
         const warning = response.warning
             ? '<div class="result-line result-warning"><i class="fa fa-exclamation-triangle"></i> '
                 + escapeHtml(response.warning) + '</div>'
@@ -304,7 +304,7 @@
         $('#result').removeClass('hidden').html(
             '<div class="result-line"><i class="fa fa-check"></i> ' + escapeHtml(summary) + '</div>'
             + warning
-            + '<a class="btn btn-info" href="' + escapeHtml(listUrl) + '"><i class="fa fa-list"></i> Open individual events list</a>'
+            + '<a class="btn btn-info" href="' + escapeHtml(listUrl) + '"><i class="fa fa-list"></i> ' + escapeHtml(laT('events.openList')) + '</a>'
         );
         showStatus(response.warning ? summary + ' — ' + response.warning : summary, 'success');
     }

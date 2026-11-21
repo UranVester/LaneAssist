@@ -5,6 +5,7 @@
  */
 
 require_once __DIR__ . '/target-face-logic.php';
+require_once __DIR__ . '/i18n.php';
 
 /**
  * Legal TfIds per division/class. The SQL is a verbatim copy of core
@@ -203,7 +204,7 @@ function tfSetOne(int $tourId, int $enId, string $groupKey, array $ctx): array
     $current = intval($r->EnTargetFace);
     $pick = tfPickFace($ctx['legal'][$r->EnDivision][$r->EnClass] ?? [], $group['tfIds'], $current);
     if ($pick === null) {
-        return ['error' => 1, 'message' => 'Face not allowed for this archer'];
+        return ['error' => 1, 'message' => la_t('faces.notAllowed')];
     }
     if ($pick !== $current) {
         tfWriteFace($tourId, $enId, $pick);
@@ -220,7 +221,7 @@ function tfSetAll(int $tourId, array $filters, string $groupKey, int $expectedCo
 {
     $archers = tfLoadArchers($tourId, $filters, $ctx);
     if (count($archers) !== $expectedCount) {
-        return ['error' => 1, 'stale' => true, 'message' => 'View changed, reload'];
+        return ['error' => 1, 'stale' => true, 'message' => la_t('faces.viewChanged')];
     }
     try {
         $plan = tfPlanBulk($archers, $ctx['groups'], $groupKey, $ctx['legal']);

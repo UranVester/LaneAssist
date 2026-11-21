@@ -9,6 +9,7 @@
  */
 
 require_once(dirname(__FILE__, 3) . '/config.php');
+require_once(dirname(__FILE__, 2) . '/Common/i18n.php');
 header('Content-Type: application/json');
 
 if (!CheckTourSession()) {
@@ -80,14 +81,14 @@ function changeEventsApply()
     $tourId = intval($_SESSION['TourId']);
 
     if (IsBlocked(BIT_BLOCK_TOURDATA)) {
-        echo json_encode(['error' => 1, 'message' => 'This tournament\'s data is blocked; events cannot be changed.']);
+        echo json_encode(['error' => 1, 'message' => la_t('events.blocked')]);
         return;
     }
 
     $criteria = changeEventsRequestedCriteria();
     $fingerprint = (string) ($_POST['fingerprint'] ?? '');
     if ($fingerprint === '') {
-        echo json_encode(['error' => 1, 'message' => 'Preview the changes first.']);
+        echo json_encode(['error' => 1, 'message' => la_t('events.previewFirst')]);
         return;
     }
 
@@ -104,7 +105,7 @@ function changeEventsApply()
         echo json_encode([
             'error' => 1,
             'stale' => true,
-            'message' => 'Something changed since the preview — please check again.',
+            'message' => la_t('events.stale'),
             'preview' => changeEventsPreviewPayload($result['preview']),
         ]);
         return;
@@ -122,7 +123,7 @@ function changeEventsApply()
         'placed' => (int) $result['placed'],
     ];
     if (!changeEventsRebuildRanking()) {
-        $response['warning'] = 'Events replaced; ranking not rebuilt — run Make individual ranking';
+        $response['warning'] = la_t('events.rankingNotRebuilt');
     }
 
     echo json_encode($response);

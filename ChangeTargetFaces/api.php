@@ -10,6 +10,7 @@
  */
 
 require_once(dirname(__FILE__, 3) . '/config.php');
+require_once(dirname(__FILE__, 2) . '/Common/i18n.php');
 header('Content-Type: application/json');
 header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
 
@@ -30,7 +31,7 @@ if ($action === 'set' || $action === 'setAll') {
     laneAssistRequirePost();
     checkFullACL(AclParticipants, 'pEntries', AclReadWrite, false);
     if (IsBlocked(BIT_BLOCK_PARTICIPANT)) {
-        echo json_encode(['error' => 1, 'message' => 'Participants are locked for this tournament.']);
+        echo json_encode(['error' => 1, 'message' => la_t('faces.participantsLocked')]);
         exit;
     }
 }
@@ -68,9 +69,9 @@ function changeTargetFacesLoad(int $tourId): void
     $ctx = tfLoadContext($tourId);
     $reason = '';
     if (!hasFullACL(AclParticipants, 'pEntries', AclReadWrite)) {
-        $reason = 'You need participant edit access.';
+        $reason = la_t('faces.needEditAccess');
     } elseif (IsBlocked(BIT_BLOCK_PARTICIPANT)) {
-        $reason = 'Participants are locked for this tournament.';
+        $reason = la_t('faces.participantsLocked');
     }
     echo json_encode([
         'error' => 0,

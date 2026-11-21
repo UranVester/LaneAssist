@@ -19,7 +19,7 @@
                 }).get();
 
                 if (checkedValues.includes('') || checkedValues.length === 0) {
-                    $toggle.text(window.laT ? window.laT('common.all') : 'All');
+                    $toggle.text(window.laT('common.all'));
                     return;
                 }
 

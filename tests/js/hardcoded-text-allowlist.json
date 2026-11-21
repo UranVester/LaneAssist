@@ -34,14 +34,40 @@
     "Traditional",
     "Instinctive"
   ],
-  "Common/js/shared.js": [
-    "All"
-  ],
   "ManageFinals/api.php": [
     "Invalid action",
     "Invalid changes payload"
   ],
   "Common/finals-logic.php": [
     "Td"
+  ],
+  "ChangeEvents/api.php": [
+    "Invalid action",
+    "Preview failed: ",
+    "Replacing events failed, nothing was changed: ",
+    "Replacing events failed, nothing was changed."
+  ],
+  "ChangeTargetFaces/api.php": [
+    "Invalid action"
+  ],
+  "Common/events-rebuild.php": [
+    "Herre",
+    "Dame",
+    "Alle",
+    "Men",
+    "Women",
+    "Open",
+    "All",
+    "Awards",
+    "The plan creates no events; refusing to delete the current ones.",
+    "0 OR FinSetScore>0 OR FinTie>0 OR FinArrowstring",
+    "0 OR IndTieBreak"
+  ],
+  "Common/target-faces-data.php": [
+    "Unknown target face",
+    "Archer not found"
+  ],
+  "Common/target-face-logic.php": [
+    "Unknown face group: "
   ]
 }
