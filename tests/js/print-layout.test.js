@@ -172,3 +172,40 @@ test('drop zones print without their drag-and-drop chrome', () => {
     const empty = cssRule(html, '.print-empty');
     assert.ok(empty === null || !/dashed/.test(empty), 'empty spots must not draw a dashed drop box');
 });
+
+// The print popup is a new window with no LA_I18N of its own: every word on the
+// sheet must come from the translator the opener passes in.
+const { createTranslator } = require('../../Common/js/i18n.js');
+const dk = createTranslator({
+    'print.sheetTitle': 'Skivelayout - {session}',
+    'print.session': 'Session',
+    'print.layout': 'Layout',
+    'print.printed': 'Udskrevet',
+    'print.filtered': 'Filtreret',
+    'print.unapplied': 'Indeholder ændringer, der ikke er gemt endnu',
+    'print.filterDivisions': 'Divisioner: {list}',
+    'print.filterClasses': 'Klasser: {list}',
+    'print.filterTargets': 'Skiver {from}–{to}',
+    'print.finalsUnscheduled': 'Ikke planlagt',
+    'print.finalsReady': 'Udskriv',
+    'print.finalsNothing': 'Intet',
+    'print.finalsWaiting.one': 'Venter på {count} match',
+    'print.finalsWaiting.other': 'Venter på {count} matcher',
+});
+
+test('the print sheet header comes from the translator it is given', () => {
+    const html = pl.buildPrintDocument(Object.assign({}, base, {hasChanges: true, filters: 'x'}), dk);
+    assert.match(html, /<title>Skivelayout - S<\/title>/);
+    assert.match(html, /Session: S &middot; Layout: L &middot; Udskrevet: x/);
+    assert.match(html, /Filtreret: x/);
+    assert.match(html, /Indeholder ændringer, der ikke er gemt endnu/);
+    assert.doesNotMatch(html, /Printed|Includes changes/);
+});
+
+test('describeFilters and finalsPrintState use the translator they are given', () => {
+    assert.strictEqual(pl.describeFilters({divisions: ['R'], classes: ['M'], targetFrom: 3, targetTo: 4}, dk),
+        'Divisioner: R · Klasser: M · Skiver 3–4');
+    assert.strictEqual(pl.finalsPrintState({slot: 'a', printWaiting: 2}, dk).title, 'Venter på 2 matcher');
+    assert.strictEqual(pl.finalsPrintState({slot: 'a', printWaiting: 1}, dk).title, 'Venter på 1 match');
+    assert.strictEqual(pl.finalsPrintState(null, dk).title, 'Ikke planlagt');
+});

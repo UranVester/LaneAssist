@@ -1,5 +1,40 @@
 {
-  "menu.php": ["Update", "Target Faces", "Layout Playground"],
-  "Common/disclaimer.php": ["LaneAssist for IANSEO", "Mikkel Vester"],
-  "ManageTournament/api.php": ["Pragma: no-cache", "Invalid club code", "Invalid action"]
+  "menu.php": [
+    "Update",
+    "Target Faces",
+    "Layout Playground"
+  ],
+  "Common/disclaimer.php": [
+    "LaneAssist for IANSEO",
+    "Mikkel Vester"
+  ],
+  "ManageTournament/api.php": [
+    "Pragma: no-cache",
+    "Invalid club code",
+    "Invalid action"
+  ],
+  "ManageTargets/api.php": [
+    "Pragma: no-cache",
+    "Expires: 0",
+    "Invalid action",
+    "Session required",
+    "Session not found",
+    "Invalid layout",
+    "Invalid session",
+    "Invalid target for session"
+  ],
+  "ManageTargets/index.php": [
+    "SetTarget_auto.php"
+  ],
+  "Common/js/color-by.js": [
+    "Recurve",
+    "Compound",
+    "Barebow",
+    "Longbow",
+    "Traditional",
+    "Instinctive"
+  ],
+  "Common/js/shared.js": [
+    "All"
+  ]
 }

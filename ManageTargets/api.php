@@ -5,6 +5,7 @@
  */
 
 require_once(dirname(__FILE__, 3) . '/config.php');
+require_once(dirname(__FILE__, 2) . '/Common/i18n.php');
 header('Content-Type: application/json');
 header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
 header('Pragma: no-cache');
@@ -201,7 +202,7 @@ function getCurrent() {
     
     $sessionInfo = safe_fetch($sessionRs);
     
-    $detectionMethod = 'from session config'; // Track how we got the value
+    $detectionMethod = la_t('targets.detectFromSession'); // Track how we got the value
     
     // If SesAth4Target is 0 or not set, we need to get it from the Tournament table
     // This can happen with older tournaments or improperly configured sessions
@@ -212,7 +213,7 @@ function getCurrent() {
         if ($tourRow = safe_fetch($tourRs)) {
             $sessionInfo->SesAth4Target = intval($tourRow->AthTarget);
             if ($sessionInfo->SesAth4Target > 0) {
-                $detectionMethod = 'from tournament config';
+                $detectionMethod = la_t('targets.detectFromTournament');
             }
         }
         
@@ -228,7 +229,7 @@ function getCurrent() {
                 if ($maxLetter) {
                     // Convert letter to number (A=1, B=2, C=3, D=4, etc.)
                     $sessionInfo->SesAth4Target = ord($maxLetter) - ord('A') + 1;
-                    $detectionMethod = 'auto-detected from assignments';
+                    $detectionMethod = la_t('targets.detectFromAssignments');
                 }
             }
         }
@@ -236,7 +237,7 @@ function getCurrent() {
         // If still 0, default to 3 (common for 40cm targets)
         if (!$sessionInfo->SesAth4Target || $sessionInfo->SesAth4Target == 0) {
             $sessionInfo->SesAth4Target = 3;
-            $detectionMethod = 'using default value';
+            $detectionMethod = la_t('targets.detectDefault');
         }
     }
     
@@ -423,7 +424,7 @@ function validateAssignments() {
         
         $targetMap[$targetFull][] = array(
             'id' => $participantId,
-            'name' => $assignment['name'] ?? 'Unknown'
+            'name' => $assignment['name'] ?? la_t('common.unknown')
         );
     }
     
@@ -434,7 +435,7 @@ function validateAssignments() {
             $errors[] = array(
                 'type' => 'duplicate',
                 'target' => $target,
-                'message' => "Multiple participants on target $target: " . implode(', ', $names)
+                'message' => la_t('targets.duplicateOnTarget', ['target' => $target, 'names' => implode(', ', $names)])
             );
         }
     }
@@ -448,7 +449,7 @@ function validateAssignments() {
         $errors[] = array(
             'type' => 'unassigned',
             'count' => count($unassigned),
-            'message' => count($unassigned) . ' participant(s) without target assignment'
+            'message' => laPlural('targets.unassignedCount', count($unassigned))
         );
     }
 
@@ -551,7 +552,7 @@ function validateMixedDistancesOnMat($assignments, $layoutId) {
             'type' => 'distance_mix',
             'targets' => $targets,
             'profiles' => $profileKeys,
-            'message' => 'Mixed distances on the same mat (lanes ' . implode('/', $targets) . '): ' . implode(' vs ', $profileKeys)
+            'message' => la_t('targets.mixedDistances', ['lanes' => implode('/', $targets), 'profiles' => implode(' vs ', $profileKeys)])
         );
     }
 
@@ -1060,7 +1061,7 @@ function applyChanges() {
     }
 
     if (empty($changes) && !$archersPerTarget && !$hasLayoutPreferenceUpdate) {
-        respondError('No changes to apply', 'NO_CHANGES');
+        respondError(la_t('targets.noChangesToApply'), 'NO_CHANGES');
         return;
     }
     
@@ -1084,7 +1085,7 @@ function applyChanges() {
             'results' => [],
             'successCount' => 0,
             'errorCount' => 0,
-            'message' => 'Settings updated successfully'
+            'message' => la_t('targets.settingsUpdated')
         ], 'APPLY_OK');
         return;
     }
@@ -1161,14 +1162,14 @@ function applyChanges() {
             $results[] = array(
                 'participantId' => $participantId,
                 'success' => true,
-                'message' => 'Updated'
+                'message' => la_t('targets.updated')
             );
             $successCount++;
         } else {
             $results[] = array(
                 'participantId' => $participantId,
                 'success' => false,
-                'message' => 'No changes made'
+                'message' => la_t('targets.noChangesMade')
             );
         }
     }
@@ -1179,16 +1180,16 @@ function applyChanges() {
         safe_w_Commit();
     }
 
-    $message = "$successCount change(s) applied successfully";
+    $message = laPlural('targets.changesApplied', $successCount);
     if ($errorCount > 0) {
-        $message .= ", $errorCount error(s)";
+        $message .= ', ' . laPlural('targets.errorCount', $errorCount);
     }
     if ($archersPerTarget && $archersPerTarget > 0) {
-        $message .= ". Archers per target updated to $archersPerTarget";
+        $message .= '. ' . la_t('targets.archersPerTargetUpdated', ['count' => $archersPerTarget]);
     }
     if ($hasLayoutPreferenceUpdate) {
         saveTournamentLayoutPreference(intval($_SESSION['TourId']), $layoutId);
-        $message .= '. Layout preference saved';
+        $message .= '. ' . la_t('targets.layoutPreferenceSaved');
     }
     
     respondSuccess([

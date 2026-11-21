@@ -17,6 +17,14 @@ const CONVERTED = [
     'Common/js/status-logic.js',
     'Common/js/tournament-settings.js',
     'Common/disclaimer.php',
+    'ManageTargets/index.php',
+    'ManageTargets/js/app.js',
+    'ManageTargets/api.php',
+    'Common/targets-logic.php',
+    'Common/target-layout-info.php',
+    'Common/js/print-layout.js',
+    'Common/js/color-by.js',
+    'Common/js/shared.js',
 ];
 const ALLOW = JSON.parse(fs.readFileSync(path.join(__dirname, 'hardcoded-text-allowlist.json'), 'utf8'));
 
@@ -35,7 +43,7 @@ const LITERAL = /'([A-Z][a-z]+(?:[ ,.!?:…][^'\n]*)?)'|"([A-Z][a-z]+(?:[ ,.!?:�
 // One line only, so PHP comparisons (`$a > 0 ... <`) don't read as text.
 const TEXT_NODE = />[ \t]*([A-Z][a-z]{2,}[^<\n]*?|[A-Z][a-z]?[ ,.!?:…][^<\n]*?[a-z]{2,}[^<\n]*?|[(0-9][^<>\n]*?[a-z]{4,}[^<\n]*?)[ \t]*</g;
 // Hits directly inside these calls are a key or IANSEO's own get_text() word.
-const EXEMPT_CALL = /(?:get_text|la_t|la_h|laT|laPlural|laTn|define)\(\s*$/;
+const EXEMPT_CALL = /(?:(?:get_text|la_t|la_h|laT|laPlural|laTn|define)\(\s*|get_text\(\s*'[^']*',\s*)$/;
 
 function hits(rel) {
     const src = stripComments(fs.readFileSync(path.join(ROOT, rel), 'utf8'));
@@ -43,13 +51,13 @@ function hits(rel) {
     const found = [];
     const check = (text, index) => {
         if (allowed.has(text)) return;
-        if (EXEMPT_CALL.test(src.slice(Math.max(0, index - 20), index))) return;
+        if (EXEMPT_CALL.test(src.slice(Math.max(0, index - 60), index))) return;
         const line = src.slice(0, index).split('\n').length;
         found.push(`${rel}:${line} ${JSON.stringify(text)}`);
     };
     for (const m of src.matchAll(LITERAL)) check(m[1] ?? m[2] ?? m[3], m.index);
     for (const m of src.matchAll(TEXT_NODE)) {
-        if (src[m.index - 1] === '?' || src[m.index - 1] === '-' || src[m.index - 1] === '=') continue; // `?>`, `->`, `=>`
+        if (/[?\-=\s]/.test(src[m.index - 1] || '')) continue; // `?>`, `->`, `=>`, ` > ` (a comparison)
         check(m[1].trim(), m.index);
     }
     return found;

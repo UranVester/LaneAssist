@@ -9,12 +9,12 @@
 (function(root, factory) {
     'use strict';
     if (typeof module === 'object' && module.exports) {
-        module.exports = factory();
+        module.exports = factory(function() { return require('./i18n.js').englishTranslator(); });
     } else {
         root.LaneAssist = root.LaneAssist || {};
-        root.LaneAssist.printLayout = factory();
+        root.LaneAssist.printLayout = factory(function() { return { t: root.laT, tn: root.laTn }; });
     }
-}(typeof self !== 'undefined' ? self : this, function() {
+}(typeof self !== 'undefined' ? self : this, function(defaultTranslator) {
     'use strict';
 
     const PRINT_CSS = [
@@ -72,7 +72,8 @@
      * sheet covers the whole session. '' in a multiselect means "All".
      * sessionFirst + sessionCount (or sessionLast) default to the page's 1-99 inputs.
      */
-    function describeFilters(filters) {
+    function describeFilters(filters, translator) {
+        const tr = translator || defaultTranslator();
         const f = filters || {};
         const pick = function(values) {
             return (values || []).filter(function(value) { return value !== ''; });
@@ -81,10 +82,10 @@
         const divisions = pick(f.divisions);
         const classes = pick(f.classes);
         if (divisions.length) {
-            parts.push('Divisions: ' + divisions.join(', '));
+            parts.push(tr.t('print.filterDivisions', { list: divisions.join(', ') }));
         }
         if (classes.length) {
-            parts.push('Classes: ' + classes.join(', '));
+            parts.push(tr.t('print.filterClasses', { list: classes.join(', ') }));
         }
         // ManageTargets writes the session's own range into the inputs on load,
         // so only a range narrower than the session's counts as a filter.
@@ -95,28 +96,29 @@
         const from = parseInt(f.targetFrom, 10) || first;
         const to = parseInt(f.targetTo, 10) || last;
         if (from !== first || to !== last) {
-            parts.push('Targets ' + from + '\u2013' + to);
+            parts.push(tr.t('print.filterTargets', { from: from, to: to }));
         }
         return parts.join(' \u00b7 ');
     }
 
-    function buildPrintDocument(opts) {
+    function buildPrintDocument(opts, translator) {
+        const tr = translator || defaultTranslator();
         const o = opts || {};
         const links = (o.stylesheets || []).map(function(url) {
             return '<link rel="stylesheet" href="' + escapeHtml(url) + '">';
         }).join('\n');
-        const title = 'Target layout - ' + (o.session || '');
+        const title = tr.t('print.sheetTitle', { session: o.session || '' });
 
         return '<!doctype html>\n<html><head><meta charset="utf-8">' +
             '<title>' + escapeHtml(title) + '</title>\n' +
             links + '\n<style>\n' + PRINT_CSS + '\n</style></head><body>' +
             '<div class="print-header">' +
             '<h1>' + escapeHtml(o.tournament) + '</h1>' +
-            '<div class="print-meta">Session: ' + escapeHtml(o.session) +
-            ' &middot; Layout: ' + escapeHtml(o.layout) +
-            ' &middot; Printed: ' + escapeHtml(o.printedAt) + '</div>' +
-            (o.filters ? '<div class="print-filtered">Filtered: ' + escapeHtml(o.filters) + '</div>' : '') +
-            (o.hasChanges ? '<div class="print-unapplied">Includes changes not applied yet</div>' : '') +
+            '<div class="print-meta">' + escapeHtml(tr.t('print.session')) + ': ' + escapeHtml(o.session) +
+            ' &middot; ' + escapeHtml(tr.t('print.layout')) + ': ' + escapeHtml(o.layout) +
+            ' &middot; ' + escapeHtml(tr.t('print.printed')) + ': ' + escapeHtml(o.printedAt) + '</div>' +
+            (o.filters ? '<div class="print-filtered">' + escapeHtml(tr.t('print.filtered')) + ': ' + escapeHtml(o.filters) + '</div>' : '') +
+            (o.hasChanges ? '<div class="print-unapplied">' + escapeHtml(tr.t('print.unapplied')) + '</div>' : '') +
             '</div>' +
             (o.matsHtml || '') +
             (o.autoPrint === false ? '' : '<script>window.addEventListener(\'load\', function () { window.print(); });<\/script>') +
@@ -132,18 +134,19 @@
      * LiveView finals print button state for a round from the snapshot
      * (finalsRounds[] carries printReady/printWaiting from the server rule).
      */
-    function finalsPrintState(round) {
+    function finalsPrintState(round, translator) {
+        const tr = translator || defaultTranslator();
         if (!round || !round.slot) {
-            return {enabled: false, title: 'Unscheduled matches cannot be printed'};
+            return {enabled: false, title: tr.t('print.finalsUnscheduled')};
         }
         if (round.printReady) {
-            return {enabled: true, title: 'Print lane layout for this round'};
+            return {enabled: true, title: tr.t('print.finalsReady')};
         }
         const waiting = parseInt(round.printWaiting, 10) || 0;
         if (waiting === 0) {
-            return {enabled: false, title: 'Nothing to print in this round'};
+            return {enabled: false, title: tr.t('print.finalsNothing')};
         }
-        return {enabled: false, title: 'Waiting for ' + waiting + ' match' + (waiting === 1 ? '' : 'es') + ' to finish'};
+        return {enabled: false, title: tr.tn('print.finalsWaiting', waiting)};
     }
 
     function finalsPrintUrl(rootDir, slot) {

@@ -6,11 +6,16 @@
 (function($) {
     'use strict';
 
+    // Common/js/i18n.js (loaded before this file) puts the page's translator on window.
+    const laT = window.laT;
+    const laTn = window.laTn;
     const divisionMetaMap = (typeof DivisionMeta !== 'undefined' && DivisionMeta) ? DivisionMeta : {};
     const classMetaMap = (typeof ClassMeta !== 'undefined' && ClassMeta) ? ClassMeta : {};
     const ColorBy = window.LaneAssist && window.LaneAssist.colorBy;
     const colorIndex = ColorBy.createColorIndex(typeof ColorGroups !== 'undefined' ? ColorGroups : undefined);
-    const OUTDOOR_MIXED_CONFLICT_MESSAGE = 'Invalid move: 122cm and 80cm faces cannot be mixed on the same mat/lane.';
+    // The print popup has no catalog of its own; its text comes from this page.
+    const PAGE_TRANSLATOR = { t: laT, tn: laTn };
+    const OUTDOOR_MIXED_CONFLICT_MESSAGE = laT('targets.outdoorMixConflict');
 
     // Application state
     const state = {
@@ -249,7 +254,7 @@
                         state.newArchersPerTarget = null;
                         state.hasChanges = countChanges() > 0;
                         
-                        const msg = 'Layout changed. Archers per target restored to original value (' + layoutArchers + '). All participants unassigned.';
+                        const msg = laT('targets.layoutChangedRestored', { count: layoutArchers });
                         showStatus(msg, 'info');
                         
                         renderParticipants();
@@ -271,8 +276,7 @@
                         state.newArchersPerTarget = parseInt(layoutArchers, 10);
                         state.hasChanges = true;
                         
-                        const msg = 'Layout changed. Archers per target will be updated to ' + layoutArchers + '. ' +
-                                  'All participants unassigned. Click "Apply Changes" to save.';
+                        const msg = laT('targets.layoutChangedUpdated', { count: layoutArchers });
                         showStatus(msg, 'info');
                         
                         renderParticipants();
@@ -403,11 +407,11 @@
         const event = buildEventPattern();
 
         if (!session) {
-            showError('Please select a session');
+            showError(laT('targets.selectSession'));
             return;
         }
 
-        showStatus('Loading data...', 'info');
+        showStatus(laT('targets.loadingData'), 'info');
 
         $.ajax({
             url: wwwdir + 'Modules/Custom/LaneAssist/ManageTargets/api.php',
@@ -422,7 +426,7 @@
             },
             success: function(response) {
                 if (response.error) {
-                    showError(response.message || 'Error loading data');
+                    showError(response.message || laT('targets.loadError'));
                     return;
                 }
 
@@ -475,17 +479,17 @@
                 updateSessionInfoDisplay();
                 
                 // Show status info on page
-                let statusMsg = 'Session loaded. Archers per target: ' + state.sessionInfo.SesAth4Target;
+                let statusMsg = laT('targets.sessionLoaded', { count: state.sessionInfo.SesAth4Target });
                 if (state.sessionInfo.detectionMethod) {
                     statusMsg += ' (' + state.sessionInfo.detectionMethod + ')';
                 }
                 if (targetDiameter) {
-                    statusMsg += ', Target size: ' + targetDiameter + 'cm';
+                    statusMsg += ', ' + laT('targets.targetSize', { size: targetDiameter });
                 } else if (has80cm && has122cm) {
-                    statusMsg += ', Target size: mixed outdoor (80cm + 122cm)';
+                    statusMsg += ', ' + laT('targets.targetSizeMixedOutdoor');
                 }
-                statusMsg += ', Available targets: ' + state.availableTargets.length +
-                           ', Participants: ' + state.participants.length;
+                statusMsg += ', ' + laT('targets.availableTargets', { count: state.availableTargets.length }) +
+                           ', ' + laT('targets.participantsCount', { count: state.participants.length });
                 showStatus(statusMsg, 'info');
 
                 // Filter layouts and auto-select based on target profile
@@ -532,8 +536,11 @@
                     }
                 }
                 
-                showStatus('Data loaded: ' + response.participants.length + ' participants, targets ' + 
-                    (state.sessionInfo.loadedFrom || '') + '-' + (state.sessionInfo.loadedTo || ''), 'success');
+                showStatus(laT('targets.dataLoaded', {
+                    count: response.participants.length,
+                    from: state.sessionInfo.loadedFrom || '',
+                    to: state.sessionInfo.loadedTo || ''
+                }), 'success');
 
                 updateViewportLayout();
 
@@ -543,7 +550,7 @@
                 }
             },
             error: function() {
-                showError('Failed to load data from server');
+                showError(laT('targets.loadFailed'));
             }
         });
     }
@@ -563,7 +570,7 @@
         $('#unassigned-count').text(unassigned.length);
 
         if (unassigned.length === 0) {
-            $unassignedList.append('<div class="empty-message">All participants assigned</div>');
+            $unassignedList.append($('<div class="empty-message"></div>').text(laT('targets.allAssigned')));
             return;
         }
 
@@ -587,7 +594,7 @@
         $targetsGrid.removeClass('fallback-stacked');
 
         if (state.availableTargets.length === 0) {
-            $targetsGrid.append('<div class="empty-message">No targets available</div>');
+            $targetsGrid.append($('<div class="empty-message"></div>').text(laT('targets.noTargets')));
             return;
         }
 
@@ -794,7 +801,7 @@
     function buildDistanceMixErrorMessage(lanes, profiles) {
         const laneList = Array.isArray(lanes) ? lanes.map(function(item) { return String(item); }) : [];
         const profileList = Array.isArray(profiles) ? profiles.map(function(item) { return String(item); }) : [];
-        return 'Mixed distances on the same mat (lanes ' + laneList.join('/') + '): ' + profileList.join(' vs ');
+        return laT('targets.mixedDistances', { lanes: laneList.join('/'), profiles: profileList.join(' vs ') });
     }
 
     function getOutdoorPositionClass(letter, expectedCount) {
@@ -845,9 +852,9 @@
         const lane = parseInt(laneNumber, 10);
         const alignment = alignClass || '';
         return $('<span class="lane-control ' + alignment + '">' +
-            '<span class="lane-drop-zone before" data-reference-lane="' + lane + '" data-drop-position="before" title="Move before"></span>' +
-            '<span class="lane-chip" data-lane="' + lane + '" title="Drag lane">' + lane + '</span>' +
-            '<span class="lane-drop-zone after" data-reference-lane="' + lane + '" data-drop-position="after" title="Move after"></span>' +
+            '<span class="lane-drop-zone before" data-reference-lane="' + lane + '" data-drop-position="before" title="' + escapeHtml(laT('targets.moveBefore')) + '"></span>' +
+            '<span class="lane-chip" data-lane="' + lane + '" title="' + escapeHtml(laT('targets.dragLane')) + '">' + lane + '</span>' +
+            '<span class="lane-drop-zone after" data-reference-lane="' + lane + '" data-drop-position="after" title="' + escapeHtml(laT('targets.moveAfter')) + '"></span>' +
             '</span>');
     }
 
@@ -1069,12 +1076,12 @@
             for (let rightIndex = leftIndex + 1; rightIndex < letters.length; rightIndex++) {
                 const left = letters[leftIndex];
                 const right = letters[rightIndex];
-                html += '<button type="button" class="targets-action-item action-swap-letters" data-letter-a="' + left + '" data-letter-b="' + right + '">Swap ' + left + ' &amp; ' + right + ' archers</button>';
+                html += '<button type="button" class="targets-action-item action-swap-letters" data-letter-a="' + left + '" data-letter-b="' + right + '">' + escapeHtml(laT('targets.swapLetters', { a: left, b: right })) + '</button>';
             }
         }
 
         if (!html) {
-            html = '<div class="targets-action-item submenu-label">No swap actions available</div>';
+            html = '<div class="targets-action-item submenu-label">' + escapeHtml(laT('targets.noSwapActions')) + '</div>';
         }
 
         $container.html(html);
@@ -1098,7 +1105,7 @@
         assignedLanes.sort(function(a, b) { return a - b; });
 
         if (assignedLanes.length < 2) {
-            showStatus('Not enough assigned lanes to flip', 'info');
+            showStatus(laT('targets.notEnoughLanes'), 'info');
             return;
         }
 
@@ -1108,7 +1115,7 @@
         }
 
         applyLaneRemap(laneMap);
-        showStatus('Assigned lanes flipped', 'success');
+        showStatus(laT('targets.lanesFlipped'), 'success');
     }
 
     function swapAssignedArchers(letterA, letterB) {
@@ -1139,7 +1146,7 @@
         });
 
         if (!changed) {
-            showStatus('No assigned archers to swap for ' + left + ' and ' + right, 'info');
+            showStatus(laT('targets.noArchersToSwap', { a: left, b: right }), 'info');
             return;
         }
 
@@ -1148,7 +1155,7 @@
         renderTargets();
         updateUI();
         validateCurrentState();
-        showStatus('Swapped ' + left + ' and ' + right + ' archers', 'success');
+        showStatus(laT('targets.swapped', { a: left, b: right }), 'success');
     }
 
     /**
@@ -1165,7 +1172,7 @@
             const rightLane = targetNums[targetNums.length - 1];
             const $triangleHeader = $('<div class="mat-label triangle-label"></div>');
             $triangleHeader.append(createLaneControl(leftLane, 'lane-left'));
-            $triangleHeader.append('<span class="mat-center">Mat ' + matLabel + '<span class="mat-distance">' + escapeHtml(matDistanceText) + '</span></span>');
+            $triangleHeader.append('<span class="mat-center">' + escapeHtml(laT('targets.mat', { mat: matLabel })) + '<span class="mat-distance">' + escapeHtml(matDistanceText) + '</span></span>');
             $triangleHeader.append(createLaneControl(rightLane, 'lane-right'));
             $mat.append($triangleHeader);
         } else {
@@ -1479,7 +1486,7 @@
             $dropZone.append('<div class="dropzone-letter">' + target.letter + '</div>');
 
             if (target.synthetic) {
-                $dropZone.attr('title', 'Pending position from layout change. You can assign now; it will be created on apply.');
+                $dropZone.attr('title', laT('targets.pendingPosition'));
             }
 
             if (item.participant) {
@@ -1520,14 +1527,14 @@
 
         const profileList = Object.keys(profiles).sort();
         if (profileList.length === 0) {
-            return 'Distance: -';
+            return laT('targets.distanceLabel', { distance: '-' });
         }
 
         if (profileList.length === 1) {
-            return 'Distance: ' + profileList[0];
+            return laT('targets.distanceLabel', { distance: profileList[0] });
         }
 
-        return 'Distance: mixed (' + profileList.join(' vs ') + ')';
+        return laT('targets.distanceMixed', { profiles: profileList.join(' vs ') });
     }
 
     /**
@@ -1565,7 +1572,7 @@
         
         // Mark synthetic targets (positions that don't exist in data yet)
         if (target.synthetic) {
-            $dropZone.attr('title', 'Pending position from layout change. You can assign now; it will be created on apply.');
+            $dropZone.attr('title', laT('targets.pendingPosition'));
         }
         
         if (assignedParticipant) {
@@ -1686,7 +1693,7 @@
 
         function normalize(value, fallback) {
             const text = (value || '').toString().trim();
-            return text !== '' ? text : (fallback || 'Unknown');
+            return text !== '' ? text : (fallback || laT('common.unknown'));
         }
 
         if (mode === 'none') {
@@ -1694,35 +1701,35 @@
         }
 
         if (mode === 'country') {
-            const key = normalize(participant.country || participant.countryName, 'No Country');
-            const label = 'Country/Club: ' + normalize(participant.countryName || participant.country, 'No Country');
+            const key = normalize(participant.country || participant.countryName, laT('colorBy.noCountry'));
+            const label = laT('colorBy.country') + ': ' + normalize(participant.countryName || participant.country, laT('colorBy.noCountry'));
             return { group: 'country', key: key, label: label };
         }
 
         if (mode === 'bow') {
             const divisionInfo = getDivisionInfo(participant.division);
             const bowType = ColorBy.extractBowType(divisionInfo.description, divisionInfo.id);
-            return { group: 'bow', key: bowType, label: 'Bow: ' + bowType };
+            return { group: 'bow', key: bowType, label: laT('colorBy.bow') + ': ' + bowType };
         }
 
         if (mode === 'class') {
             const classInfo = getClassInfo(participant.class);
-            return { group: 'class', key: classInfo.id, label: 'Class: ' + classInfo.label };
+            return { group: 'class', key: classInfo.id, label: laT('colorBy.class') + ': ' + classInfo.label };
         }
 
         if (mode === 'category') {
-            const key = normalize((participant.division || '').toString().trim() + (participant.class || '').toString().trim(), 'No Category');
-            return { group: 'category', key: key, label: 'Category: ' + key };
+            const key = normalize((participant.division || '').toString().trim() + (participant.class || '').toString().trim(), laT('colorBy.noCategory'));
+            return { group: 'category', key: key, label: laT('colorBy.category') + ': ' + key };
         }
 
         if (mode === 'distance') {
-            const key = normalize(participant.distanceProfile, 'No Distance');
-            return { group: 'distance', key: key, label: 'Distance: ' + key };
+            const key = normalize(participant.distanceProfile, laT('colorBy.noDistance'));
+            return { group: 'distance', key: key, label: laT('colorBy.distance') + ': ' + key };
         }
 
         if (mode === 'target-face') {
-            const key = normalize(participant.targetFaceId, 'No Face');
-            return { group: 'target-face', key: key, label: 'Target face: ' + key };
+            const key = normalize(participant.targetFaceId, laT('colorBy.noFace'));
+            return { group: 'target-face', key: key, label: laT('colorBy.targetFace') + ': ' + key };
         }
 
         return null;
@@ -1745,7 +1752,7 @@
             return { id: id, label: id };
         }
 
-        return { id: 'No Class', label: 'No Class' };
+        return { id: laT('colorBy.noClass'), label: laT('colorBy.noClass') };
     }
 
     function getDivisionInfo(divisionId) {
@@ -1760,7 +1767,7 @@
             };
         }
 
-        return { id: 'No Division', description: 'No Division' };
+        return { id: laT('colorBy.noDivision'), description: laT('colorBy.noDivision') };
     }
 
     /**
@@ -1886,7 +1893,7 @@
                     renderTargets();
                     updateUI();
                     validateCurrentState();
-                    showStatus('Swapped participants', 'info');
+                    showStatus(laT('targets.swappedParticipants'), 'info');
                     return;
                 }
 
@@ -2011,7 +2018,7 @@
 
         if (errors.length === 1) {
             $headerSummary.addClass('single-line');
-            $headerSummaryText.text(errors[0].message || '1 issue');
+            $headerSummaryText.text(errors[0].message || laTn('targets.issues', 1));
             $('#targets-validation-toggle').attr('aria-expanded', 'false');
             $headerSummary.removeClass('open');
             $headerDetails.hide();
@@ -2025,14 +2032,14 @@
             });
 
             const summaryParts = [];
-            if (typeCounts.duplicate) summaryParts.push(typeCounts.duplicate + ' duplicate');
-            if (typeCounts.unassigned) summaryParts.push(typeCounts.unassigned + ' unassigned');
-            if (typeCounts.distance_mix) summaryParts.push(typeCounts.distance_mix + ' distance mix');
+            if (typeCounts.duplicate) summaryParts.push(laT('targets.issueDuplicate', { count: typeCounts.duplicate }));
+            if (typeCounts.unassigned) summaryParts.push(laT('targets.issueUnassigned', { count: typeCounts.unassigned }));
+            if (typeCounts.distance_mix) summaryParts.push(laT('targets.issueDistanceMix', { count: typeCounts.distance_mix }));
             const summaryText = summaryParts.length > 0
                 ? summaryParts.join(', ')
-                : (errors.length + ' issues');
+                : laTn('targets.issues', errors.length);
 
-            $headerSummaryText.text(summaryText + ' (click to view)');
+            $headerSummaryText.text(laT('targets.clickToView', { summary: summaryText }));
         }
 
         $headerSummary.attr('data-error-count', String(errors.length)).show();
@@ -2103,12 +2110,12 @@
                             }
 
                             if ($zone.find('.distance-corner-badge').length === 0) {
-                                $zone.append('<div class="distance-corner-badge" title="Distance: ' + escapeHtml(distanceText) + '">' + escapeHtml(distanceText) + '</div>');
+                                $zone.append('<div class="distance-corner-badge" title="' + escapeHtml(laT('targets.distanceLabel', { distance: distanceText })) + '">' + escapeHtml(distanceText) + '</div>');
                             }
                         } else {
                             $zone.addClass('has-error');
                             if ($zone.find('.distance-corner-badge').length === 0) {
-                                $zone.append('<div class="distance-corner-badge" title="Distance: ' + escapeHtml(distanceText) + '">' + escapeHtml(distanceText) + '</div>');
+                                $zone.append('<div class="distance-corner-badge" title="' + escapeHtml(laT('targets.distanceLabel', { distance: distanceText })) + '">' + escapeHtml(distanceText) + '</div>');
                             }
                         }
                     });
@@ -2137,7 +2144,7 @@
      * Reset to original assignments
      */
     function resetToOriginal() {
-        if (!state.hasChanges && !confirm('Reset all assignments to server state?')) {
+        if (!state.hasChanges && !confirm(laT('targets.confirmReset'))) {
             return;
         }
 
@@ -2159,7 +2166,7 @@
         renderTargets();
         updateUI();
         validateCurrentState();
-        showStatus('Reset to original assignments', 'info');
+        showStatus(laT('targets.resetDone'), 'info');
     }
 
     /**
@@ -2181,7 +2188,7 @@
         renderTargets();
         updateUI();
         validateCurrentState();
-        showStatus('All participants unassigned', 'info');
+        showStatus(laT('targets.allUnassigned'), 'info');
     }
 
     /**
@@ -2201,14 +2208,14 @@
         const packGroups = $('#pack-groups').is(':checked') ? 1 : 0;
 
         if (!session) {
-            showError('Please select a session');
+            showError(laT('targets.selectSession'));
             return;
         }
         
         // Update state to match
         state.currentSession = session;
 
-        showStatus('Running auto assignment...', 'info');
+        showStatus(laT('targets.runningAuto'), 'info');
         $('#auto-assign-options').slideUp();
 
         // Prepare request data
@@ -2249,7 +2256,7 @@
             data: requestData,
             success: function(response) {
                 if (response.error) {
-                    showError(response.message || 'Error running auto assign');
+                    showError(response.message || laT('targets.autoError'));
                     return;
                 }
 
@@ -2277,10 +2284,10 @@
                 renderTargets();
                 updateUI();
                 validateCurrentState();
-                showStatus('Auto assignment preview complete (' + response.participantCount + ' participants assigned)', 'success');
+                showStatus(laT('targets.autoDone', { count: response.participantCount }), 'success');
             },
             error: function() {
-                showError('Failed to run auto assignment');
+                showError(laT('targets.autoFailed'));
             }
         });
     }
@@ -2291,11 +2298,11 @@
     function applyChanges() {
         refreshHasChangesFlag();
         if (!state.hasChanges) {
-            showError('No changes to apply');
+            showError(laT('targets.noChangesToApply'));
             return;
         }
 
-        if (!confirm('Apply all changes to the database?')) {
+        if (!confirm(laT('targets.confirmApply'))) {
             return;
         }
 
@@ -2320,11 +2327,11 @@
         const hasArchersChange = !!(state.newArchersPerTarget && state.newArchersPerTarget !== state.originalArchersPerTarget);
 
         if (changes.length === 0 && !hasArchersChange && !layoutPreferenceChanged) {
-            showError('No changes detected');
+            showError(laT('targets.noChangesDetected'));
             return;
         }
 
-        showStatus('Applying ' + changes.length + ' change(s)...', 'info');
+        showStatus(laTn('targets.applying', changes.length), 'info');
         
         // Prepare request data
         const requestData = {
@@ -2346,11 +2353,11 @@
             data: requestData,
             success: function(response) {
                 if (response.error) {
-                    showError(response.message || 'Error applying changes');
+                    showError(response.message || laT('targets.applyError'));
                     return;
                 }
 
-                showStatus(response.message || 'Changes applied successfully', 'success');
+                showStatus(response.message || laT('targets.applied'), 'success');
 
                 // Update original state
                 state.originalAssignments = JSON.parse(JSON.stringify(state.assignments));
@@ -2375,7 +2382,7 @@
                 updateUI();
             },
             error: function() {
-                showError('Failed to apply changes');
+                showError(laT('targets.applyFailed'));
             }
         });
     }
@@ -2426,17 +2433,17 @@
         // Show/hide changes summary
         if (state.hasChanges) {
             const changeCount = countChanges();
-            let summaryHtml = '<div class="line-1">Will save: ' + changeCount + ' assignment change' + (changeCount === 1 ? '' : 's') + '</div>';
+            let summaryHtml = '<div class="line-1">' + escapeHtml(laTn('targets.willSave', changeCount)) + '</div>';
 
             const pendingArchers = state.newArchersPerTarget !== null ? parseInt(state.newArchersPerTarget, 10) : null;
             const originalArchers = parseInt(state.originalArchersPerTarget, 10);
             if (pendingArchers && originalArchers && pendingArchers !== originalArchers) {
-                summaryHtml += '<div class="line-2">Archers/target: ' + originalArchers + ' → ' + pendingArchers + '</div>';
+                summaryHtml += '<div class="line-2">' + escapeHtml(laT('targets.archersChange', { from: originalArchers, to: pendingArchers })) + '</div>';
             }
 
             if (hasPendingLayoutPreferenceChange()) {
-                const currentLayoutLabel = ($('#layout-select option:selected').text() || 'No layout').trim();
-                summaryHtml += '<div class="line-2">Layout preference: ' + escapeHtml(currentLayoutLabel) + '</div>';
+                const currentLayoutLabel = ($('#layout-select option:selected').text() || laT('layout.none')).trim();
+                summaryHtml += '<div class="line-2">' + escapeHtml(laT('targets.layoutPreference', { layout: currentLayoutLabel })) + '</div>';
             }
 
             $('#changes-summary').show();
@@ -2468,7 +2475,7 @@
         // Open synchronously inside the click so popup blockers allow it
         const win = targetWin || window.open('', '_blank');
         if (!win) {
-            showError('Allow pop-ups to print the layout');
+            showError(laT('targets.allowPopups'));
             return;
         }
 
@@ -2497,19 +2504,19 @@
                     layout: ($('#layout-select option:selected').text() || '').trim(),
                     printedAt: new Date().toLocaleString(),
                     autoPrint: false,
-                    matsHtml: '<p>No mats with archers to print</p>'
-                }));
+                    matsHtml: '<p>' + escapeHtml(laT('targets.nothingToPrint')) + '</p>'
+                }, PAGE_TRANSLATOR));
                 win.document.close();
                 return;
             }
             win.close();
-            showError('No mats with archers to print');
+            showError(laT('targets.nothingToPrint'));
             return;
         }
 
         $tmp.find('.target-drop-zone[data-target-full]').each(function() {
             if (rules.spotStatus($(this).attr('data-target-full'), assigned) === 'empty') {
-                $(this).addClass('print-empty').append('<div class="print-empty-label">No archer</div>');
+                $(this).addClass('print-empty').append($('<div class="print-empty-label"></div>').text(laT('print.noArcher')));
             }
         });
         $tmp.find('.participant-card, .lane-drop-zone').remove();
@@ -2549,10 +2556,10 @@
                 targetTo: $('#target-to').val(),
                 sessionFirst: state.sessionInfo ? state.sessionInfo.firstTarget : undefined,
                 sessionCount: state.sessionInfo ? state.sessionInfo.targetCount : undefined
-            }),
+            }, PAGE_TRANSLATOR),
             stylesheets: stylesheets,
             matsHtml: '<div class="' + $tmp.attr('class') + '">' + $tmp.html() + '</div>'
-        }));
+        }, PAGE_TRANSLATOR));
         win.document.close();
     }
 

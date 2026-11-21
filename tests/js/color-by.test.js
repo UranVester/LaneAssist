@@ -106,3 +106,9 @@ test('extractBowType falls back to Unknown Bow when nothing is available', () =>
     assert.strictEqual(colorBy.extractBowType('', ''), 'Unknown Bow');
     assert.strictEqual(colorBy.extractBowType(null, null), 'Unknown Bow');
 });
+
+test('the unknown-bow fallback label comes from the translator it is given', () => {
+    const { createTranslator } = require('../../Common/js/i18n.js');
+    const dk = createTranslator({ 'colorBy.unknownBow': 'Ukendt bue' });
+    assert.strictEqual(colorBy.extractBowType('', '', dk), 'Ukendt bue');
+});

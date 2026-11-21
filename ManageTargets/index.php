@@ -5,16 +5,17 @@
  */
 
 require_once(dirname(__FILE__, 3) . '/config.php');
+require_once(dirname(__FILE__, 2) . '/Common/i18n.php');
 
 // Check if a tournament is selected
 if (!CheckTourSession()) {
     // No tournament selected - show friendly message
-    $PAGE_TITLE = 'Manage Targets - No Tournament Selected';
+    $PAGE_TITLE = la_t('targets.pageTitle') . ' - ' . la_t('common.noTournamentSelected');
     include('Common/Templates/head.php');
     echo '<div style="padding: 20px; text-align: center;">';
-    echo '<h2>No Competition Selected</h2>';
-    echo '<p>Please select a tournament first:</p>';
-    echo '<p><a href="' . $CFG->ROOT_DIR . 'index.php" class="btn btn-primary">Select Tournament</a></p>';
+    echo '<h2>' . la_h('common.noTournamentSelected') . '</h2>';
+    echo '<p>' . la_h('common.selectTournamentFirst') . '</p>';
+    echo '<p><a href="' . $CFG->ROOT_DIR . 'index.php" class="btn btn-primary">' . la_h('common.selectTournament') . '</a></p>';
     echo '</div>';
     include(dirname(__FILE__, 2) . '/Common/disclaimer.php');
     include('Common/Templates/tail.php');
@@ -26,7 +27,7 @@ require_once('Common/Fun_Sessions.inc.php');
 require_once(dirname(__FILE__, 2) . '/Common/color-logic.php');
 
 // Prepare page variables
-$PAGE_TITLE = 'Manage Targets - Interactive';
+$PAGE_TITLE = la_t('targets.pageTitle');
 $IncludeJquery = true;
 $IncludeFA = true;
 
@@ -85,74 +86,74 @@ foreach ($classes as $cls) {
 $targetLayouts = array(
     array(
         'id' => 'layout_60cm_3_abc',
-        'name' => '60cm ABC (3 archers, 2 lanes/mat)',
+        'name' => la_t('layout.abc60'),
         'archersPerLane' => 3,
         'targetSize' => '60cm',
         'targetsPerMat' => 2,
         'lanesPerMat' => 2,
         'positions' => array('A', 'B', 'C'),
-        'description' => '1 shared 60cm target per lane, 2 lanes per mat, ABC on each lane'
+        'description' => la_t('layout.abc60Desc')
     ),
     array(
         'id' => 'layout_40cm_6_triangle',
-        'name' => '40cm Triangle (3 archers, 6 targets/mat)',
+        'name' => la_t('layout.triangle40'),
         'archersPerLane' => 3,
         'targetSize' => '40cm',
         'targetsPerMat' => 6,
         'lanesPerMat' => 2,
         'positions' => array('A', 'B', 'C'),
-        'description' => '2 lanes per mat. Odd lane: A top-left, B top-middle, C bottom-left. Even lane: A top-right, B bottom-middle, C bottom-right'
+        'description' => la_t('layout.triangle40Desc')
     ),
     array(
         'id' => 'layout_60cm_4_split',
-        'name' => '60cm Split (4 archers, 2 targets/mat)',
+        'name' => la_t('layout.split60'),
         'archersPerLane' => 4,
         'targetSize' => '60cm',
         'targetsPerMat' => 2,
         'lanesPerMat' => 1,
         'positions' => array('A', 'B', 'C', 'D'),
-        'description' => '1 lane per mat, AC on left target, BD on right target'
+        'description' => la_t('layout.split60Desc')
     ),
     array(
         'id' => 'layout_40cm_4_quad',
-        'name' => '40cm Quad (4 archers, 4 targets/mat)',
+        'name' => la_t('layout.quad40'),
         'archersPerLane' => 4,
         'targetSize' => '40cm',
         'targetsPerMat' => 4,
         'lanesPerMat' => 1,
         'positions' => array('A', 'B', 'C', 'D'),
-        'description' => '1 lane per mat. A top-left, B top-right, C bottom-left, D bottom-right'
+        'description' => la_t('layout.quad40Desc')
     ),
     // Outdoor mixed layouts: 122cm shared face per lane, 80cm per archer face
     array(
         'id' => 'layout_outdoor_mixed_2',
-        'name' => 'Outdoor Mixed (2 archers)',
+        'name' => la_t('layout.outdoorMixed2'),
         'archersPerLane' => 2,
         'targetSize' => 'mixed',
         'targetsPerMat' => 2,
         'lanesPerMat' => 1,
         'positions' => array('A', 'B'),
-        'description' => '1 lane per mat. 122cm target is drawn once and shared, 80cm targets are drawn per archer. Slots: A/B top.'
+        'description' => la_t('layout.outdoorMixed2Desc')
     ),
     array(
         'id' => 'layout_outdoor_mixed_3',
-        'name' => 'Outdoor Mixed (3 archers)',
+        'name' => la_t('layout.outdoorMixed3'),
         'archersPerLane' => 3,
         'targetSize' => 'mixed',
         'targetsPerMat' => 3,
         'lanesPerMat' => 1,
         'positions' => array('A', 'B', 'C'),
-        'description' => '1 lane per mat. 122cm target is drawn once and shared, 80cm targets are drawn per archer. Slots: B top middle, A bottom left, C bottom right.'
+        'description' => la_t('layout.outdoorMixed3Desc')
     ),
     array(
         'id' => 'layout_outdoor_mixed_4',
-        'name' => 'Outdoor Mixed (4 archers)',
+        'name' => la_t('layout.outdoorMixed4'),
         'archersPerLane' => 4,
         'targetSize' => 'mixed',
         'targetsPerMat' => 4,
         'lanesPerMat' => 1,
         'positions' => array('A', 'B', 'C', 'D'),
-        'description' => '1 lane per mat. 122cm target is drawn once and shared, 80cm targets are drawn per archer. Slots: A/B top, C/D bottom.'
+        'description' => la_t('layout.outdoorMixed4Desc')
     )
 );
 
@@ -169,6 +170,8 @@ $JS_SCRIPT = array(
         var ColorGroups = ' . json_encode(laLoadColorGroups(intval($_SESSION['TourId'])), JSON_HEX_TAG | JSON_HEX_AMP) . ';
         var TargetLayouts = ' . json_encode($targetLayouts, JSON_HEX_TAG | JSON_HEX_AMP) . ';
     </script>',
+    laJsCatalogScript(['common.', 'targets.', 'print.', 'colorBy.', 'layout.']),
+    '<script src="' . $CFG->ROOT_DIR . 'Modules/Custom/LaneAssist/Common/js/i18n.js?v=' . filemtime(dirname(__DIR__) . '/Common/js/i18n.js') . '"></script>',
     '<link href="' . $CFG->ROOT_DIR . 'Modules/Custom/LaneAssist/Common/css/shared.css?v=' . filemtime(dirname(__DIR__) . '/Common/css/shared.css') . '" rel="stylesheet" type="text/css">',
     '<link href="' . $CFG->ROOT_DIR . 'Modules/Custom/LaneAssist/ManageTargets/css/style.css?v=' . filemtime(dirname(__DIR__) . '/ManageTargets/css/style.css') . '" rel="stylesheet" type="text/css">',
     '<script src="' . $CFG->ROOT_DIR . 'Common/jQuery/jquery-ui.min.js"></script>',
@@ -187,7 +190,7 @@ include('Common/Templates/head.php');
     <div class="toolbar">
         <div class="toolbar-top">
             <div class="toolbar-left">
-                <h2>Manage Targets - Interactive</h2>
+                <h2><?php echo la_h('targets.pageTitle'); ?></h2>
             </div>
             <div class="toolbar-center">
                 <div class="filter-group inline">
@@ -204,17 +207,17 @@ include('Common/Templates/head.php');
                     </select>
                 </div>
                 <div class="filter-group inline session-info">
-                    <span class="info-label">Archers/Target:</span>
+                    <span class="info-label"><?php echo la_h('targets.archersPerTarget'); ?></span>
                     <span id="archers-per-target" class="info-value">-</span>
                 </div>
                 <div class="filter-group inline session-info">
-                    <span class="info-label">Targets/Session:</span>
+                    <span class="info-label"><?php echo la_h('targets.targetsPerSession'); ?></span>
                     <span id="targets-per-session" class="info-value">-</span>
                 </div>
                 <div class="filter-group inline">
-                    <label for="layout-select">Layout:</label>
-                    <select id="layout-select" name="layout" title="Select how targets are arranged on mats">
-                        <option value="layout_fallback_stacked">No layout</option>
+                    <label for="layout-select"><?php echo la_h('targets.layoutLabel'); ?></label>
+                    <select id="layout-select" name="layout" title="<?php echo la_h('targets.layoutHelp'); ?>">
+                        <option value="layout_fallback_stacked"><?php echo la_h('layout.none'); ?></option>
                         <?php foreach ($targetLayouts as $layout): ?>
                             <option value="<?php echo htmlspecialchars($layout['id'], ENT_QUOTES, 'UTF-8'); ?>"
                                     data-archers="<?php echo intval($layout['archersPerLane']); ?>"
@@ -233,35 +236,35 @@ include('Common/Templates/head.php');
                 <div id="changes-summary" class="changes-summary compact" style="display:none;">
                     <div id="changes-list"></div>
                 </div>
-                <button id="btn-reset" class="btn btn-warning" title="Reset to current saved assignments">
-                    <i class="fa fa-undo"></i> Reset
+                <button id="btn-reset" class="btn btn-warning" title="<?php echo la_h('targets.resetHelp'); ?>">
+                    <i class="fa fa-undo"></i> <?php echo la_h('targets.reset'); ?>
                 </button>
-                <button id="btn-apply" class="btn btn-success" title="Apply all changes to database">
-                    <i class="fa fa-save"></i> Apply Changes
+                <button id="btn-apply" class="btn btn-success" title="<?php echo la_h('targets.applyHelp'); ?>">
+                    <i class="fa fa-save"></i> <?php echo la_h('targets.applyChanges'); ?>
                 </button>
             </div>
         </div>
 
         <div class="toolbar-controls-row">
             <div class="filter-group inline compact-control">
-                <label for="color-by">Color by:</label>
+                <label for="color-by"><?php echo la_h('colorBy.label'); ?></label>
                 <select id="color-by" name="color-by">
-                    <option value="none">None</option>
-                    <option value="country">Country/Club</option>
-                    <option value="bow">Bow</option>
-                    <option value="class">Class</option>
-                    <option value="category">Category</option>
-                    <option value="distance">Distance</option>
-                    <option value="target-face">Target face</option>
+                    <option value="none"><?php echo la_h('colorBy.none'); ?></option>
+                    <option value="country"><?php echo la_h('colorBy.country'); ?></option>
+                    <option value="bow"><?php echo la_h('colorBy.bow'); ?></option>
+                    <option value="class"><?php echo la_h('colorBy.class'); ?></option>
+                    <option value="category"><?php echo la_h('colorBy.category'); ?></option>
+                    <option value="distance"><?php echo la_h('colorBy.distance'); ?></option>
+                    <option value="target-face"><?php echo la_h('colorBy.targetFace'); ?></option>
                 </select>
             </div>
 
             <div class="toolbar-popup-trigger">
                 <button type="button" id="btn-filters" class="btn btn-secondary" aria-expanded="false">
-                    <i class="fa fa-filter"></i> Filters <span id="filters-active-count" class="active-filter-indicator" style="display:none;">0</span>
+                    <i class="fa fa-filter"></i> <?php echo la_h('targets.filters'); ?> <span id="filters-active-count" class="active-filter-indicator" style="display:none;">0</span>
                 </button>
                 <div id="filters-popup" class="filters-popup-panel" style="display:none;">
-                    <h3>Participant Filters</h3>
+                    <h3><?php echo la_h('targets.participantFilters'); ?></h3>
                     <div class="filters-popup-grid">
                         <div class="filter-group">
                             <label for="division-filter"><?php echo get_text('Division'); ?>:</label>
@@ -326,47 +329,44 @@ include('Common/Templates/head.php');
 
             <div class="auto-assign-trigger">
             <button id="btn-auto-assign" class="btn btn-info">
-                <i class="fa fa-magic"></i> Auto Assign
+                <i class="fa fa-magic"></i> <?php echo la_h('targets.autoAssign'); ?>
             </button>
 
             <!-- Auto Assign Options (popup) -->
             <div id="auto-assign-options" class="auto-assign-panel" style="display:none;">
                 <h3 class="auto-assign-title">
-                    <span>Auto Assignment Options</span>
-                    <button type="button" id="auto-assign-info-toggle" class="auto-assign-info-toggle" aria-label="How auto assign works" aria-expanded="false">
+                    <span><?php echo la_h('targets.autoOptions'); ?></span>
+                    <button type="button" id="auto-assign-info-toggle" class="auto-assign-info-toggle" aria-label="<?php echo la_h('targets.autoHowLabel'); ?>" aria-expanded="false">
                         <span aria-hidden="true">i</span>
                     </button>
                     <div id="auto-assign-info-tooltip" class="auto-assign-info-tooltip" style="display:none;">
-                        <strong>How this auto assign works</strong>
-                        <p>
-                            This uses the same core logic as the original IANSEO auto-assignment routine
-                            (<code>SetTarget_auto.php</code> behavior), adapted to this interactive preview.
-                        </p>
+                        <strong><?php echo la_h('targets.autoHowTitle'); ?></strong>
+                        <p><?php echo la_h('targets.autoHowIntro'); ?> (<code>SetTarget_auto.php</code>)</p>
                         <ul>
-                            <li>Builds target slots for the selected session and target range.</li>
-                            <li>Groups archers by target-face/distance profile and optional division/class splits.</li>
-                            <li><strong>Mix faces of the same size</strong>: groups by face size instead of face, so e.g. compound and recurve 40cm faces share mats. Distances never mix.</li>
+                            <li><?php echo la_h('targets.autoHowSlots'); ?></li>
+                            <li><?php echo la_h('targets.autoHowGroups'); ?></li>
+                            <li><strong><?php echo la_h('targets.mixSameSize'); ?></strong>: <?php echo la_h('targets.autoHowMix'); ?></li>
                             <li>
-                                Draw modes (same behavior as original auto):
+                                <?php echo la_h('targets.autoHowDrawModes'); ?>
                                 <ul>
-                                    <li><strong>Normal</strong>: standard forward fill through available slots.</li>
-                                    <li><strong>Field 3D</strong>: uses stepped target progression (original field stepping).</li>
-                                    <li><strong>ORIS</strong>: alternates group direction in zig-zag style to spread countries/groups.</li>
-                                    <li><strong>ORIS 2</strong>: ORIS variant with the original offset/letter stepping used by original auto.</li>
+                                    <li><strong><?php echo get_text('DrawNormal', 'Tournament'); ?></strong>: <?php echo la_h('targets.autoHowNormal'); ?></li>
+                                    <li><strong><?php echo get_text('DrawField3D', 'Tournament'); ?></strong>: <?php echo la_h('targets.autoHowField'); ?></li>
+                                    <li><strong><?php echo get_text('DrawOris', 'Tournament'); ?></strong>: <?php echo la_h('targets.autoHowOris'); ?></li>
+                                    <li><strong><?php echo get_text('DrawOris', 'Tournament'); ?> 2</strong>: <?php echo la_h('targets.autoHowOris2'); ?></li>
                                 </ul>
                             </li>
-                            <li>Respects occupied targets and "Exclude assigned" based on your current unsaved grid state.</li>
-                            <li>Returns a preview only; nothing is written to the database until you click Apply Changes.</li>
+                            <li><?php echo la_h('targets.autoHowRespects', ['exclude' => get_text('TargetAssExclude', 'Tournament')]); ?></li>
+                            <li><?php echo la_h('targets.autoHowPreview'); ?></li>
                         </ul>
                     </div>
                 </h3>
                 <div class="auto-options-grid">
                     <div class="option-group range-group">
-                        <label for="target-from"><?php echo get_text('From', 'Tournament'); ?> Target:</label>
+                        <label for="target-from"><?php echo la_h('targets.fromTarget'); ?></label>
                         <input type="number" id="target-from" name="target-from" placeholder="1" value="1" min="1">
                     </div>
                     <div class="option-group range-group">
-                        <label for="target-to"><?php echo get_text('To', 'Tournament'); ?> Target:</label>
+                        <label for="target-to"><?php echo la_h('targets.toTarget'); ?></label>
                         <input type="number" id="target-to" name="target-to" placeholder="99" value="99" min="1">
                     </div>
                     <div class="option-group">
@@ -391,9 +391,9 @@ include('Common/Templates/head.php');
                         </label>
                     </div>
                     <div class="option-group">
-                        <label title="Faces of the same size share mats, e.g. 40cm full, triple and compound triple">
+                        <label title="<?php echo la_h('targets.mixSameSizeHelp'); ?>">
                             <input type="checkbox" id="mix-same-size-faces" name="mix-same-size-faces">
-                            Mix faces of the same size
+                            <?php echo la_h('targets.mixSameSize'); ?>
                         </label>
                     </div>
                     <div class="option-group">
@@ -405,21 +405,21 @@ include('Common/Templates/head.php');
                     <div class="option-group">
                         <label>
                             <input type="checkbox" id="pack-groups" name="pack-groups">
-                            Pack groups (experimental)
+                            <?php echo la_h('targets.packGroups'); ?>
                         </label>
                     </div>
                 </div>
                 <div class="option-actions">
                     <button id="btn-run-auto" class="btn btn-success">
-                        <i class="fa fa-play"></i> Run Auto Assign
+                        <i class="fa fa-play"></i> <?php echo la_h('targets.runAutoAssign'); ?>
                     </button>
-                    <button id="btn-cancel-auto" class="btn btn-secondary">Cancel</button>
+                    <button id="btn-cancel-auto" class="btn btn-secondary"><?php echo la_h('common.cancel'); ?></button>
                 </div>
             </div>
             </div>
 
-            <button id="btn-unassign-all" class="btn btn-warning" title="Remove all target assignments">
-                <i class="fa fa-times-circle"></i> Unassign All
+            <button id="btn-unassign-all" class="btn btn-warning" title="<?php echo la_h('targets.unassignAllHelp'); ?>">
+                <i class="fa fa-times-circle"></i> <?php echo la_h('targets.unassignAll'); ?>
             </button>
         </div>
     </div>
@@ -428,9 +428,9 @@ include('Common/Templates/head.php');
     <div id="no-session-notice" class="no-session-notice" style="<?php echo $sessionPreselected ? 'display:none;' : ''; ?>">
         <i class="fa fa-info-circle"></i>
         <?php if (count($sessions) === 0): ?>
-            No qualification sessions are configured for this tournament yet.
+            <?php echo la_h('targets.noSessions'); ?>
         <?php else: ?>
-            Select a session above to load participants and targets.
+            <?php echo la_h('targets.selectSessionAbove'); ?>
         <?php endif; ?>
     </div>
 
@@ -439,38 +439,38 @@ include('Common/Templates/head.php');
         <!-- Unassigned Participants Pool -->
         <div class="unassigned-pool">
             <h3>
-                <i class="fa fa-users"></i> Unassigned Participants
+                <i class="fa fa-users"></i> <?php echo la_h('targets.unassignedParticipants'); ?>
                 <span id="unassigned-count" class="badge">0</span>
             </h3>
             <div id="unassigned-list" class="participant-list droppable-zone">
-                <div class="loading-message">Select a session to load participants</div>
+                <div class="loading-message"><?php echo la_h('targets.selectSessionParticipants'); ?></div>
             </div>
         </div>
 
         <!-- Target Grid -->
         <div class="targets-area">
             <h3>
-                <span class="targets-title-main"><i class="fa fa-bullseye"></i> Target Assignments <span id="assigned-count" class="badge">0</span></span>
+                <span class="targets-title-main"><i class="fa fa-bullseye"></i> <?php echo la_h('targets.targetAssignments'); ?> <span id="assigned-count" class="badge">0</span></span>
                 <div class="targets-header-tools">
                     <div id="targets-validation-summary" class="targets-validation-summary" style="display:none;" data-error-count="0">
                         <button type="button" id="targets-validation-toggle" class="targets-validation-toggle" aria-expanded="false">
                             <i class="fa fa-exclamation-triangle"></i>
-                            <span id="targets-validation-text">Validation issues</span>
+                            <span id="targets-validation-text"><?php echo la_h('targets.validationIssues'); ?></span>
                             <i class="fa fa-chevron-down toggle-icon"></i>
                         </button>
                         <div id="targets-validation-details" class="targets-validation-details" style="display:none;"></div>
                     </div>
-                    <button type="button" id="btn-print-layout" class="targets-actions-toggle" title="Print layout" aria-label="Print layout" disabled>
+                    <button type="button" id="btn-print-layout" class="targets-actions-toggle" title="<?php echo la_h('targets.printLayout'); ?>" aria-label="<?php echo la_h('targets.printLayout'); ?>" disabled>
                         <i class="fa fa-print"></i>
                     </button>
                     <div class="targets-actions-menu" id="targets-actions-menu">
-                        <button type="button" id="targets-actions-toggle" class="targets-actions-toggle" title="Actions" aria-label="Actions">
+                        <button type="button" id="targets-actions-toggle" class="targets-actions-toggle" title="<?php echo la_h('targets.actions'); ?>" aria-label="<?php echo la_h('targets.actions'); ?>">
                             <i class="fa fa-ellipsis-v"></i>
                         </button>
                         <div class="targets-actions-dropdown" id="targets-actions-dropdown">
-                            <button type="button" class="targets-action-item" id="action-flip-lanes">Flip assigned lanes</button>
+                            <button type="button" class="targets-action-item" id="action-flip-lanes"><?php echo la_h('targets.flipLanes'); ?></button>
                             <div class="targets-action-submenu">
-                                <div class="targets-action-item submenu-label">Swap archers</div>
+                                <div class="targets-action-item submenu-label"><?php echo la_h('targets.swapArchers'); ?></div>
                                 <div id="swap-archers-items"></div>
                             </div>
                         </div>
@@ -478,7 +478,7 @@ include('Common/Templates/head.php');
                 </div>
             </h3>
             <div id="targets-grid" class="targets-grid">
-                <div class="loading-message">Select a session to load targets</div>
+                <div class="loading-message"><?php echo la_h('targets.selectSessionTargets'); ?></div>
             </div>
         </div>
     </div>

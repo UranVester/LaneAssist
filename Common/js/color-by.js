@@ -10,12 +10,12 @@
 (function(root, factory) {
     'use strict';
     if (typeof module === 'object' && module.exports) {
-        module.exports = factory();
+        module.exports = factory(function() { return require('./i18n.js').englishTranslator(); });
     } else {
         root.LaneAssist = root.LaneAssist || {};
-        root.LaneAssist.colorBy = factory();
+        root.LaneAssist.colorBy = factory(function() { return { t: root.laT, tn: root.laTn }; });
     }
-}(typeof self !== 'undefined' ? self : this, function() {
+}(typeof self !== 'undefined' ? self : this, function(defaultTranslator) {
     'use strict';
 
     function hashString(text) {
@@ -59,7 +59,7 @@
         { token: 'instinctive', label: 'Instinctive' }
     ];
 
-    function extractBowType(divisionDescription, fallbackId) {
+    function extractBowType(divisionDescription, fallbackId, translator) {
         const text = (divisionDescription || '').toString().trim();
         const lower = text.toLowerCase();
 
@@ -77,7 +77,7 @@
         }
 
         const code = (fallbackId || '').toString().trim();
-        return code || 'Unknown Bow';
+        return code || (translator || defaultTranslator()).t('colorBy.unknownBow');
     }
 
     function normalizeKey(key) {
