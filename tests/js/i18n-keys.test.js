@@ -101,3 +101,23 @@ test('each page sends the browser every catalog prefix its scripts use', () => {
     const problems = pageCoverage();
     assert.deepStrictEqual(problems, [], '\n' + problems.join('\n'));
 });
+
+// A script that looks text up needs Common/js/i18n.js (and the page's catalog) loaded first.
+test('pages load i18n.js and their catalog before any script that uses laT', () => {
+    const problems = [];
+    for (const file of sourceFiles(ROOT).filter((f) => f.endsWith('.php'))) {
+        const src = fs.readFileSync(file, 'utf8');
+        const scripts = [...src.matchAll(/Modules\/Custom\/LaneAssist\/([\w\/.-]+\.js)/g)].map((m) => ({ src: m[1], at: m.index }));
+        const i18n = scripts.find((s) => s.src === 'Common/js/i18n.js');
+        const catalogAt = src.indexOf('laJsCatalogScript(');
+        for (const s of scripts) {
+            if (s.src === 'Common/js/i18n.js') continue;
+            const js = fs.readFileSync(path.join(ROOT, s.src), 'utf8');
+            if (!/\blaTn?\(|window\.laT\b/.test(js)) continue;
+            if (!i18n || i18n.at > s.at || catalogAt === -1 || catalogAt > s.at) {
+                problems.push(`${path.relative(ROOT, file)} loads ${s.src} without i18n.js + laJsCatalogScript() before it`);
+            }
+        }
+    }
+    assert.deepStrictEqual(problems, [], '\n' + problems.join('\n'));
+});
