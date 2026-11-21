@@ -2969,7 +2969,7 @@
         if (key === null && divisions.length === 0 && classes.length === 0) {
             return null;
         }
-        return { group: mode, key: key, label: label + (key === null ? laT('colorBy.mixed') : key) };
+        return { group: mode, key: key, label: label + (key === null ? laT('colorBy.mixed') : (mode === 'bow' ? ColorBy.bowLabel(key) : key)) };
     }
 
     let activeDropGrid = null;

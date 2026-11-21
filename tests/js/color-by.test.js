@@ -112,3 +112,23 @@ test('the unknown-bow fallback label comes from the translator it is given', () 
     const dk = createTranslator({ 'colorBy.unknownBow': 'Ukendt bue' });
     assert.strictEqual(colorBy.extractBowType('', '', dk), 'Ukendt bue');
 });
+
+test('bowLabel translates known bow types for display only, keeping unknown ones', () => {
+    const { createTranslator } = require('../../Common/js/i18n.js');
+    const dk = createTranslator({ 'colorBy.bowLongbow': 'Langbue', 'colorBy.bowBarebow': 'Barbue' });
+    assert.strictEqual(colorBy.bowLabel('Longbow', dk), 'Langbue');
+    assert.strictEqual(colorBy.bowLabel('Barebow', dk), 'Barbue');
+    assert.strictEqual(colorBy.bowLabel('Historical', dk), 'Historical');
+    // The color key stays the English token, so colors match across pages and languages.
+    assert.strictEqual(colorBy.extractBowType('Langbue Senior', 'L'), 'Langbue');
+    assert.strictEqual(colorBy.extractBowType('Longbow Men', 'L'), 'Longbow');
+});
+
+test('LiveView keeps its own "No Club" fallback for club-less archers', () => {
+    const fs = require('fs');
+    const path = require('path');
+    const { englishTranslator } = require('../../Common/js/i18n.js');
+    const app = fs.readFileSync(path.join(__dirname, '..', '..', 'LiveView', 'js', 'app.js'), 'utf8');
+    assert.match(app, /normalizeColorValue\(entity\.club, laT\('colorBy\.noClub'\)\)/);
+    assert.strictEqual(englishTranslator().t('colorBy.noClub'), 'No Club');
+});

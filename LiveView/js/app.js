@@ -57,14 +57,14 @@
         if (!mode || mode === 'none') return null;
 
         if (mode === 'country') {
-            var club = normalizeColorValue(entity.club, laT('colorBy.noCountry'));
+            var club = normalizeColorValue(entity.club, laT('colorBy.noClub'));
             return { group: 'country', key: club, label: laT('colorBy.country') + ': ' + club };
         }
 
         if (mode === 'bow') {
             var divisionInfo = getDivisionInfo(entity.division);
             var bowType = ColorBy.extractBowType(divisionInfo.description, divisionInfo.id);
-            return { group: 'bow', key: bowType, label: laT('colorBy.bow') + ': ' + bowType };
+            return { group: 'bow', key: bowType, label: laT('colorBy.bow') + ': ' + ColorBy.bowLabel(bowType, TRANSLATOR) };
         }
 
         if (mode === 'class') {

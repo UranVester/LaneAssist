@@ -1709,7 +1709,7 @@
         if (mode === 'bow') {
             const divisionInfo = getDivisionInfo(participant.division);
             const bowType = ColorBy.extractBowType(divisionInfo.description, divisionInfo.id);
-            return { group: 'bow', key: bowType, label: laT('colorBy.bow') + ': ' + bowType };
+            return { group: 'bow', key: bowType, label: laT('colorBy.bow') + ': ' + ColorBy.bowLabel(bowType) };
         }
 
         if (mode === 'class') {

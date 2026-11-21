@@ -59,6 +59,21 @@
         { token: 'instinctive', label: 'Instinctive' }
     ];
 
+    // Display text for a bow type. The type itself (the English token) stays the
+    // color key, so the same bow keeps its color on every page and in every language.
+    function bowLabel(bowType, translator) {
+        const tr = translator || defaultTranslator();
+        const known = {
+            Recurve: tr.t('colorBy.bowRecurve'),
+            Compound: tr.t('colorBy.bowCompound'),
+            Barebow: tr.t('colorBy.bowBarebow'),
+            Longbow: tr.t('colorBy.bowLongbow'),
+            Traditional: tr.t('colorBy.bowTraditional'),
+            Instinctive: tr.t('colorBy.bowInstinctive')
+        };
+        return Object.prototype.hasOwnProperty.call(known, bowType) ? known[bowType] : bowType;
+    }
+
     function extractBowType(divisionDescription, fallbackId, translator) {
         const text = (divisionDescription || '').toString().trim();
         const lower = text.toLowerCase();
@@ -157,6 +172,7 @@
         paletteAt: paletteAt,
         createColorIndex: createColorIndex,
         keyForMulti: keyForMulti,
-        extractBowType: extractBowType
+        extractBowType: extractBowType,
+        bowLabel: bowLabel
     };
 }));

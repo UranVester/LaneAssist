@@ -669,4 +669,13 @@ return [
     'live.pbTitle' => 'Personlig rekord {score} ved {competition}',
     'live.pbTitleUnknown' => 'Personlig rekord {score} (stævnets navn ukendt)',
     'live.newPb' => 'Ny personlig rekord',
+
+    // Color by bow names, shown only (Common/js/color-by.js bowLabel)
+    'colorBy.noClub' => 'Ingen klub',
+    'colorBy.bowRecurve' => 'Recurve',
+    'colorBy.bowCompound' => 'Compound',
+    'colorBy.bowBarebow' => 'Barbue',
+    'colorBy.bowLongbow' => 'Langbue',
+    'colorBy.bowTraditional' => 'Traditionel',
+    'colorBy.bowInstinctive' => 'Instinktiv',
 ];

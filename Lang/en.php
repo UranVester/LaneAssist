@@ -669,4 +669,13 @@ return [
     'live.pbTitle' => 'Personal best {score} at {competition}',
     'live.pbTitleUnknown' => 'Personal best {score} (competition name unavailable)',
     'live.newPb' => 'New personal best',
+
+    // Color by bow names, shown only (Common/js/color-by.js bowLabel)
+    'colorBy.noClub' => 'No Club',
+    'colorBy.bowRecurve' => 'Recurve',
+    'colorBy.bowCompound' => 'Compound',
+    'colorBy.bowBarebow' => 'Barebow',
+    'colorBy.bowLongbow' => 'Longbow',
+    'colorBy.bowTraditional' => 'Traditional',
+    'colorBy.bowInstinctive' => 'Instinctive',
 ];
