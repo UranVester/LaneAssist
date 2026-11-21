@@ -294,15 +294,7 @@
         var html = matches.map(function(match) {
             var sides = match.sides.map(function(side) {
                 var winner = side.winLose || side.tie === 2;
-                var scores;
-                if (match.matchMode) {
-                    var sets = (side.setPoints || []).slice(0, 5).map(function(points, index) {
-                        return '<span class="set-point"><small>S' + (index + 1) + '</small><b>' + (points === null ? '-' : escapeHtml(points)) + '</b></span>';
-                    }).join('');
-                    scores = '<div class="final-scores set-system"><div class="set-points">' + sets + '</div><span class="set-score"><small>Sets</small><b>' + side.setScore + '</b></span></div>';
-                } else {
-                    scores = '<div class="final-scores"><span><small>Total</small><b>' + side.score + '</b></span></div>';
-                }
+                var scores = window.LaneAssist.finalScores.render(match, side);
                 var colorAttrs = colorByAttrs(side, match);
                 return '<div class="final-side' + (winner ? ' winner' : '') + '"><div class="final-side-name' + colorAttrs.classAttr + '"' + colorAttrs.styleAttr + colorAttrs.titleAttr + '><strong>' + escapeHtml(side.name || 'Awaiting opponent') + '</strong><small>' + side.completedEnds + ' ends reported</small></div>' + scores + '</div>';
             }).join('');

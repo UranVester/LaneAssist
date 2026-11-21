@@ -77,7 +77,7 @@
 .score-pair small, .score-pair b, .final-scores small, .final-scores b { display: block; }
 .score-pair b, .final-scores b { font-size: 18px; }
 .final-scores.set-system { align-items: center; gap: 8px; }
-.set-points { display: grid; grid-template-columns: repeat(5, 28px); gap: 2px; }
+.set-points { display: grid; grid-template-columns: repeat(var(--final-columns, 5), 28px); gap: 2px; }
 .set-point { min-width: 0 !important; padding: 2px 1px; border-left: 1px solid var(--live-line); text-align: center; }
 .set-point:first-child { border-left: 0; }
 .set-point small { font-size: 9px; }

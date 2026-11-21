@@ -356,7 +356,7 @@ function loadFinalSides($teamEvent) {
             'score' => intval($row->Score), 'setScore' => intval($row->SetScore),
             'setPoints' => laneAssistFinalSetPoints($row->ArrowString, $row->ArrowsPerEnd, function($arrow) {
                 return DecodeFromLetter($arrow);
-            }),
+            }, max(1, intval($row->TotalEnds))),
             'arrowString' => rtrim((string)$row->ArrowString), 'winLose' => intval($row->WinLose),
             'tie' => intval($row->Tie),
             'club' => trim((string)$row->Club), 'division' => trim((string)$row->Division),

@@ -50,6 +50,7 @@ $scriptVersion = filemtime(__DIR__ . '/js/app.js');
 $badgeRenderVersion = filemtime(dirname(__DIR__) . '/Common/js/badge-render.js');
 $colorByVersion = filemtime(dirname(__DIR__) . '/Common/js/color-by.js');
 $printLayoutVersion = filemtime(dirname(__DIR__) . '/Common/js/print-layout.js');
+$finalScoresVersion = filemtime(dirname(__DIR__) . '/Common/js/final-scores.js');
 $JS_SCRIPT = [
     '<script>var ROOT_DIR=' . json_encode($CFG->ROOT_DIR, JSON_HEX_TAG | JSON_HEX_AMP) . ';
         var DivisionMeta = ' . json_encode($divisionMeta, JSON_HEX_TAG | JSON_HEX_AMP) . ';
@@ -63,6 +64,8 @@ $JS_SCRIPT = [
         . $colorByVersion . '"></script>',
     '<script src="' . $CFG->ROOT_DIR . 'Modules/Custom/LaneAssist/Common/js/print-layout.js?v='
         . $printLayoutVersion . '"></script>',
+    '<script src="' . $CFG->ROOT_DIR . 'Modules/Custom/LaneAssist/Common/js/final-scores.js?v='
+        . $finalScoresVersion . '"></script>',
     '<script src="' . $CFG->ROOT_DIR . 'Modules/Custom/LaneAssist/LiveView/js/app.js?v=' . $scriptVersion . '"></script>',
 ];
 

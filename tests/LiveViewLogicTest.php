@@ -62,6 +62,16 @@ final class LiveViewLogicTest extends TestCase
         $this->assertSame([null, null, null, null, null], laneAssistFinalSetPoints('', 3, $decode));
     }
 
+    public function testFinalSetPointsFollowTheEventsEndCount(): void
+    {
+        $decode = static function(string $arrow): int {
+            return $arrow === 'X' ? 10 : intval($arrow);
+        };
+
+        // Team matches are 4 ends of 6 arrows; a fixed 5 left a dead fifth column.
+        $this->assertSame([60, 54, null, null], laneAssistFinalSetPoints('XXXXXX999999', 6, $decode, 4));
+    }
+
     public function testQualificationLagUsesMostCommonEndCount(): void
     {
         $result = laneAssistMarkQualificationLag([
