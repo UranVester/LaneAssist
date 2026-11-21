@@ -160,3 +160,24 @@ function fpBuildLanes(array $roundSides, array $sidesByEvent): array
     }
     return ['lanes' => $lanes, 'unassigned' => $unassigned];
 }
+
+/**
+ * The face to hang for one side: the archer's own chosen face (Entries.EnTargetFace)
+ * when there is one, else the event's finals face (team sides, unplaced sides, or an
+ * archer whose face record has nothing for distance 1).
+ *
+ * @param array $eventFace ['id' => int TarId, 'size' => int cm]
+ * @param array|null $archerFace same shape, or null when no archer is resolved
+ * @return array ['id' => int, 'size' => int]
+ */
+function fpSideFace(array $eventFace, ?array $archerFace): array
+{
+    if ($archerFace === null || intval($archerFace['id'] ?? 0) <= 0) {
+        return ['id' => intval($eventFace['id'] ?? 0), 'size' => intval($eventFace['size'] ?? 0)];
+    }
+    $size = intval($archerFace['size'] ?? 0);
+    return [
+        'id' => intval($archerFace['id']),
+        'size' => $size > 0 ? $size : intval($eventFace['size'] ?? 0),
+    ];
+}

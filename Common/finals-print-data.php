@@ -31,6 +31,20 @@ function fpFaceImageUrl(int $tarId): string
     return '';
 }
 
+/** Translated Targets.TarDescr for a face id, cached per request. */
+function fpFaceName(int $tarId): string
+{
+    static $names = null;
+    if ($names === null) {
+        $names = [];
+        $rs = safe_r_sql("SELECT TarId, TarDescr FROM Targets");
+        while ($row = safe_fetch($rs)) {
+            $names[intval($row->TarId)] = (string)$row->TarDescr;
+        }
+    }
+    return !empty($names[$tarId]) ? get_text($names[$tarId]) : '';
+}
+
 /**
  * Side rows for every match scheduled at $slot (individual and team).
  * A 00:00:00 slot also matches a NULL time, as LiveView builds slots that way.
@@ -48,11 +62,14 @@ function fpLoadRoundSides(string $slot): array
     $sql = "SELECT fs.FSTeamEvent TeamEvent, fs.FSEvent EventCode, fs.FSMatchNo MatchNo,
                 fs.FSTarget Target, fs.FSLetter Letter, gr.GrPhase Phase,
                 ev.EvEventName EventName, ev.EvFinalTargetType FaceId, ev.EvTargetSize FaceSize,
-                ev.EvDistance Distance, tar.TarDescr FaceName
+                ev.EvDistance Distance, tf.TfT1 ArcherFaceId, tf.TfW1 ArcherFaceSize
             FROM FinSchedule fs
             INNER JOIN Grids gr ON gr.GrMatchNo=fs.FSMatchNo
             INNER JOIN Events ev ON ev.EvTournament=fs.FSTournament AND ev.EvCode=fs.FSEvent AND ev.EvTeamEvent=fs.FSTeamEvent
-            LEFT JOIN Targets tar ON tar.TarId=ev.EvFinalTargetType
+            LEFT JOIN Finals fin ON fs.FSTeamEvent=0 AND fin.FinTournament=fs.FSTournament
+                AND fin.FinEvent=fs.FSEvent AND fin.FinMatchNo=fs.FSMatchNo AND fin.FinAthlete>0
+            LEFT JOIN Entries en ON en.EnId=fin.FinAthlete AND en.EnTournament=fs.FSTournament
+            LEFT JOIN TargetFaces tf ON tf.TfTournament=en.EnTournament AND tf.TfId=en.EnTargetFace
             WHERE fs.FSTournament=" . StrSafe_DB($_SESSION['TourId']) . "
               AND fs.FSScheduledDate=" . StrSafe_DB($date) . "
               AND $timeSql
@@ -61,6 +78,11 @@ function fpLoadRoundSides(string $slot): array
     $rows = [];
     $rs = safe_r_sql($sql);
     while ($row = safe_fetch($rs)) {
+        // The archer's own face (same TfT1 ManageTargets shows), else the event's finals face
+        $face = fpSideFace(
+            ['id' => intval($row->FaceId), 'size' => intval($row->FaceSize)],
+            $row->ArcherFaceId !== null ? ['id' => intval($row->ArcherFaceId), 'size' => intval($row->ArcherFaceSize)] : null
+        );
         $rows[] = [
             'teamEvent' => intval($row->TeamEvent),
             'event' => (string)$row->EventCode,
@@ -69,8 +91,8 @@ function fpLoadRoundSides(string $slot): array
             'matchNo' => intval($row->MatchNo),
             'target' => (string)$row->Target,
             'letter' => (string)$row->Letter,
-            'faceUrl' => fpFaceImageUrl(intval($row->FaceId)),
-            'faceLabel' => laFaceLabel($row->FaceName ? get_text($row->FaceName) : '', $row->FaceSize),
+            'faceUrl' => fpFaceImageUrl($face['id']),
+            'faceLabel' => laFaceLabel(fpFaceName($face['id']), $face['size']),
             'distance' => (string)$row->Distance,
         ];
     }

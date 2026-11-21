@@ -203,4 +203,28 @@ final class FinalsPrintLogicTest extends TestCase
             ['0|12R' => 0]
         )['ready']);
     }
+
+    // Bug: finals print showed the event's finals face, not the face each archer chose
+    // (e.g. a DK archer on Trippel got the event's Full Face).
+    public function testSideFaceUsesTheArchersChosenFace(): void
+    {
+        $this->assertSame(['id' => 98, 'size' => 40],
+            fpSideFace(['id' => 2, 'size' => 40], ['id' => 98, 'size' => 40]));
+        $this->assertSame(['id' => 4, 'size' => 60],
+            fpSideFace(['id' => 2, 'size' => 40], ['id' => 4, 'size' => 60]));
+    }
+
+    public function testSideFaceFallsBackToTheEventFace(): void
+    {
+        $event = ['id' => 2, 'size' => 40];
+        // team side, unplaced side, or an archer whose face record has no face for distance 1
+        $this->assertSame($event, fpSideFace($event, null));
+        $this->assertSame($event, fpSideFace($event, ['id' => 0, 'size' => 0]));
+    }
+
+    public function testSideFaceKeepsTheEventSizeWhenTheArchersSizeIsMissing(): void
+    {
+        $this->assertSame(['id' => 98, 'size' => 40],
+            fpSideFace(['id' => 2, 'size' => 40], ['id' => 98, 'size' => 0]));
+    }
 }
