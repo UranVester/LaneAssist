@@ -2523,14 +2523,18 @@
                 return;
             }
             $el.prepend($('<img class="print-face-img" alt="">').attr('src', new URL(match[1], window.location.href).href));
-            const faceId = $el.attr('data-target-face-id');
-            const face = faceId ? state.targetFaces[faceId] : null;
-            if (face && face.description) {
-                $el.append('<div class="print-face-caption">' + escapeHtml(face.description) + '</div>');
-            }
         });
 
         const base = new URL(ROOT_DIR, window.location.href).href;
+        // Reuse the page's own cache-busted links so the sheet never prints with a stale
+        // stylesheet. Read them before document.open(): in print mode win is this window.
+        const stylesheets = [
+            'Modules/Custom/LaneAssist/Common/css/shared.css',
+            'Modules/Custom/LaneAssist/ManageTargets/css/style.css'
+        ].map(function(rel) {
+            const link = document.querySelector('link[href*="' + rel + '"]');
+            return link ? link.href : base + rel;
+        });
         win.document.open();
         win.document.write(rules.buildPrintDocument({
             tournament: typeof TournamentName !== 'undefined' ? TournamentName : '',
@@ -2546,10 +2550,7 @@
                 sessionFirst: state.sessionInfo ? state.sessionInfo.firstTarget : undefined,
                 sessionCount: state.sessionInfo ? state.sessionInfo.targetCount : undefined
             }),
-            stylesheets: [
-                base + 'Modules/Custom/LaneAssist/Common/css/shared.css',
-                base + 'Modules/Custom/LaneAssist/ManageTargets/css/style.css'
-            ],
+            stylesheets: stylesheets,
             matsHtml: '<div class="' + $tmp.attr('class') + '">' + $tmp.html() + '</div>'
         }));
         win.document.close();

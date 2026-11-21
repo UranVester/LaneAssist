@@ -31,13 +31,20 @@
         '.targets-grid.fallback-stacked { grid-template-columns: repeat(4, 170px) !important; }',
         '.target-mat { max-width: none !important; box-shadow: none !important; }',
         '.mat-label { font-size: 11px; padding: 3px; margin-bottom: 6px; }',
+        // 40cm triangle: three face columns per mat. At four mats per row the faces were
+        // too small, and they could not shrink anyway: the screen min-height (150px) plus
+        // aspect-ratio pinned each face to ~74px, so a mat spilled into its neighbour.
+        '.targets-grid:has(.layout-layout_40cm_6_triangle) { grid-template-columns: repeat(3, minmax(0, 1fr)) !important; }',
+        '.target-faces.layout-layout_40cm_6_triangle { grid-template-columns: repeat(3, minmax(0, 1fr)); grid-template-rows: auto auto; min-height: 0; width: 100%; margin-left: 0; margin-right: 0; }',
+        '.target-faces.layout-layout_40cm_6_triangle .target-face { box-sizing: border-box; margin: 0; }',
+        '.mat-label.triangle-label { column-gap: 4px; }',
+        '.mat-label.triangle-label .lane-chip { min-width: 0; height: 22px; padding: 0 6px; font-size: 12px; }',
         '.target-mat, .target-box { break-inside: avoid; page-break-inside: avoid; }',
         '.print-face-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; z-index: 0; }',
         // The sheet reuses the screen render; drop zones are drag-and-drop UI, not part of the setup
         '.target-drop-zone { z-index: 1; }',
         '.target-drop-zone, .target-drop-zone.droppable-zone, .target-drop-zone.synthetic-target { border: none !important; background: transparent !important; box-shadow: none !important; opacity: 1 !important; }',
         '.print-empty-label { font-size: 11px; font-style: italic; color: #555; text-align: center; background: rgba(255, 255, 255, 0.85); padding: 1px 4px; border-radius: 3px; }',
-        '.print-face-caption { position: absolute; left: 0; right: 0; bottom: 0; z-index: 2; font-size: 10px; text-align: center; background: rgba(255, 255, 255, 0.85); }',
         '* { -webkit-print-color-adjust: exact; print-color-adjust: exact; }'
     ].join('\n');
 

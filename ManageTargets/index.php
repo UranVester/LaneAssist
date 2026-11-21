@@ -169,14 +169,14 @@ $JS_SCRIPT = array(
         var ColorGroups = ' . json_encode(laLoadColorGroups(intval($_SESSION['TourId'])), JSON_HEX_TAG | JSON_HEX_AMP) . ';
         var TargetLayouts = ' . json_encode($targetLayouts, JSON_HEX_TAG | JSON_HEX_AMP) . ';
     </script>',
-    '<link href="' . $CFG->ROOT_DIR . 'Modules/Custom/LaneAssist/Common/css/shared.css" rel="stylesheet" type="text/css">',
-    '<link href="' . $CFG->ROOT_DIR . 'Modules/Custom/LaneAssist/ManageTargets/css/style.css" rel="stylesheet" type="text/css">',
+    '<link href="' . $CFG->ROOT_DIR . 'Modules/Custom/LaneAssist/Common/css/shared.css?v=' . filemtime(dirname(__DIR__) . '/Common/css/shared.css') . '" rel="stylesheet" type="text/css">',
+    '<link href="' . $CFG->ROOT_DIR . 'Modules/Custom/LaneAssist/ManageTargets/css/style.css?v=' . filemtime(dirname(__DIR__) . '/ManageTargets/css/style.css') . '" rel="stylesheet" type="text/css">',
     '<script src="' . $CFG->ROOT_DIR . 'Common/jQuery/jquery-ui.min.js"></script>',
-    '<script src="' . $CFG->ROOT_DIR . 'Modules/Custom/LaneAssist/Common/js/jquery-ui-touch-bridge.js"></script>',
-    '<script src="' . $CFG->ROOT_DIR . 'Modules/Custom/LaneAssist/Common/js/shared.js"></script>',
+    '<script src="' . $CFG->ROOT_DIR . 'Modules/Custom/LaneAssist/Common/js/jquery-ui-touch-bridge.js?v=' . filemtime(dirname(__DIR__) . '/Common/js/jquery-ui-touch-bridge.js') . '"></script>',
+    '<script src="' . $CFG->ROOT_DIR . 'Modules/Custom/LaneAssist/Common/js/shared.js?v=' . filemtime(dirname(__DIR__) . '/Common/js/shared.js') . '"></script>',
     '<script src="' . $CFG->ROOT_DIR . 'Modules/Custom/LaneAssist/Common/js/color-by.js?v=' . filemtime(dirname(__DIR__) . '/Common/js/color-by.js') . '"></script>',
     '<script src="' . $CFG->ROOT_DIR . 'Modules/Custom/LaneAssist/Common/js/print-layout.js?v=' . filemtime(dirname(__DIR__) . '/Common/js/print-layout.js') . '"></script>',
-    '<script src="' . $CFG->ROOT_DIR . 'Modules/Custom/LaneAssist/ManageTargets/js/app.js"></script>',
+    '<script src="' . $CFG->ROOT_DIR . 'Modules/Custom/LaneAssist/ManageTargets/js/app.js?v=' . filemtime(dirname(__DIR__) . '/ManageTargets/js/app.js') . '"></script>',
 );
 
 include('Common/Templates/head.php');

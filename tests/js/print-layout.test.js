@@ -69,11 +69,39 @@ test('drop zones keep their own absolute positioning', () => {
     assert.doesNotMatch(css, /\.target-drop-zone[^{]*\{[^}]*position:\s*relative/);
 });
 
-test('face caption sits at the bottom of the face, clear of the position letters', () => {
-    const rule = cssRule(pl.buildPrintDocument(base), '.print-face-caption');
-    assert.ok(rule, 'expected a .print-face-caption rule');
-    assert.match(rule, /position:\s*absolute/);
-    assert.match(rule, /bottom:\s*0/);
+test('face names are not printed: they covered the faces on small mats (arhE26V)', () => {
+    const css = pl.buildPrintDocument(base);
+    assert.doesNotMatch(css, /print-face-caption/);
+    const app = require('fs').readFileSync(require('path').join(__dirname, '../../ManageTargets/js/app.js'), 'utf8');
+    assert.doesNotMatch(app, /print-face-caption/);
+});
+
+// arhE26V: at four mats per row the triangle's three face columns could not shrink
+// below the height-derived square size (min-height 150px + aspect-ratio), so each mat
+// spilled ~35px into the next and hid the next mat's lane chip.
+test('40cm triangle mats print three per row', () => {
+    const rule = cssRule(pl.buildPrintDocument(base), '.targets-grid:has(.layout-layout_40cm_6_triangle)');
+    assert.ok(rule, 'expected a triangle print grid rule');
+    assert.match(rule, /grid-template-columns:\s*repeat\(3,\s*minmax\(0,\s*1fr\)\)\s*!important/);
+});
+
+test('40cm triangle faces shrink to fit inside their mat', () => {
+    const html = pl.buildPrintDocument(base);
+    const grid = cssRule(html, '.target-faces.layout-layout_40cm_6_triangle');
+    assert.ok(grid, 'expected a triangle faces print rule');
+    assert.match(grid, /grid-template-columns:\s*repeat\(3,\s*minmax\(0,\s*1fr\)\)/);
+    assert.match(grid, /min-height:\s*0/);
+    assert.match(grid, /width:\s*100%/);
+    assert.match(grid, /margin-left:\s*0/);
+    const face = cssRule(html, '.target-faces.layout-layout_40cm_6_triangle .target-face');
+    assert.ok(face, 'expected a triangle face print rule');
+    assert.match(face, /box-sizing:\s*border-box/);
+});
+
+test('40cm triangle lane chips are compact enough to sit beside the mat name', () => {
+    const rule = cssRule(pl.buildPrintDocument(base), '.mat-label.triangle-label .lane-chip');
+    assert.ok(rule, 'expected a compact lane chip print rule');
+    assert.match(rule, /min-width:\s*0/);
 });
 
 test('describeFilters is empty for the default view', () => {
