@@ -9,9 +9,9 @@ final class I18nTest extends TestCase {
 
     public function testRealCatalogLooksUpActiveLanguage(): void {
         laSetLang('en');
-        $this->assertSame('English', la_t('common.languageCheck'));
+        $this->assertSame('Cancel', la_t('common.cancel'));
         laSetLang('dk');
-        $this->assertSame('Dansk', la_t('common.languageCheck'));
+        $this->assertSame('Annuller', la_t('common.cancel'));
     }
 
     public function testMissingDanishFallsBackToEnglishThenKey(): void {

@@ -13,6 +13,8 @@
  * LiveView/api.php:103, which runs before laneAssistCollectBadges().
  */
 
+require_once __DIR__ . '/Common/i18n.php';
+
 if (!function_exists('laneAssistOwnBadges')) {
 
 /**
@@ -32,24 +34,24 @@ function laneAssistOwnBadges(array $archers, array $context) {
             $competition = trim((string)($archer['personalBestCompetitionName'] ?? ''));
             $badges[] = [
                 'kind' => 'pill',
-                'label' => 'PB ' . $personalBest,
+                'label' => la_t('live.pbLabel', ['score' => $personalBest]),
                 // Neutral grey so a personal best never competes visually with a
                 // badge colour that actually means something.
                 'color' => '#e8edf0',
                 'textColor' => '#475762',
                 'title' => $competition === ''
-                    ? 'Personal best ' . $personalBest . ' (competition name unavailable)'
-                    : 'Personal best ' . $personalBest . ' at ' . $competition,
+                    ? la_t('live.pbTitleUnknown', ['score' => $personalBest])
+                    : la_t('live.pbTitle', ['score' => $personalBest, 'competition' => $competition]),
             ];
         }
 
         if (!empty($archer['hasNewPersonalBest'])) {
             $badges[] = [
                 'kind' => 'icon',
-                'label' => 'New personal best',
+                'label' => la_t('live.newPb'),
                 'icon' => 'fa-trophy',
                 'color' => '#b77900',
-                'title' => 'New personal best',
+                'title' => la_t('live.newPb'),
             ];
         }
 

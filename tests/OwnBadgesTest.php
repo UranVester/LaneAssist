@@ -9,6 +9,24 @@ final class OwnBadgesTest extends TestCase
         require dirname(__DIR__) . '/laneassist-badges.php';
     }
 
+    protected function tearDown(): void
+    {
+        laSetLang('en');
+    }
+
+    public function testBadgeTextsFollowTheUserLanguage(): void
+    {
+        laSetLang('dk');
+        $badges = laneAssistOwnBadges([$this->archer([
+            'personalBest' => 570,
+            'personalBestCompetitionName' => 'Vordingborg Indoor',
+            'hasNewPersonalBest' => true,
+        ])], []);
+        $this->assertSame('PR 570', $badges[5][0]['label']);
+        $this->assertSame('Personlig rekord 570 ved Vordingborg Indoor', $badges[5][0]['title']);
+        $this->assertSame('Ny personlig rekord', $badges[5][1]['title']);
+    }
+
     private function archer(array $over = []): array
     {
         return $over + [

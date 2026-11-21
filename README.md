@@ -30,7 +30,6 @@ LaneAssist adds practical tools on top of IANSEO, including:
 - Live View: follow the whole field during the tournament (see below)
 - Interactive target management (Drag & drop + auto)
 - Interactive finals management (Drag & drop + auto)
-- Tournament cloning helpers (opened from the Settings page)
 - Change finals events: replace a tournament's individual final events with a new set split by gender, class, division or distance, with a preview and a warning listing what will be deleted (opened from Manage Tournament)
 - Module settings and update controls
 
@@ -76,6 +75,10 @@ trophy icon appears when the archer is currently beating that score.
 
 Other modules can add their own badges to Live View in the same way. If you
 develop modules, see [docs/BadgeProviders.md](docs/BadgeProviders.md).
+
+## Language
+
+LaneAssist follows the language you pick in IANSEO. English and Danish are included; the Settings page stays in English. To add a language, copy `Lang/en.php` to `Lang/<code>.php` (IANSEO's language code, e.g. `de`) and translate the texts — no code changes. A language without a file falls back to English.
 
 ## Requirements
 

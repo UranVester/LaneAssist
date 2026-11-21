@@ -51,6 +51,8 @@ const CONVERTED = [
     'Common/finals-print-data.php',
     'Common/js/badge-render.js',
     'Common/js/final-scores.js',
+    'laneassist-badges.php',
+    'Common/badge-providers.php',
 ];
 const ALLOW = JSON.parse(fs.readFileSync(path.join(__dirname, 'hardcoded-text-allowlist.json'), 'utf8'));
 

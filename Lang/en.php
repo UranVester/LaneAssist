@@ -2,7 +2,6 @@
 // LaneAssist English texts. Every key here must also exist in every other Lang/*.php
 // (tests/CatalogTest.php). Keys: `area.name`; placeholders `{name}`; counts `.one`/`.other`.
 return [
-    'common.languageCheck' => 'English',
 
     // Status checklist (Common/status-logic.php)
     'status.noBracket' => 'Event {code} ({label}): {count} entrants but no finals bracket is configured',
@@ -643,7 +642,7 @@ return [
     'live.loadFailed' => 'Unable to load live data',
     'live.archersBehind.one' => '{count} qualification archer behind',
     'live.archersBehind.other' => '{count} qualification archers behind',
-    'live.matchesNeedAttention.one' => '{count} final match need attention',
+    'live.matchesNeedAttention.one' => '{count} final match needs attention',
     'live.matchesNeedAttention.other' => '{count} final matches need attention',
     'live.updatedAt' => 'Updated {time}',
     'live.refreshFailed' => 'Live data could not be refreshed.',
@@ -664,4 +663,10 @@ return [
 
     // Live View (team label)
     'live.team' => 'Team',
+
+    // Live View badges (laneassist-badges.php)
+    'live.pbLabel' => 'PB {score}',
+    'live.pbTitle' => 'Personal best {score} at {competition}',
+    'live.pbTitleUnknown' => 'Personal best {score} (competition name unavailable)',
+    'live.newPb' => 'New personal best',
 ];

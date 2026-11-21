@@ -86,7 +86,7 @@ final class LiveViewRetireToggleIntegrationTest extends LaneAssistDbTestCase
         }
 
         $this->assertFalse($result['ok']);
-        $this->assertSame('Skytten har registrerede pile og kan ikke trækkes fra her', $result['message']);
+        $this->assertSame('Skytten har registrerede pile og kan ikke trækkes ud her', $result['message']);
     }
 
     public function testRefusesAnUnknownParticipant(): void

@@ -8,8 +8,6 @@ const path = require('path');
 
 const ROOT = path.join(__dirname, '..', '..');
 const SKIP_DIRS = new Set(['tests', 'tools', 'Settings', 'docs', 'node_modules', 'vendor', 'Lang']);
-// Keys that exist only for the i18n tests themselves. Removed once real keys exist.
-const UNUSED_OK = new Set(['common.languageCheck']);
 
 // The translator itself defines/forwards these functions with variable keys.
 const IMPLEMENTATION = new Set(['Common/i18n.php', path.join('Common', 'js', 'i18n.js')]);
@@ -64,7 +62,7 @@ test('every key used in the code exists in Lang/en.php', () => {
 });
 
 test('every key in Lang/en.php is used somewhere', () => {
-    const unused = [...en].filter((key) => !used.has(key) && !UNUSED_OK.has(key));
+    const unused = [...en].filter((key) => !used.has(key));
     assert.deepStrictEqual(unused, []);
 });
 
