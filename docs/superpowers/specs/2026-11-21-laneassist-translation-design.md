@@ -90,7 +90,7 @@ Mikkel picked **A**: the parity test keeps Danish complete as features keep bein
 
 - Use core `SelectLanguage(true)` — the `true` ignores the `PRINTLANG` constant, which core
   defines as a side effect (`getIdFromCode()`, `Obj_Rank`) and would otherwise flip the
-  rest of the page/request to the tournament print language. Resolution order is then (cookie `UseLanguage`, `?Lang=`, browser
+  rest of the page/request to the tournament print language. Resolution order is then (`?Lang=`, cookie `UseLanguage`, browser
   `Accept-Language`, fallback `en`). IANSEO's Danish code is `dk`.
 - If `Lang/<code>.php` doesn't exist in LaneAssist, use `en`.
 - **Print output uses the user's language too** (decided by Mikkel), not the tournament's
