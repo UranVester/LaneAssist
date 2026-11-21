@@ -42,5 +42,23 @@
         return { t: t, tn: tn };
     }
 
-    return { createTranslator: createTranslator };
+    /**
+     * Node only (tests): a translator over Lang/en.php, so pure modules that default
+     * to English outside the browser read the same texts the PHP side does.
+     * Entries are one per line: 'key' => 'text', (PHP single-quoted string).
+     */
+    function englishTranslator() {
+        const fs = require('fs');
+        const path = require('path');
+        const src = fs.readFileSync(path.join(__dirname, '..', '..', 'Lang', 'en.php'), 'utf8');
+        const catalog = {};
+        const entry = /^\s*'([a-zA-Z0-9.]+)'\s*=>\s*'((?:[^'\\]|\\.)*)',?\s*$/gm;
+        let m;
+        while ((m = entry.exec(src)) !== null) {
+            catalog[m[1]] = m[2].replace(/\\(['\\])/g, '$1');
+        }
+        return createTranslator(catalog);
+    }
+
+    return { createTranslator: createTranslator, englishTranslator: englishTranslator };
 }));

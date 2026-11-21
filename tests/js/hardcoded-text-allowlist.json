@@ -1,1 +1,5 @@
-{}
+{
+  "menu.php": ["Update", "Target Faces", "Layout Playground"],
+  "Common/disclaimer.php": ["LaneAssist for IANSEO", "Mikkel Vester"],
+  "ManageTournament/api.php": ["Pragma: no-cache", "Invalid club code", "Invalid action"]
+}

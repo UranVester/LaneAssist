@@ -8,12 +8,12 @@
 (function(root, factory) {
     'use strict';
     if (typeof module === 'object' && module.exports) {
-        module.exports = factory();
+        module.exports = factory(function() { return require('./i18n.js').englishTranslator(); });
     } else {
         root.LaneAssist = root.LaneAssist || {};
-        root.LaneAssist.statusLogic = factory();
+        root.LaneAssist.statusLogic = factory(function() { return { t: root.laT, tn: root.laTn }; });
     }
-}(typeof self !== 'undefined' ? self : this, function() {
+}(typeof self !== 'undefined' ? self : this, function(defaultTranslator) {
     'use strict';
 
     /** Mirrors ManageFinals/js/app.js's own parseTargetNumber(). */
@@ -34,7 +34,8 @@
      * event: a bracket with several unplayable pairs still needs only one
      * row telling the admin which event to go fix.
      */
-    function computeUnplayableFinalsItems(finalsRows, playability, rootDir) {
+    function computeUnplayableFinalsItems(finalsRows, playability, rootDir, translator) {
+        var tr = translator || defaultTranslator();
         var pairs = {};
         (finalsRows || []).forEach(function(row) {
             var pairNo = Math.floor((row.matchNo || 0) / 2);
@@ -74,9 +75,8 @@
         return [{
             key: 'unplayableFinals',
             severity: 'warning',
-            title: 'Unplayable scheduled finals',
-            detail: rows.length + ' event' + (rows.length === 1 ? '' : 's')
-                + ' with a scheduled match that cannot be filled from the projected field',
+            title: tr.t('status.unplayableTitle'),
+            detail: tr.tn('status.unplayableEvents', rows.length),
             link: null,
             fix: null,
             rows: rows,

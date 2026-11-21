@@ -8,6 +8,8 @@
 // test defines the constant and pre-loads the dependencies itself (see
 // tests/StatusSnapshotIntegrationTest.php) before requiring this file. The
 // constant is never defined in production, so normal dispatch is unchanged.
+require_once(dirname(__FILE__, 2) . '/Common/i18n.php');
+
 if (!defined('LANEASSIST_MANAGETOURNAMENT_API_TEST_MODE')) {
     require_once(dirname(__FILE__, 3) . '/config.php');
     header('Content-Type: application/json');
@@ -115,10 +117,10 @@ function statusChecklistItems() {
     $items[] = [
         'key' => 'participants',
         'severity' => $participantCount > 0 ? 'info' : 'danger',
-        'title' => 'Participants entered',
+        'title' => la_t('tournament.participantsTitle'),
         'detail' => $participantCount > 0
-            ? "{$participantCount} participant" . ($participantCount === 1 ? '' : 's') . ' entered'
-            : 'No participants entered yet',
+            ? laPlural('tournament.participantsEntered', $participantCount)
+            : la_t('tournament.noParticipants'),
         'link' => $rootDir . 'Partecipants/index.php',
         'fix' => null,
     ];
@@ -139,8 +141,8 @@ function statusChecklistItems() {
         $items[] = [
             'key' => 'unassignedTargets_' . $issue['sessionOrder'],
             'severity' => 'warning',
-            'title' => 'Target assignment errors',
-            'detail' => "{$issue['count']} archers unassigned on target in session {$issue['sessionOrder']}",
+            'title' => la_t('tournament.unassignedTitle'),
+            'detail' => laPlural('tournament.unassigned', intval($issue['count']), ['session' => $issue['sessionOrder']]),
             'link' => $rootDir . 'Modules/Custom/LaneAssist/ManageTargets/index.php?session=' . $issue['sessionOrder'],
             'fix' => null,
         ];
@@ -176,7 +178,7 @@ function statusChecklistItems() {
     while ($ev = safe_fetch($evRs)) {
         $teamEvent = intval($ev->EvTeamEvent);
         $mixedTeam = intval($ev->EvMixedTeam) === 1;
-        $label = $teamEvent === 0 ? 'individual' : ($mixedTeam ? 'mixed' : 'team');
+        $label = $teamEvent === 0 ? la_t('tournament.labelIndividual') : ($mixedTeam ? la_t('tournament.labelMixed') : la_t('tournament.labelTeam'));
         $finalFirstPhase = intval($ev->EvFinalFirstPhase);
         $expectedSize = $finalFirstPhase > 0 ? numQualifiedByPhase($finalFirstPhase) : 0;
         $eventKey = $teamEvent . '|' . $ev->EvCode;
@@ -205,8 +207,8 @@ function statusChecklistItems() {
         $items[] = [
             'key' => 'bracketSizeWrong',
             'severity' => 'warning',
-            'title' => 'Bracket size wrong (individual)',
-            'detail' => $count . ' bracket size issue' . ($count === 1 ? '' : 's'),
+            'title' => la_t('tournament.bracketSizeTitle'),
+            'detail' => laPlural('tournament.bracketSizeIssues', $count),
             'link' => null,
             'fix' => null,
             'rows' => $groupedFinalsPlanning['bracketSizeWrong'],
@@ -217,8 +219,8 @@ function statusChecklistItems() {
         $items[] = [
             'key' => 'unscheduledFinals',
             'severity' => 'warning',
-            'title' => 'Unscheduled finals',
-            'detail' => $count . ' event' . ($count === 1 ? '' : 's') . ' not scheduled yet',
+            'title' => la_t('tournament.unscheduledTitle'),
+            'detail' => laPlural('tournament.unscheduledEvents', $count),
             'link' => null,
             'fix' => null,
             'rows' => $groupedFinalsPlanning['unscheduledFinals'],
@@ -229,8 +231,8 @@ function statusChecklistItems() {
         $items[] = [
             'key' => 'noBracketConfigured',
             'severity' => 'warning',
-            'title' => 'No bracket configured',
-            'detail' => $count . ' event' . ($count === 1 ? '' : 's') . ' with entrants but no bracket configured',
+            'title' => la_t('tournament.noBracketTitle'),
+            'detail' => laPlural('tournament.noBracketEvents', $count),
             'link' => null,
             'fix' => null,
             'rows' => $groupedFinalsPlanning['noBracketConfigured'],
@@ -242,7 +244,7 @@ function statusChecklistItems() {
         $items[] = [
             'key' => 'finalsValidation_' . $error['type'] . '_' . md5($error['message']),
             'severity' => 'danger',
-            'title' => 'Finals validation errors',
+            'title' => la_t('tournament.finalsValidationTitle'),
             'detail' => $error['message'],
             'link' => $rootDir . 'Modules/Custom/LaneAssist/ManageFinals/index.php',
             'fix' => null,
@@ -281,17 +283,16 @@ function statusChecklistItems() {
     if (!empty($sessionIssues)) {
         $orders = array_map(fn($issue) => $issue['sessionOrder'], $sessionIssues);
         sort($orders);
-        $multiple = count($orders) > 1;
         $items[] = [
             'key' => 'sessionsWithoutTimes',
             'severity' => 'warning',
-            'title' => 'Sessions without times',
-            'detail' => 'Session' . ($multiple ? 's ' : ' ') . implode(', ', $orders) . ($multiple ? ' have' : ' has') . ' no time set',
+            'title' => la_t('tournament.sessionsWithoutTimesTitle'),
+            'detail' => laPlural('tournament.sessionsWithoutTimes', count($orders), ['sessions' => implode(', ', $orders)]),
             'link' => null,
             'fix' => [
                 'action' => 'applySessionDefaults',
                 'params' => ['sessionId' => array_map(fn($issue) => $issue['sessionId'], $sessionIssues)],
-                'confirm' => 'Set ' . ($multiple ? 'these sessions' : 'this session') . " to the tournament's start date, 09:00-12:00",
+                'confirm' => laPlural('tournament.sessionDefaultsConfirm', count($orders)),
             ],
         ];
     }
@@ -333,14 +334,12 @@ function statusChecklistItems() {
         $items[] = [
             'key' => 'clubLogosFixable',
             'severity' => 'info',
-            'title' => 'Clubs missing logos',
-            'detail' => count($fixable) . ' club logo' . (count($fixable) === 1 ? '' : 's')
-                . ' missing that can be found: ' . implode(', ', $fixable),
+            'title' => la_t('tournament.clubLogosTitle'),
+            'detail' => laPlural('tournament.clubLogosFixable', count($fixable), ['clubs' => implode(', ', $fixable)]),
             'link' => null,
             'fix' => [
                 'action' => 'pullClubLogo', 'params' => ['clubCode' => $fixable],
-                'confirm' => "Copy " . (count($fixable) === 1 ? 'this logo' : 'these logos')
-                    . " from another tournament's record of the same club code into this tournament",
+                'confirm' => laPlural('tournament.clubLogosConfirm', count($fixable)),
             ],
         ];
     }
@@ -348,8 +347,8 @@ function statusChecklistItems() {
         $items[] = [
             'key' => 'clubLogosMissing',
             'severity' => 'info',
-            'title' => 'Clubs missing logos',
-            'detail' => 'Clubs missing logos: ' . implode(', ', $clubLogoGroups['missing']),
+            'title' => la_t('tournament.clubLogosTitle'),
+            'detail' => la_t('tournament.clubLogosMissing', ['clubs' => implode(', ', $clubLogoGroups['missing'])]),
             'link' => $rootDir . 'Tournament/Countries.php',
             'fix' => null,
         ];
@@ -360,7 +359,7 @@ function statusChecklistItems() {
 
 function applySessionDefaults() {
     if (IsBlocked(BIT_BLOCK_TOURDATA)) {
-        echo json_encode(['error' => 1, 'message' => 'Tournament data is locked']);
+        echo json_encode(['error' => 1, 'message' => la_t('common.tourDataLocked')]);
         return;
     }
     // sessionId may be a single composite id or (for the collapsed "fix all"
@@ -382,10 +381,10 @@ function applySessionDefaults() {
         }
     }
     if ($applied === 0) {
-        echo json_encode(['error' => 1, 'message' => 'No sessions were updated']);
+        echo json_encode(['error' => 1, 'message' => la_t('tournament.noSessionsUpdated')]);
         return;
     }
-    echo json_encode(['error' => 0, 'message' => "{$applied} session(s) updated"]);
+    echo json_encode(['error' => 0, 'message' => laPlural('tournament.sessionsUpdated', $applied)]);
 }
 
 // $sessionId is the SesOrder_SesType composite string GetSessions() synthesizes
@@ -423,7 +422,7 @@ function applySessionDefaultsForTest($sessionId) {
 
 function pullClubLogo() {
     if (IsBlocked(BIT_BLOCK_TOURDATA)) {
-        echo json_encode(['error' => 1, 'message' => 'Tournament data is locked']);
+        echo json_encode(['error' => 1, 'message' => la_t('common.tourDataLocked')]);
         return;
     }
     // clubCode may be a single code or (for the collapsed "fix all" button)
@@ -445,7 +444,7 @@ function pullClubLogo() {
         echo json_encode(['error' => 1, 'message' => 'Invalid club code']);
         return;
     }
-    echo json_encode(['error' => 0, 'message' => "{$applied} logo(s) linked"]);
+    echo json_encode(['error' => 0, 'message' => laPlural('tournament.logosLinked', $applied)]);
 }
 
 function pullClubLogoForTest($clubCode) {

@@ -33,10 +33,10 @@ function englishKeys() {
     return new Set([...src.matchAll(/^\s*'([a-zA-Z0-9.]+)'\s*=>/gm)].map((m) => m[1]));
 }
 
-// la_t / laT / t / x.t take a key; laPlural / laTn / tn / x.tn take a base key.
-const SINGLE = /(?:\bla_t|\blaT|(?:^|[^\w$])t)\(\s*(['"])([a-zA-Z0-9.]+)\1/g;
+// la_t / la_h / laT / t / x.t take a key; laPlural / laTn / tn / x.tn take a base key.
+const SINGLE = /(?:\bla_[th]|\blaT|(?:^|[^\w$])t)\(\s*(['"])([a-zA-Z0-9.]+)\1/g;
 const PLURAL = /(?:\blaPlural|\blaTn|(?:^|[^\w$])tn)\(\s*(['"])([a-zA-Z0-9.]+)\1/g;
-const ANY_CALL = /(?:\bla_t|\blaT|\blaPlural|\blaTn)\(\s*([^)\s][^,)]*)/g;
+const ANY_CALL = /(?:\bla_[th]|\blaT|\blaPlural|\blaTn)\(\s*([^)\s][^,)]*)/g;
 
 function scan() {
     const used = new Map();
@@ -70,4 +70,34 @@ test('every key in Lang/en.php is used somewhere', () => {
 
 test('translation keys are string literals', () => {
     assert.deepStrictEqual(nonLiteral, []);
+});
+
+// A page hands the browser only the catalog prefixes it names in laJsCatalogScript([...]);
+// every key the page's LaneAssist scripts look up must fall under one of them.
+function pageCoverage() {
+    const problems = [];
+    for (const file of sourceFiles(ROOT).filter((f) => f.endsWith('.php'))) {
+        const src = fs.readFileSync(file, 'utf8');
+        const call = src.match(/laJsCatalogScript\(\[([^\]]*)\]\)/);
+        if (!call) continue;
+        const prefixes = [...call[1].matchAll(/'([^']+)'/g)].map((m) => m[1]);
+        const scripts = [...src.matchAll(/Modules\/Custom\/LaneAssist\/([\w\/.-]+\.js)/g)].map((m) => m[1]);
+        for (const script of new Set(scripts)) {
+            const js = fs.readFileSync(path.join(ROOT, script), 'utf8');
+            const keys = [...js.matchAll(SINGLE)].map((m) => m[2])
+                .concat([...js.matchAll(PLURAL)].map((m) => m[2] + '.one'))
+                .filter((k) => k.includes('.'));
+            for (const key of new Set(keys)) {
+                if (!prefixes.some((p) => key.startsWith(p))) {
+                    problems.push(`${path.relative(ROOT, file)} loads ${script} which uses ${key}, not in [${prefixes.join(', ')}]`);
+                }
+            }
+        }
+    }
+    return problems;
+}
+
+test('each page sends the browser every catalog prefix its scripts use', () => {
+    const problems = pageCoverage();
+    assert.deepStrictEqual(problems, [], '\n' + problems.join('\n'));
 });

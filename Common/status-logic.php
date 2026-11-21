@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/i18n.php';
 /**
  * LaneAssist Status tab — pure decision logic (no DB, no session).
  *
@@ -79,11 +80,11 @@ function laneAssistFinalsPlanningIssues(array $event) {
         if ($rawEntrantCount < 2) {
             return [];
         }
-        $message = "Event {$code} ({$label}): {$rawEntrantCount} entrants but no finals bracket is configured";
+        $params = ['code' => $code, 'label' => $label, 'count' => $rawEntrantCount];
         $suggested = laneAssistRecommendBracketSize($rawEntrantCount, $event['standardCapacities'] ?? []);
-        if ($suggested > 0) {
-            $message .= " (suggest sizing for {$suggested})";
-        }
+        $message = $suggested > 0
+            ? la_t('status.noBracketSuggest', $params + ['size' => $suggested])
+            : la_t('status.noBracket', $params);
         return [[
             'type' => 'no_bracket',
             'severity' => 'warning',
@@ -95,10 +96,9 @@ function laneAssistFinalsPlanningIssues(array $event) {
 
     if (empty($event['hasAnyScheduled'])) {
         $expectedSize = intval($event['expectedSize'] ?? 0);
-        $message = "Event {$code} ({$label}): bracket configured but not scheduled yet";
-        if ($expectedSize > 0) {
-            $message .= " (sized for {$expectedSize})";
-        }
+        $message = $expectedSize > 0
+            ? la_t('status.notScheduledSized', ['code' => $code, 'label' => $label, 'size' => $expectedSize])
+            : la_t('status.notScheduled', ['code' => $code, 'label' => $label]);
         $issues[] = [
             'type' => 'not_scheduled',
             'severity' => 'warning',
@@ -111,7 +111,7 @@ function laneAssistFinalsPlanningIssues(array $event) {
         $issues[] = [
             'type' => 'size_mismatch',
             'severity' => 'warning',
-            'message' => "Event {$code} ({$label}): {$rawEntrantCount} entrants but bracket sized for {$expectedSize}",
+            'message' => la_t('status.sizeMismatch', ['code' => $code, 'label' => $label, 'count' => $rawEntrantCount, 'size' => $expectedSize]),
         ];
     }
 
@@ -127,10 +127,10 @@ function laneAssistFinalsPlanningIssues(array $event) {
 function laneAssistPhaseLabel($phaseId) {
     $phaseId = intval($phaseId);
     if ($phaseId === 0) {
-        return 'Gold';
+        return la_t('status.phaseGold');
     }
     if ($phaseId === 1) {
-        return 'Bronze';
+        return la_t('status.phaseBronze');
     }
     return '1/' . $phaseId;
 }

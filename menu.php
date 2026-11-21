@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/Common/i18n.php';
 
 $hasSelectedTour = !empty($_SESSION['TourId']);
 $isDebugMode = !empty($_SESSION['debug']);
@@ -59,10 +60,10 @@ if ($hideIanseoUpdateEntry) {
 
 $ret['MODS'][] = MENU_DIVIDER;
 if ($hasSelectedTour) {
-	$ret['MODS'][] = 'Manage Tournament' . '|' . $CFG->ROOT_DIR . 'Modules/Custom/LaneAssist/ManageTournament/index.php';
-	$ret['MODS'][] = 'LaneAssist Live View' . '|' . $CFG->ROOT_DIR . 'Modules/Custom/LaneAssist/LiveView/index.php';
-	$ret['MODS'][] = 'Manage Targets - Interactive' . '|' . $CFG->ROOT_DIR . 'Modules/Custom/LaneAssist/ManageTargets/index.php';
-	$ret['MODS'][] = 'Manage Finals - Interactive' . '|' . $CFG->ROOT_DIR . 'Modules/Custom/LaneAssist/ManageFinals/index.php';
+	$ret['MODS'][] = la_t('menu.manageTournament') . '|' . $CFG->ROOT_DIR . 'Modules/Custom/LaneAssist/ManageTournament/index.php';
+	$ret['MODS'][] = la_t('menu.liveView') . '|' . $CFG->ROOT_DIR . 'Modules/Custom/LaneAssist/LiveView/index.php';
+	$ret['MODS'][] = la_t('menu.manageTargets') . '|' . $CFG->ROOT_DIR . 'Modules/Custom/LaneAssist/ManageTargets/index.php';
+	$ret['MODS'][] = la_t('menu.manageFinals') . '|' . $CFG->ROOT_DIR . 'Modules/Custom/LaneAssist/ManageFinals/index.php';
 }
 $ret['MODS'][] = 'LaneAssist Settings' . '|' . $CFG->ROOT_DIR . 'Modules/Custom/LaneAssist/Settings/index.php';
 if ($isDebugMode) {

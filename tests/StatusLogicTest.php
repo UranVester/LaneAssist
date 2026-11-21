@@ -6,6 +6,22 @@ require_once dirname(__DIR__) . '/Common/status-logic.php';
 
 final class StatusLogicTest extends TestCase
 {
+    protected function tearDown(): void
+    {
+        laSetLang('en');
+    }
+
+    public function testChecklistMessagesFollowTheUserLanguage(): void
+    {
+        laSetLang('dk');
+        $issues = laneAssistFinalsPlanningIssues([
+            'code' => 'TIC', 'label' => 'individuel', 'finalFirstPhase' => 8,
+            'rawEntrantCount' => 16, 'hasAnyScheduled' => false, 'expectedSize' => 16,
+        ]);
+        $this->assertSame('Gruppe TIC (individuel): finalerne er sat op, men ikke planlagt endnu (størrelse 16)', $issues[0]['message']);
+        $this->assertSame('Guld', laneAssistPhaseLabel(0));
+    }
+
     // ---------- Stage derivation ----------
 
     public function testStageIsPlanningWhenNoQualificationSessionIsScheduledYet(): void

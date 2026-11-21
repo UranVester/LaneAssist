@@ -73,6 +73,11 @@ final class I18nTest extends TestCase {
         $this->assertStringContainsString('æ', $inner);
     }
 
+    public function testHtmlVariantEscapesTextAndParams(): void {
+        laCatalogInject('en', ['testh.x' => 'A & "{name}"']);
+        $this->assertSame('A &amp; &quot;&lt;b&gt;&quot;', la_h('testh.x', ['name' => '<b>']));
+    }
+
     public function testUsesUserLanguageNotPrintLanguage(): void {
         $src = file_get_contents(dirname(__DIR__) . '/Common/i18n.php');
         $this->assertStringContainsString('SelectLanguage(true)', $src);

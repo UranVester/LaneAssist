@@ -98,3 +98,16 @@ test('sortChecklistItems puts an unknown severity after info', () => {
     const items = [{ key: 'x', severity: 'odd' }, { key: 'i', severity: 'info' }];
     assert.deepStrictEqual(statusLogic.sortChecklistItems(items).map((i) => i.key), ['i', 'x']);
 });
+
+test('the unplayable-finals card uses the translator it is given', () => {
+    const { createTranslator } = require('../../Common/js/i18n.js');
+    const tr = createTranslator({
+        'status.unplayableTitle': 'Uspillelige planlagte finaler',
+        'status.unplayableEvents.one': '{count} gruppe',
+        'status.unplayableEvents.other': '{count} grupper',
+    });
+    const rows = pairRows({projectedParticipants: 0, seeds: [1, 2], targets: ['12', '']});
+    const items = statusLogic.computeUnplayableFinalsItems(rows, playability, '/root/', tr);
+    assert.strictEqual(items[0].title, 'Uspillelige planlagte finaler');
+    assert.strictEqual(items[0].detail, '1 gruppe');
+});

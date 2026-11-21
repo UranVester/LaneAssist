@@ -42,4 +42,11 @@ final class CatalogTest extends TestCase {
             }
         }
     }
+
+    /** Common/js/i18n.js englishTranslator() reads en.php line by line; every entry must be readable that way. */
+    public function testEnglishCatalogIsOneSingleQuotedEntryPerLine(): void {
+        $file = dirname(__DIR__) . '/Lang/en.php';
+        $count = preg_match_all("/^\\s*'([a-zA-Z0-9.]+)'\\s*=>\\s*'((?:[^'\\\\]|\\\\.)*)',?\\s*$/m", file_get_contents($file));
+        $this->assertSame(count(self::load($file)), $count);
+    }
 }

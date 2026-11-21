@@ -3,7 +3,12 @@
 
     var apiUrl = ROOT_DIR + 'Modules/Custom/LaneAssist/ManageTournament/api.php';
     var settingsApiUrl = ROOT_DIR + 'Modules/Custom/LaneAssist/Settings/api.php';
-    var stageLabels = { planning: 'Planning', qualification: 'Qualification', finals: 'Finals', over: 'Over' };
+    var stageLabels = {
+        planning: laT('tournament.stagePlanning'),
+        qualification: laT('tournament.stageQualification'),
+        finals: laT('tournament.stageFinals'),
+        over: laT('tournament.stageOver')
+    };
     var state = { snapshot: null, loading: false, settings: {} };
 
     function escapeHtml(value) {
@@ -22,11 +27,11 @@
                     state.snapshot = response;
                     renderStatusView();
                 } else {
-                    $('#mt-summary').text((response && response.message) || 'Tournament status could not be loaded.');
+                    $('#mt-summary').text((response && response.message) || laT('tournament.statusLoadFailed'));
                 }
             })
             .fail(function() {
-                $('#mt-summary').text('Tournament status could not be loaded.');
+                $('#mt-summary').text(laT('tournament.statusLoadFailed'));
             })
             .always(function() {
                 state.loading = false;
@@ -39,11 +44,11 @@
         $view.empty();
 
         var stage = state.snapshot.stage;
-        $('#mt-stage').text('Stage: ' + (stageLabels[stage] || stage)).prop('hidden', false);
+        $('#mt-stage').text(laT('tournament.stage', { stage: stageLabels[stage] || stage })).prop('hidden', false);
 
         var statusLogic = window.LaneAssist.statusLogic;
         var items = statusLogic.sortChecklistItems((state.snapshot.items || []).concat(statusLogic.computeUnplayableFinalsItems(
-            state.snapshot.finalsRows || [], window.LaneAssist.finalsPlayability, ROOT_DIR
+            state.snapshot.finalsRows || [], window.LaneAssist.finalsPlayability, ROOT_DIR, { t: laT, tn: laTn }
         )));
 
         var issueCount = 0;
@@ -73,9 +78,9 @@
             }
 
             if (item.link) {
-                $card.append($('<footer></footer>').append($('<a></a>').attr('href', item.link).text('Open')));
+                $card.append($('<footer></footer>').append($('<a></a>').attr('href', item.link).text(laT('tournament.open'))));
             } else if (item.fix) {
-                var $fixButton = $('<button type="button" class="status-fix-button">Fix</button>');
+                var $fixButton = $('<button type="button" class="status-fix-button"></button>').text(laT('tournament.fix'));
                 $fixButton.on('click', function() {
                     applyStatusFix(item, $fixButton);
                 });
@@ -86,11 +91,11 @@
         });
 
         if (!items.length) {
-            $view.append('<div class="mt-empty">Nothing to check yet.</div>');
+            $view.append($('<div class="mt-empty"></div>').text(laT('tournament.nothingToCheck')));
         }
         $('#mt-summary').text(issueCount === 0
-            ? 'Nothing needs attention.'
-            : issueCount + ' item' + (issueCount === 1 ? ' needs' : 's need') + ' attention.');
+            ? laT('tournament.nothingNeedsAttention')
+            : laTn('tournament.itemsNeedAttention', issueCount));
     }
 
     function applyStatusFix(item, $button) {
@@ -106,11 +111,11 @@
             data: $.extend({ action: item.fix.action }, item.fix.params),
         }).done(function(response) {
             if (response && response.error) {
-                window.alert(response.message || 'The fix could not be applied.');
+                window.alert(response.message || laT('tournament.fixFailed'));
             }
             loadStatusSnapshot();
         }).fail(function() {
-            window.alert('The fix could not be applied.');
+            window.alert(laT('tournament.fixFailed'));
             $button.prop('disabled', false);
         });
     }
@@ -126,7 +131,7 @@
         $('#competition-default-finals-length').val(finals.value);
         $('#finals-length-default-tag').prop('hidden', !finals.isDefault);
         $('#btn-reset-finals-length').prop('hidden', finals.isDefault);
-        $('#finals-length-default-note').text('Default: ' + finals.defaultValue + ' minutes, from your user/admin setting.');
+        $('#finals-length-default-note').text(laT('tournament.defaultMinutes', { minutes: finals.defaultValue }));
         $('#competition-manage-targets-layout').val(layout);
         $('#layout-default-tag').prop('hidden', layout !== '');
         $('#btn-reset-layout').prop('hidden', layout === '');
@@ -136,14 +141,14 @@
         $.ajax({ url: settingsApiUrl, method: 'GET', dataType: 'json', cache: false, data: { action: 'getSettings' } })
             .done(function(response) {
                 if (response.error) {
-                    showSettingsStatus(response.message || 'Failed to load settings', 'error');
+                    showSettingsStatus(response.message || laT('tournament.settingsLoadFailed'), 'error');
                     return;
                 }
                 state.settings = response.settings || {};
                 renderTournamentSettings();
             })
             .fail(function() {
-                showSettingsStatus('Failed to load settings', 'error');
+                showSettingsStatus(laT('tournament.settingsLoadFailed'), 'error');
             });
     }
 
@@ -159,13 +164,14 @@
             }
         }).done(function(response) {
             if (response.error) {
-                showSettingsStatus(response.message || 'Failed to save tournament settings', 'error');
+                showSettingsStatus(response.message || laT('tournament.settingsSaveFailed'), 'error');
                 return;
             }
-            showSettingsStatus(response.message || 'Tournament settings saved', 'success');
+            // Settings/api.php answers in English (out of scope); say it in the page's language.
+            showSettingsStatus(laT('tournament.settingsSaved'), 'success');
             loadTournamentSettings();
         }).fail(function() {
-            showSettingsStatus('Failed to save tournament settings', 'error');
+            showSettingsStatus(laT('tournament.settingsSaveFailed'), 'error');
         });
     }
 

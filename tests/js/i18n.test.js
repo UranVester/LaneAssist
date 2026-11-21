@@ -32,3 +32,10 @@ test('missing or null catalog does not throw', () => {
 test('inherited object properties are not treated as texts', () => {
     assert.strictEqual(createTranslator({}).t('toString'), 'toString');
 });
+
+test('englishTranslator reads Lang/en.php, including escaped quotes', () => {
+    const { englishTranslator } = require('../../Common/js/i18n.js');
+    const tr = englishTranslator();
+    assert.strictEqual(tr.t('status.phaseGold'), 'Gold');
+    assert.strictEqual(tr.tn('tournament.sessionDefaultsConfirm', 1), "Set this session to the tournament's start date, 09:00-12:00");
+});

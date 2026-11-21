@@ -110,3 +110,8 @@ function laJsCatalogScript(array $prefixes): string {
         JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE);
     return '<script>var LA_I18N = ' . $json . ';</script>';
 }
+
+/** la_t() escaped for HTML text and attribute values. */
+function la_h(string $key, array $params = []): string {
+    return htmlspecialchars(la_t($key, $params), ENT_QUOTES, 'UTF-8');
+}
