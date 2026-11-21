@@ -1,6 +1,11 @@
 (function($) {
     'use strict';
 
+    // Common/js/i18n.js (loaded before this file) puts the page's translator on window.
+    var laT = window.laT;
+    var laTn = window.laTn;
+    var TRANSLATOR = { t: laT, tn: laTn };
+
     var state = { mode: 'qualification', initialModeResolved: false, loading: false, refreshPending: false, bulkAdvancing: false, timer: null, actionMessage: '', snapshot: null, qualificationNotice: '', finalsNotice: '', qualificationForfeitEligible: [], colorBy: 'none', totalMode: 'combined', selectedRoundSlot: null, hasSelectedRound: false, finals: [] };
     var apiUrl = ROOT_DIR + 'Modules/Custom/LaneAssist/LiveView/api.php';
     var divisionMetaMap = (typeof DivisionMeta !== 'undefined' && DivisionMeta) ? DivisionMeta : {};
@@ -9,20 +14,15 @@
     var colorIndex = ColorBy.createColorIndex(typeof ColorGroups !== 'undefined' ? ColorGroups : undefined);
 
     var QUAL_COLOR_OPTIONS = [
-        { value: 'none', label: 'None' },
-        { value: 'country', label: 'Country/Club' },
-        { value: 'bow', label: 'Bow' },
-        { value: 'class', label: 'Class' },
-        { value: 'category', label: 'Category' }
+        { value: 'none', label: laT('colorBy.none') },
+        { value: 'country', label: laT('colorBy.country') },
+        { value: 'bow', label: laT('colorBy.bow') },
+        { value: 'class', label: laT('colorBy.class') },
+        { value: 'category', label: laT('colorBy.category') }
     ];
-    var FINALS_COLOR_OPTIONS = [
-        { value: 'none', label: 'None' },
-        { value: 'country', label: 'Country/Club' },
-        { value: 'bow', label: 'Bow' },
-        { value: 'class', label: 'Class' },
-        { value: 'category', label: 'Category' },
-        { value: 'event', label: 'Event' }
-    ];
+    var FINALS_COLOR_OPTIONS = QUAL_COLOR_OPTIONS.concat([
+        { value: 'event', label: laT('colorBy.event') }
+    ]);
 
     function escapeHtml(value) {
         return $('<div>').text(value == null ? '' : String(value)).html();
@@ -30,7 +30,7 @@
 
     function normalizeColorValue(value, fallback) {
         var text = (value == null ? '' : String(value)).trim();
-        return text !== '' ? text : (fallback || 'Unknown');
+        return text !== '' ? text : (fallback || laT('common.unknown'));
     }
 
     function getClassInfo(classId) {
@@ -40,7 +40,7 @@
         if (description && id) return { id: id, label: description + ' (' + id + ')' };
         if (description) return { id: description, label: description };
         if (id) return { id: id, label: id };
-        return { id: 'No Class', label: 'No Class' };
+        return { id: laT('colorBy.noClass'), label: laT('colorBy.noClass') };
     }
 
     function getDivisionInfo(divisionId) {
@@ -50,40 +50,40 @@
         if (description || id) {
             return { id: id || description, description: description || id };
         }
-        return { id: 'No Division', description: 'No Division' };
+        return { id: laT('colorBy.noDivision'), description: laT('colorBy.noDivision') };
     }
 
     function getColorGrouping(entity, mode, match) {
         if (!mode || mode === 'none') return null;
 
         if (mode === 'country') {
-            var club = normalizeColorValue(entity.club, 'No Club');
-            return { group: 'country', key: club, label: 'Country/Club: ' + club };
+            var club = normalizeColorValue(entity.club, laT('colorBy.noCountry'));
+            return { group: 'country', key: club, label: laT('colorBy.country') + ': ' + club };
         }
 
         if (mode === 'bow') {
             var divisionInfo = getDivisionInfo(entity.division);
             var bowType = ColorBy.extractBowType(divisionInfo.description, divisionInfo.id);
-            return { group: 'bow', key: bowType, label: 'Bow: ' + bowType };
+            return { group: 'bow', key: bowType, label: laT('colorBy.bow') + ': ' + bowType };
         }
 
         if (mode === 'class') {
             var classInfo = getClassInfo(entity.class);
-            return { group: 'class', key: classInfo.id, label: 'Class: ' + classInfo.label };
+            return { group: 'class', key: classInfo.id, label: laT('colorBy.class') + ': ' + classInfo.label };
         }
 
         if (mode === 'category') {
             var div = (entity.division == null ? '' : String(entity.division)).trim();
             var cls = (entity.class == null ? '' : String(entity.class)).trim();
-            var category = normalizeColorValue(div + cls, 'No Category');
-            return { group: 'category', key: category, label: 'Category: ' + category };
+            var category = normalizeColorValue(div + cls, laT('colorBy.noCategory'));
+            return { group: 'category', key: category, label: laT('colorBy.category') + ': ' + category };
         }
 
         if (mode === 'event' && match && match.event) {
             return {
                 group: 'event',
                 key: (parseInt(match.teamEvent, 10) ? 1 : 0) + '|' + String(match.event).trim(),
-                label: 'Event: ' + (match.eventName || match.event) + (parseInt(match.teamEvent, 10) ? ' (team)' : '')
+                label: laT('colorBy.event') + ': ' + (match.eventName || match.event) + (parseInt(match.teamEvent, 10) ? ' (' + laT('live.team') + ')' : '')
             };
         }
 
@@ -149,8 +149,8 @@
         });
         state.qualificationForfeitEligible = forfeitEligible;
         state.qualificationNotice = forfeitEligible.length
-            ? '<div class="notice bye-notice"><span><i class="fa fa-bell"></i><strong>' + forfeitEligible.length + '</strong> archer' + (forfeitEligible.length === 1 ? '' : 's') + ' with 0 arrows shot.</span>' +
-              '<button type="button" id="forfeit-all-noshows" class="bulk-advance-button"><i class="fa fa-ban" aria-hidden="true"></i> Forfeit all no-shows</button></div>'
+            ? '<div class="notice bye-notice"><span><i class="fa fa-bell"></i>' + escapeHtml(laTn('live.noShows', forfeitEligible.length)) + '</span>' +
+              '<button type="button" id="forfeit-all-noshows" class="bulk-advance-button"><i class="fa fa-ban" aria-hidden="true"></i> ' + escapeHtml(laT('live.forfeitAllNoShows')) + '</button></div>'
             : '';
 
         var html = mats.map(function(mat) {
@@ -161,9 +161,10 @@
                 var byDistance = state.totalMode === 'distance';
                 var shownTotal = byDistance ? archer.distancePoints : archer.totalPoints;
                 var shownAverage = byDistance ? archer.distanceAverageArrow : archer.averageArrow;
-                var totalLabel = byDistance && archer.distance ? 'Total D' + archer.distance : 'Total';
+                var totalLabel = byDistance && archer.distance ? laT('live.totalDistanceShort', { distance: archer.distance }) : laT('live.total');
                 var avgHtml = typeof shownAverage === 'number'
-                    ? '<span class="competitor-avg" title="Average arrow score' + (byDistance ? ' (current distance)' : '') + '">avg ' + shownAverage.toFixed(2) + '</span>'
+                    ? '<span class="competitor-avg" title="' + escapeHtml(byDistance ? laT('live.avgHelpDistance') : laT('live.avgHelp')) + '">'
+                        + escapeHtml(laT('live.avg', { value: shownAverage.toFixed(2) })) + '</span>'
                     : '';
                 var badgeHtml = (window.LaneAssist && window.LaneAssist.badges)
                     ? window.LaneAssist.badges.render(archer.badges)
@@ -171,41 +172,51 @@
                 var toggleHtml = '';
                 if (archer.retired || (archer.arrowsShot === 0 && sessionStarted)) {
                     toggleHtml = '<button type="button" class="retire-toggle" data-participant-id="' + archer.participantId + '"'
-                        + (archer.retired ? ' data-retired="1">Un-forfeit</button>' : '>Forfeit</button>');
+                        + (archer.retired ? ' data-retired="1">' + escapeHtml(laT('live.unforfeit')) + '</button>' : '>' + escapeHtml(laT('live.forfeit')) + '</button>');
                 }
                 var colorAttrs = colorByAttrs(archer);
-                var endsSuffix = archer.completedEnds === mat.expectedEnds ? '' : ' · ' + archer.completedEnds + ' ends';
+                var endsSuffix = archer.completedEnds === mat.expectedEnds ? '' : ' · ' + escapeHtml(laTn('live.nEnds', archer.completedEnds));
                 var clubEventLabel = clubLogoImgHtml(archer) + escapeHtml(archer.club) + (archer.event ? ' · ' + escapeHtml(archer.event) : '');
                 return '<div class="competitor' + problemClass + retiredClass + '" data-participant-id="' + archer.participantId + '">' + badgeHtml.edge +
                     '<div class="competitor-position"><span class="position-label">' + escapeHtml(archer.position) + '</span><span class="position-face"' + positionFaceStyleAttr(archer) + '></span></div>' +
                     '<div class="competitor-main' + colorAttrs.classAttr + '"' + colorAttrs.styleAttr + colorAttrs.titleAttr + '><strong>' + escapeHtml(archer.name) + '</strong>' + badgeHtml.inline + '<small class="competitor-meta"><span class="competitor-meta-label">' + clubEventLabel + endsSuffix + '</span>' + avgHtml + '</small></div>' +
-                    '<div class="competitor-actions"><div class="score-pair"><span><small>Last end</small><b>' + endPoints + '</b></span><span><small>' + totalLabel + '</small><b>' + shownTotal + '</b></span></div>' + toggleHtml + '</div></div>';
+                    '<div class="competitor-actions"><div class="score-pair"><span><small>' + escapeHtml(laT('live.lastEnd')) + '</small><b>' + endPoints + '</b></span><span><small>' + escapeHtml(totalLabel) + '</small><b>' + shownTotal + '</b></span></div>' + toggleHtml + '</div></div>';
             }).join('');
             var paceLabel = mat.hasMultipleDistances
-                ? 'Pace: distance ' + mat.expectedDistance + ' · end ' + mat.expectedEnds
-                : 'Pace: end ' + mat.expectedEnds;
-            return '<article class="live-card qual-card"><header>' + targetFace(mat.target) + '<div><span class="eyebrow">Target / mat</span><h3>' + escapeHtml(mat.target) + '</h3><small>' + paceLabel + '</small></div></header><div class="competitors">' + archers + '</div></article>';
+                ? laT('live.paceDistance', { distance: mat.expectedDistance, end: mat.expectedEnds })
+                : laT('live.paceEnd', { end: mat.expectedEnds });
+            return '<article class="live-card qual-card"><header>' + targetFace(mat.target) + '<div><span class="eyebrow">' + escapeHtml(laT('live.targetMat')) + '</span><h3>' + escapeHtml(mat.target) + '</h3><small>' + escapeHtml(paceLabel) + '</small></div></header><div class="competitors">' + archers + '</div></article>';
         }).join('');
         $('#qualification-view').html(html);
     }
 
     function statusLabel(status) {
-        return { bye: 'Bye ready', complete: 'Complete', advanced: 'Advanced', unreported: 'No arrows', uneven: 'Uneven ends', partial: 'Partial end', waiting: 'Waiting', live: 'Live' }[status] || status;
+        return {
+            bye: laT('live.statusBye'),
+            complete: laT('live.statusComplete'),
+            advanced: laT('live.statusAdvanced'),
+            unreported: laT('live.statusUnreported'),
+            uneven: laT('live.statusUneven'),
+            partial: laT('live.statusPartial'),
+            waiting: laT('live.statusWaiting'),
+            live: laT('live.statusLive')
+        }[status] || status;
     }
 
     function phaseLabel(phase) {
-        return { 0: 'Gold', 1: 'Bronze', 2: '1/2', 4: '1/4', 8: '1/8', 16: '1/16', 32: '1/32', 64: '1/64' }[phase] || ('Phase ' + phase);
+        return { 0: laT('status.phaseGold'), 1: laT('status.phaseBronze'), 2: '1/2', 4: '1/4', 8: '1/8', 16: '1/16', 32: '1/32', 64: '1/64' }[phase]
+            || laT('live.phaseNumber', { phase: phase });
     }
 
     function finalBlockLabel(matches, slot) {
-        if (!matches.length) return 'No current finals block';
+        if (!matches.length) return laT('live.noFinalsBlock');
         var scopes = [];
         matches.forEach(function(match) {
             var label = phaseLabel(match.phase) + ' ' + match.event;
             if (scopes.indexOf(label) === -1) scopes.push(label);
         });
         var time = slot ? new Date(slot.replace(' ', 'T')).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
-        return 'Current finals: ' + scopes.join(', ') + (time ? ' · ' + time : '');
+        return laT('live.currentFinals', { scopes: scopes.join(', ') }) + (time ? ' · ' + time : '');
     }
 
     // The round the finals view is showing: the browsed one, else the current one.
@@ -228,7 +239,7 @@
     function roundOptionLabel(round) {
         var time = round.slot
             ? new Date(round.slot.replace(' ', 'T')).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
-            : 'Unscheduled';
+            : laT('live.unscheduled');
         if (!round.matches.length) return time;
         var scopes = [];
         round.matches.forEach(function(match) {
@@ -239,13 +250,13 @@
         // option's rendered width - the native dropdown sizes every row to
         // the widest option, so one long label wastes space on every other row.
         var shown = scopes.slice(0, 2).join(', ');
-        var extra = scopes.length > 2 ? ' +' + (scopes.length - 2) + ' more' : '';
+        var extra = scopes.length > 2 ? ' ' + laT('live.plusMore', { count: scopes.length - 2 }) : '';
         return shown + extra + ' · ' + time;
     }
 
     function updateRoundSelect(rounds) {
         var html = rounds.map(function(round) {
-            var label = roundOptionLabel(round) + (round.isCurrent ? ' (current)' : '');
+            var label = roundOptionLabel(round) + (round.isCurrent ? ' (' + laT('live.current') + ')' : '');
             var selected = round.slot === state.selectedRoundSlot ? ' selected' : '';
             return '<option value="' + escapeHtml(round.slot) + '"' + selected + '>' + escapeHtml(label) + '</option>';
         }).join('');
@@ -296,20 +307,20 @@
     function renderFinals(matches) {
         var byeCount = matches.filter(function(match) { return match.status === 'bye' && match.canMarkBye; }).length;
         $('#final-count').text(matches.length);
-        state.finalsNotice = byeCount ? '<div class="notice bye-notice"><span><i class="fa fa-bell"></i><strong>' + byeCount + '</strong> bye match' + (byeCount === 1 ? '' : 'es') + ' ready to advance.</span>' +
-            '<button type="button" id="advance-all-byes" class="bulk-advance-button"><i class="fa fa-step-forward" aria-hidden="true"></i> Mark all byes &amp; advance</button></div>' : '';
+        state.finalsNotice = byeCount ? '<div class="notice bye-notice"><span><i class="fa fa-bell"></i>' + escapeHtml(laTn('live.byesReady', byeCount)) + '</span>' +
+            '<button type="button" id="advance-all-byes" class="bulk-advance-button"><i class="fa fa-step-forward" aria-hidden="true"></i> ' + escapeHtml(laT('live.markAllByes')) + '</button></div>' : '';
         var html = matches.map(function(match) {
             var sides = match.sides.map(function(side) {
                 var winner = side.winLose || side.tie === 2;
-                var scores = window.LaneAssist.finalScores.render(match, side);
+                var scores = window.LaneAssist.finalScores.render(match, side, TRANSLATOR);
                 var colorAttrs = colorByAttrs(side, match);
-                return '<div class="final-side' + (winner ? ' winner' : '') + '"><div class="final-side-name' + colorAttrs.classAttr + '"' + colorAttrs.styleAttr + colorAttrs.titleAttr + '><strong>' + escapeHtml(side.name || 'Awaiting opponent') + '</strong><small>' + side.completedEnds + ' ends reported</small></div>' + scores + '</div>';
+                return '<div class="final-side' + (winner ? ' winner' : '') + '"><div class="final-side-name' + colorAttrs.classAttr + '"' + colorAttrs.styleAttr + colorAttrs.titleAttr + '><strong>' + escapeHtml(side.name || laT('live.awaitingOpponent')) + '</strong><small>' + escapeHtml(laTn('live.endsReported', side.completedEnds)) + '</small></div>' + scores + '</div>';
             }).join('');
             var canAct = match.canAdvance || match.canMarkBye;
-            var actionLabel = match.status === 'bye' ? (match.canAdvance ? 'Mark bye & advance' : 'Mark bye') : 'Advance winner';
-            var action = canAct ? '<button type="button" class="advance-button" data-team="' + match.teamEvent + '" data-event="' + escapeHtml(match.event) + '" data-match="' + match.matchNo + '"><i class="fa fa-step-forward"></i> ' + actionLabel + '</button>' : '';
-            if (match.advanced) action = '<span class="advanced-mark"><i class="fa fa-check-circle"></i> Advanced to next bracket</span>';
-            return '<article class="live-card final-card status-' + match.status + '"><header>' + targetFace(match.target) + '<div><span class="eyebrow">' + escapeHtml(match.eventName) + '</span><h3>' + escapeHtml(phaseLabel(match.phase)) + '</h3><small>' + escapeHtml(match.target ? 'Target ' + match.target : 'Unassigned') + '</small></div><span class="status-pill">' + statusLabel(match.status) + '</span></header><div class="final-sides">' + sides + '</div><footer>' + action + '</footer></article>';
+            var actionLabel = match.status === 'bye' ? (match.canAdvance ? laT('live.markByeAdvance') : laT('live.markBye')) : laT('live.advanceWinner');
+            var action = canAct ? '<button type="button" class="advance-button" data-team="' + match.teamEvent + '" data-event="' + escapeHtml(match.event) + '" data-match="' + match.matchNo + '"><i class="fa fa-step-forward"></i> ' + escapeHtml(actionLabel) + '</button>' : '';
+            if (match.advanced) action = '<span class="advanced-mark"><i class="fa fa-check-circle"></i> ' + escapeHtml(laT('live.advancedToNext')) + '</span>';
+            return '<article class="live-card final-card status-' + match.status + '"><header>' + targetFace(match.target) + '<div><span class="eyebrow">' + escapeHtml(match.eventName) + '</span><h3>' + escapeHtml(phaseLabel(match.phase)) + '</h3><small>' + escapeHtml(match.target ? laT('live.target', { target: match.target }) : laT('live.unassigned')) + '</small></div><span class="status-pill">' + escapeHtml(statusLabel(match.status)) + '</span></header><div class="final-sides">' + sides + '</div><footer>' + action + '</footer></article>';
         }).join('');
         $('#finals-view').html(html);
     }
@@ -320,17 +331,17 @@
         progress = progress || {};
         var end = Number(progress.end) || 0;
         var totalEnds = Number(progress.totalEnds) || 0;
-        var label = state.mode === 'finals' ? 'Current finals end' : 'Current qualification end';
-        var value = state.mode === 'finals' && progress.complete
-            ? 'Finals complete'
-            : (end ? 'End ' + end + (totalEnds ? ' / ' + totalEnds : '') : 'Not started');
+        var label = state.mode === 'finals' ? laT('live.currentFinalsEnd') : laT('live.currentQualEnd');
+        var value = escapeHtml(state.mode === 'finals' && progress.complete
+            ? laT('live.finalsComplete')
+            : (end ? laT('live.endOf', { end: end }) + (totalEnds ? ' / ' + totalEnds : '') : laT('live.notStarted')));
         if (state.mode === 'qualification' && progress.hasMultipleDistances) {
-            value += '<small>Distance ' + progress.expectedDistance + ' · end ' + progress.currentDistanceEnd + '</small>';
+            value += '<small>' + escapeHtml(laT('live.distanceEnd', { distance: progress.expectedDistance, end: progress.currentDistanceEnd })) + '</small>';
         }
         if (state.mode === 'qualification' && Number(progress.totalArrows)) {
-            value += '<small>' + Number(progress.arrowsShot || 0) + ' / ' + Number(progress.totalArrows) + ' arrows</small>';
+            value += '<small>' + escapeHtml(laT('live.arrowsOf', { shot: Number(progress.arrowsShot || 0), total: Number(progress.totalArrows) })) + '</small>';
         }
-        $('#live-progress').html('<span>' + label + '</span><strong>' + value + '</strong>');
+        $('#live-progress').html('<span>' + escapeHtml(label) + '</span><strong>' + value + '</strong>');
     }
 
     function renderNotices() {
@@ -347,7 +358,7 @@
         $('.mode-button').removeClass('active').filter('[data-mode="' + state.mode + '"]').addClass('active');
         $('label[for="session-select"]').toggle(!isFinals);
         $('#print-qual').prop('hidden', isFinals).prop('disabled', !$('#session-select').val());
-        var printState = window.LaneAssist.printLayout.finalsPrintState(selectedFinalRound());
+        var printState = window.LaneAssist.printLayout.finalsPrintState(selectedFinalRound(), TRANSLATOR);
         $('#print-finals').prop('hidden', !isFinals).prop('disabled', !printState.enabled)
             .attr('title', printState.title).attr('aria-label', printState.title);
         var rounds = (state.snapshot && state.snapshot.finalsRounds) || [];
@@ -378,7 +389,7 @@
             data: { action: 'snapshot', session: $('#session-select').val() }
         }).done(function(data) {
             if (data.error) {
-                $('#live-notices').html('<div class="notice error">' + escapeHtml(data.message || 'Unable to load live data') + '</div>');
+                $('#live-notices').html('<div class="notice error">' + escapeHtml(data.message || laT('live.loadFailed')) + '</div>');
                 return;
             }
             state.snapshot = data;
@@ -388,8 +399,8 @@
             var currentMatches = current ? current.matches : [];
             var behind = (data.qualification || []).reduce(function(total, mat) { return total + mat.archers.filter(function(archer) { return archer.isBehind; }).length; }, 0);
             var problems = currentMatches.filter(function(match) { return ['unreported', 'uneven', 'partial'].indexOf(match.status) !== -1; }).length;
-            $('#live-summary').text(finalBlockLabel(currentMatches, current ? current.slot : '') + ' · ' + behind + ' qualification archer' + (behind === 1 ? '' : 's') + ' behind · ' + problems + ' final match' + (problems === 1 ? '' : 'es') + ' need attention');
-            $('#last-updated').text('Updated ' + new Date(data.updatedAt).toLocaleTimeString());
+            $('#live-summary').text(finalBlockLabel(currentMatches, current ? current.slot : '') + ' · ' + laTn('live.archersBehind', behind) + ' · ' + laTn('live.matchesNeedAttention', problems));
+            $('#last-updated').text(laT('live.updatedAt', { time: new Date(data.updatedAt).toLocaleTimeString() }));
             if (!state.initialModeResolved) {
                 state.mode = data.finalsInitialized && data.qualificationProgress && data.qualificationProgress.complete
                     ? 'finals'
@@ -398,7 +409,7 @@
             }
             updateVisibleView();
         }).fail(function(xhr) {
-            var message = xhr.responseJSON && xhr.responseJSON.message ? xhr.responseJSON.message : 'Live data could not be refreshed.';
+            var message = xhr.responseJSON && xhr.responseJSON.message ? xhr.responseJSON.message : laT('live.refreshFailed');
             $('#live-notices').html('<div class="notice error">' + escapeHtml(message) + '</div>');
         }).always(function() {
             state.loading = false;
@@ -417,15 +428,15 @@
         }}).done(function(data) {
             if (data.error) {
                 state.actionMessage = '';
-                $('#live-notices').html('<div class="notice error">' + escapeHtml(data.message || 'Match could not be advanced') + '</div>');
+                $('#live-notices').html('<div class="notice error">' + escapeHtml(data.message || laT('live.advanceFailed')) + '</div>');
                 $button.prop('disabled', false);
                 return;
             }
-            state.actionMessage = data.message || 'Match advanced';
+            state.actionMessage = data.message || laT('live.matchAdvanced');
             loadSnapshot(true);
         }).fail(function(xhr) {
             state.actionMessage = '';
-            var message = xhr.responseJSON && xhr.responseJSON.message ? xhr.responseJSON.message : 'Match could not be advanced.';
+            var message = xhr.responseJSON && xhr.responseJSON.message ? xhr.responseJSON.message : laT('live.advanceFailed');
             $('#live-notices').html('<div class="notice error">' + escapeHtml(message) + '</div>');
             $button.prop('disabled', false);
         });
@@ -437,13 +448,13 @@
         $competitor.find('.retire-toggle')
             .data('retired', retired ? 1 : 0)
             .prop('disabled', false)
-            .text(retired ? 'Un-forfeit' : 'Forfeit');
+            .text(retired ? laT('live.unforfeit') : laT('live.forfeit'));
     }
 
     function toggleArcherRetired(button) {
         var $button = $(button);
         var retired = $button.data('retired') === 1 || $button.data('retired') === '1';
-        if (!retired && !window.confirm('Forfeit this archer? They will be marked "Pull Out" and removed from Live View scoring until un-forfeited.')) {
+        if (!retired && !window.confirm(laT('live.confirmForfeit'))) {
             return;
         }
         $button.prop('disabled', true);
@@ -451,7 +462,7 @@
             action: 'toggleArcherRetired', participantId: $button.data('participant-id'), session: $('#session-select').val()
         }}).done(function(data) {
             if (data.error) {
-                $('#live-notices').html('<div class="notice error">' + escapeHtml(data.message || 'Could not update this archer') + '</div>');
+                $('#live-notices').html('<div class="notice error">' + escapeHtml(data.message || laT('live.archerUpdateFailed')) + '</div>');
                 $button.prop('disabled', false);
                 return;
             }
@@ -461,7 +472,7 @@
             applyArcherRetiredState(data.participantId, data.retired);
             loadSnapshot(true);
         }).fail(function(xhr) {
-            var message = xhr.responseJSON && xhr.responseJSON.message ? xhr.responseJSON.message : 'Could not update this archer.';
+            var message = xhr.responseJSON && xhr.responseJSON.message ? xhr.responseJSON.message : laT('live.archerUpdateFailed');
             $('#live-notices').html('<div class="notice error">' + escapeHtml(message) + '</div>');
             $button.prop('disabled', false);
         });
@@ -483,7 +494,7 @@
         function advanceNext() {
             if (advanced >= byes.length) {
                 state.bulkAdvancing = false;
-                state.actionMessage = advanced + ' bye match' + (advanced === 1 ? '' : 'es') + ' processed';
+                state.actionMessage = laTn('live.byesProcessed', advanced);
                 loadSnapshot(true);
                 return;
             }
@@ -495,7 +506,7 @@
                 if (data.error) {
                     state.bulkAdvancing = false;
                     state.actionMessage = '';
-                    $('#live-notices').html('<div class="notice error">Processed ' + advanced + ' of ' + byes.length + ' byes. ' + escapeHtml(data.message || 'The next bye could not be processed.') + '</div>');
+                    $('#live-notices').html('<div class="notice error">' + escapeHtml(laT('live.byesPartly', { done: advanced, total: byes.length }) + ' ' + (data.message || laT('live.nextByeFailed'))) + '</div>');
                     $('.advance-button, .bulk-advance-button').prop('disabled', false);
                     return;
                 }
@@ -505,8 +516,8 @@
             }).fail(function(xhr) {
                 state.bulkAdvancing = false;
                 state.actionMessage = '';
-                var message = xhr.responseJSON && xhr.responseJSON.message ? xhr.responseJSON.message : 'The next bye could not be processed.';
-                $('#live-notices').html('<div class="notice error">Processed ' + advanced + ' of ' + byes.length + ' byes. ' + escapeHtml(message) + '</div>');
+                var message = xhr.responseJSON && xhr.responseJSON.message ? xhr.responseJSON.message : laT('live.nextByeFailed');
+                $('#live-notices').html('<div class="notice error">' + escapeHtml(laT('live.byesPartly', { done: advanced, total: byes.length }) + ' ' + message) + '</div>');
                 $('.advance-button, .bulk-advance-button').prop('disabled', false);
             });
         }
@@ -518,7 +529,7 @@
         if (state.bulkAdvancing || !state.snapshot) return;
         var participantIds = (state.qualificationForfeitEligible || []).slice();
         if (!participantIds.length) return;
-        if (!window.confirm('Forfeit ' + participantIds.length + ' archer' + (participantIds.length === 1 ? '' : 's') + ' with 0 arrows shot? They will be marked "Pull Out" until un-forfeited.')) {
+        if (!window.confirm(laTn('live.confirmForfeitAll', participantIds.length))) {
             return;
         }
 
@@ -534,7 +545,7 @@
             state.bulkAdvancing = false;
             if (data.error) {
                 state.actionMessage = '';
-                $('#live-notices').html('<div class="notice error">' + escapeHtml(data.message || 'Archers could not be forfeited.') + '</div>');
+                $('#live-notices').html('<div class="notice error">' + escapeHtml(data.message || laT('live.forfeitAllFailed')) + '</div>');
                 $('.advance-button, .bulk-advance-button, .retire-toggle').prop('disabled', false);
                 return;
             }
@@ -544,13 +555,13 @@
                 }
             });
             var failed = (data.results || []).filter(function(result) { return !result.ok; });
-            state.actionMessage = data.succeeded + ' archer' + (data.succeeded === 1 ? '' : 's') + ' forfeited'
-                + (failed.length ? ', ' + failed.length + ' skipped (' + failed[0].message + (failed.length > 1 ? ', ...' : '') + ')' : '');
+            state.actionMessage = laTn('live.forfeited', data.succeeded)
+                + (failed.length ? ', ' + laTn('live.forfeitSkipped', failed.length, { reason: failed[0].message + (failed.length > 1 ? ', ...' : '') }) : '');
             loadSnapshot(true);
         }).fail(function(xhr) {
             state.bulkAdvancing = false;
             state.actionMessage = '';
-            var message = xhr.responseJSON && xhr.responseJSON.message ? xhr.responseJSON.message : 'Archers could not be forfeited.';
+            var message = xhr.responseJSON && xhr.responseJSON.message ? xhr.responseJSON.message : laT('live.forfeitAllFailed');
             $('#live-notices').html('<div class="notice error">' + escapeHtml(message) + '</div>');
             $('.advance-button, .bulk-advance-button, .retire-toggle').prop('disabled', false);
         });
@@ -592,7 +603,7 @@
         $('#refresh-button').on('click', function() { loadSnapshot(true); });
         $('#print-finals').on('click', function() {
             var round = selectedFinalRound();
-            if (!window.LaneAssist.printLayout.finalsPrintState(round).enabled) return;
+            if (!window.LaneAssist.printLayout.finalsPrintState(round, TRANSLATOR).enabled) return;
             window.open(window.LaneAssist.printLayout.finalsPrintUrl(ROOT_DIR, round.slot), '_blank');
         });
         $('#print-qual').on('click', function() {

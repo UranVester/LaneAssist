@@ -74,6 +74,21 @@ final class LiveViewRetireToggleIntegrationTest extends LaneAssistDbTestCase
         $this->assertSame(1, self::currentStatus($enId));
     }
 
+    public function testForfeitRefusalFollowsTheUserLanguage(): void
+    {
+        $enId = self::QUAL_ID_BASE + 10;
+        self::seedArcher($enId, 1, '987X');
+        laSetLang('dk');
+        try {
+            $result = performArcherRetireToggle($enId, 1, self::SENTINEL);
+        } finally {
+            laSetLang('en');
+        }
+
+        $this->assertFalse($result['ok']);
+        $this->assertSame('Skytten har registrerede pile og kan ikke trækkes fra her', $result['message']);
+    }
+
     public function testRefusesAnUnknownParticipant(): void
     {
         $result = performArcherRetireToggle(self::QUAL_ID_BASE + 999, 1, self::SENTINEL);

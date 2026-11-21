@@ -41,6 +41,16 @@ const CONVERTED = [
     'ChangeTargetFaces/api.php',
     'Common/target-faces-data.php',
     'Common/target-face-logic.php',
+    'LiveView/index.php',
+    'LiveView/js/app.js',
+    'LiveView/api.php',
+    'LiveView/print-finals.php',
+    'Common/live-view-logic.php',
+    'Common/live-view-data.php',
+    'Common/finals-print-logic.php',
+    'Common/finals-print-data.php',
+    'Common/js/badge-render.js',
+    'Common/js/final-scores.js',
 ];
 const ALLOW = JSON.parse(fs.readFileSync(path.join(__dirname, 'hardcoded-text-allowlist.json'), 'utf8'));
 

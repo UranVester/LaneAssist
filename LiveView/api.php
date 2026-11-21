@@ -8,6 +8,7 @@
 // tests/StatusSnapshotIntegrationTest.php). Never defined in production.
 if (!defined('LANEASSIST_LIVEVIEW_API_TEST_MODE')) {
     require_once(dirname(__FILE__, 3) . '/config.php');
+    require_once(dirname(__FILE__, 2) . '/Common/i18n.php');
     header('Content-Type: application/json');
     header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
     header('Pragma: no-cache');
@@ -79,7 +80,7 @@ function advanceLiveMatch() {
     $event = trim((string)($_POST['event'] ?? ''));
     $matchNo = intval($_POST['matchNo'] ?? -1);
     if ($event === '' || $matchNo < 0 || IsBlocked($teamEvent ? BIT_BLOCK_TEAM : BIT_BLOCK_IND)) {
-        echo json_encode(['error' => 1, 'message' => 'This match cannot be advanced']);
+        echo json_encode(['error' => 1, 'message' => la_t('live.cannotAdvance')]);
         return;
     }
 
@@ -92,7 +93,7 @@ function advanceLiveMatch() {
     }
     $plan = $eligibleMatch ? laneAssistLiveMatchActionPlan($eligibleMatch) : null;
     if (!$plan) {
-        echo json_encode(['error' => 1, 'message' => 'The match is not complete and cannot be advanced']);
+        echo json_encode(['error' => 1, 'message' => la_t('live.notComplete')]);
         return;
     }
 
@@ -110,7 +111,7 @@ function advanceLiveMatch() {
         move2NextPhase(null, $event, $matchNo, intval($_SESSION['TourId']), true);
     }
     if (!$plan['expectAdvance']) {
-        echo json_encode(['error' => 0, 'message' => 'Bye marked complete', 'advanced' => false]);
+        echo json_encode(['error' => 0, 'message' => la_t('live.byeMarked'), 'advanced' => false]);
         return;
     }
 
@@ -118,10 +119,10 @@ function advanceLiveMatch() {
     $eventParticipants = $participantIndex[$event] ?? [];
     $advanced = laneAssistFinalMatchAdvanced($eligibleMatch, $eventParticipants);
     if (!$advanced) {
-        echo json_encode(['error' => 1, 'message' => 'IANSEO did not propagate this winner. Check that the result has a clear winner.']);
+        echo json_encode(['error' => 1, 'message' => la_t('live.notPropagated')]);
         return;
     }
-    echo json_encode(['error' => 0, 'message' => 'Match advanced', 'advanced' => true]);
+    echo json_encode(['error' => 0, 'message' => la_t('live.matchAdvanced'), 'advanced' => true]);
 }
 
 function markLiveMatchBye(array $match) {
@@ -175,7 +176,7 @@ function toggleArcherRetired() {
 
     $tourId = intval($_SESSION['TourId']);
     if (IsBlocked(BIT_BLOCK_QUAL)) {
-        echo json_encode(['error' => 1, 'message' => 'Qualification results are locked']);
+        echo json_encode(['error' => 1, 'message' => la_t('live.qualLocked')]);
         return;
     }
 
@@ -207,7 +208,7 @@ function toggleArcherRetiredBulk() {
 
     $tourId = intval($_SESSION['TourId']);
     if (IsBlocked(BIT_BLOCK_QUAL)) {
-        echo json_encode(['error' => 1, 'message' => 'Qualification results are locked']);
+        echo json_encode(['error' => 1, 'message' => la_t('live.qualLocked')]);
         return;
     }
 

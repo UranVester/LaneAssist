@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/i18n.php';
 
 function laneAssistCompletedEnds($arrowString, $arrowsPerEnd) {
     $arrowsPerEnd = max(1, intval($arrowsPerEnd));
@@ -443,7 +444,7 @@ function performArcherRetireToggle($enId, $session, $tourId) {
 
     $currentlyRetired = intval($entry->EnStatus) === 6;
     if (!$currentlyRetired && archerHasQualificationArrows($enId, $session)) {
-        return ['ok' => false, 'message' => 'This archer has recorded arrows and cannot be forfeited here', 'participantId' => $enId];
+        return ['ok' => false, 'message' => la_t('live.cannotForfeit'), 'participantId' => $enId];
     }
 
     if ($currentlyRetired) {

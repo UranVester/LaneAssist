@@ -1,12 +1,13 @@
 <?php
 
 require_once(dirname(__FILE__, 3) . '/config.php');
+require_once(dirname(__FILE__, 2) . '/Common/i18n.php');
 
 if (!CheckTourSession()) {
-    $PAGE_TITLE = 'LaneAssist Live View - No Tournament Selected';
+    $PAGE_TITLE = la_t('menu.liveView') . ' - ' . la_t('common.noTournamentSelected');
     include('Common/Templates/head.php');
-    echo '<div style="padding:20px;text-align:center"><h2>No Competition Selected</h2>';
-    echo '<p><a class="btn btn-primary" href="' . $CFG->ROOT_DIR . 'index.php">Select Tournament</a></p></div>';
+    echo '<div style="padding:20px;text-align:center"><h2>' . la_h('common.noTournamentSelected') . '</h2>';
+    echo '<p><a class="btn btn-primary" href="' . $CFG->ROOT_DIR . 'index.php">' . la_h('common.selectTournament') . '</a></p></div>';
     include(dirname(__FILE__, 2) . '/Common/disclaimer.php');
     include('Common/Templates/tail.php');
     exit;
@@ -16,7 +17,7 @@ checkFullACL(AclCompetition, '', AclReadOnly);
 require_once('Common/Fun_Sessions.inc.php');
 require_once(dirname(__FILE__, 2) . '/Common/color-logic.php');
 
-$PAGE_TITLE = 'LaneAssist Live View';
+$PAGE_TITLE = la_t('menu.liveView');
 $IncludeJquery = true;
 $IncludeFA = true;
 $sessions = GetSessions('Q');
@@ -57,6 +58,8 @@ $JS_SCRIPT = [
         var ClassMeta = ' . json_encode($classMeta, JSON_HEX_TAG | JSON_HEX_AMP) . ';
         var ColorGroups = ' . json_encode(laLoadColorGroups(intval($_SESSION['TourId'])), JSON_HEX_TAG | JSON_HEX_AMP) . ';
     </script>',
+    laJsCatalogScript(['common.', 'live.', 'print.', 'colorBy.', 'status.']),
+    '<script src="' . $CFG->ROOT_DIR . 'Modules/Custom/LaneAssist/Common/js/i18n.js?v=' . filemtime(dirname(__DIR__) . '/Common/js/i18n.js') . '"></script>',
     '<link href="' . $CFG->ROOT_DIR . 'Modules/Custom/LaneAssist/LiveView/css/style.css?v=' . $styleVersion . '" rel="stylesheet" type="text/css">',
     '<script src="' . $CFG->ROOT_DIR . 'Modules/Custom/LaneAssist/Common/js/badge-render.js?v='
         . $badgeRenderVersion . '"></script>',
@@ -76,25 +79,25 @@ include('Common/Templates/head.php');
         <div>
             <div class="live-heading">
                 <div>
-                    <h2>Live View</h2>
-                    <div id="live-summary" class="live-summary">Loading tournament status...</div>
+                    <h2><?php echo la_h('live.title'); ?></h2>
+                    <div id="live-summary" class="live-summary"><?php echo la_h('tournament.loadingStatus'); ?></div>
                 </div>
                 <div id="live-progress" class="live-progress" aria-live="polite">
-                    <span>Current end</span>
+                    <span><?php echo la_h('live.currentEnd'); ?></span>
                     <strong>-</strong>
                 </div>
             </div>
         </div>
         <div class="live-controls">
             <label class="session-control" for="color-by">
-                <span>Color by</span>
+                <span><?php echo la_h('live.colorBy'); ?></span>
                 <select id="color-by"></select>
             </label>
             <label class="session-control" for="total-mode" id="total-mode-control">
-                <span>Total</span>
+                <span><?php echo la_h('live.total'); ?></span>
                 <select id="total-mode">
-                    <option value="combined" selected>Combined</option>
-                    <option value="distance">Current distance</option>
+                    <option value="combined" selected><?php echo la_h('live.totalCombined'); ?></option>
+                    <option value="distance"><?php echo la_h('live.totalDistance'); ?></option>
                 </select>
             </label>
             <label class="session-control" for="session-select">
@@ -109,42 +112,42 @@ include('Common/Templates/head.php');
             </label>
             <div class="session-control round-control" id="round-control" hidden>
                 <label for="round-select">
-                    <span>Round</span>
+                    <span><?php echo la_h('live.round'); ?></span>
                     <select id="round-select"></select>
                 </label>
                 <div class="round-nav">
-                    <button type="button" id="round-prev" class="goto-current-button" title="Previous round">&laquo; Prev</button>
-                    <button type="button" id="round-goto-current" class="goto-current-button current-action" title="Go to current round">Go to current</button>
-                    <button type="button" id="round-next" class="goto-current-button" title="Next round">Next &raquo;</button>
+                    <button type="button" id="round-prev" class="goto-current-button" title="<?php echo la_h('live.prevRoundHelp'); ?>">&laquo; <?php echo la_h('live.prevRound'); ?></button>
+                    <button type="button" id="round-goto-current" class="goto-current-button current-action" title="<?php echo la_h('live.currentRoundHelp'); ?>"><?php echo la_h('live.currentRound'); ?></button>
+                    <button type="button" id="round-next" class="goto-current-button" title="<?php echo la_h('live.nextRoundHelp'); ?>"><?php echo la_h('live.nextRound'); ?> &raquo;</button>
                 </div>
             </div>
-            <div class="mode-switch" role="group" aria-label="Competition phase">
-                <button type="button" class="mode-button active" data-mode="qualification">Qualification</button>
-                <button type="button" class="mode-button" data-mode="finals">Finals <span id="final-count" class="count-badge">0</span></button>
+            <div class="mode-switch" role="group" aria-label="<?php echo la_h('live.phaseLabel'); ?>">
+                <button type="button" class="mode-button active" data-mode="qualification"><?php echo la_h('tournament.stageQualification'); ?></button>
+                <button type="button" class="mode-button" data-mode="finals"><?php echo la_h('tournament.stageFinals'); ?> <span id="final-count" class="count-badge">0</span></button>
             </div>
-            <button type="button" id="print-qual" class="icon-button" title="Print target layout" aria-label="Print target layout">
+            <button type="button" id="print-qual" class="icon-button" title="<?php echo la_h('live.printTargets'); ?>" aria-label="<?php echo la_h('live.printTargets'); ?>">
                 <i class="fa fa-print" aria-hidden="true"></i>
             </button>
-            <button type="button" id="print-finals" class="icon-button" title="Print lane layout for this round" aria-label="Print lane layout for this round" hidden>
+            <button type="button" id="print-finals" class="icon-button" title="<?php echo la_h('print.finalsReady'); ?>" aria-label="<?php echo la_h('print.finalsReady'); ?>" hidden>
                 <i class="fa fa-print" aria-hidden="true"></i>
             </button>
-            <button type="button" id="refresh-button" class="icon-button" title="Refresh now" aria-label="Refresh now">
+            <button type="button" id="refresh-button" class="icon-button" title="<?php echo la_h('tournament.refreshNow'); ?>" aria-label="<?php echo la_h('tournament.refreshNow'); ?>">
                 <i class="fa fa-refresh" aria-hidden="true"></i>
             </button>
         </div>
     </header>
 
-    <section class="status-strip" aria-label="Status legend">
-        <span><i class="status-dot healthy"></i> On pace</span>
-        <span><i class="status-dot warning"></i> Needs attention</span>
-        <span><i class="status-dot danger"></i> Behind or missing arrows</span>
-        <span id="last-updated">Waiting for first update</span>
+    <section class="status-strip" aria-label="<?php echo la_h('live.legend'); ?>">
+        <span><i class="status-dot healthy"></i> <?php echo la_h('live.onPace'); ?></span>
+        <span><i class="status-dot warning"></i> <?php echo la_h('live.needsAttention'); ?></span>
+        <span><i class="status-dot danger"></i> <?php echo la_h('live.behind'); ?></span>
+        <span id="last-updated"><?php echo la_h('live.waitingFirst'); ?></span>
     </section>
 
     <div id="live-notices" class="live-notices" aria-live="polite"></div>
-    <section id="qualification-view" class="live-grid" aria-label="Qualification targets"></section>
-    <section id="finals-view" class="live-grid" aria-label="Final matches" hidden></section>
-    <div id="empty-state" class="empty-state" hidden>No live data is available for this view.</div>
+    <section id="qualification-view" class="live-grid" aria-label="<?php echo la_h('live.qualTargets'); ?>"></section>
+    <section id="finals-view" class="live-grid" aria-label="<?php echo la_h('live.finalMatches'); ?>" hidden></section>
+    <div id="empty-state" class="empty-state" hidden><?php echo la_h('live.noData'); ?></div>
 </main>
 <?php
 include(dirname(__FILE__, 2) . '/Common/disclaimer.php');

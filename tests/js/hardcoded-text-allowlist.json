@@ -69,5 +69,26 @@
   ],
   "Common/target-face-logic.php": [
     "Unknown face group: "
+  ],
+  "LiveView/api.php": [
+    "Pragma: no-cache",
+    "Invalid action",
+    "The bye could not be marked complete",
+    "Finals",
+    "Invalid participant",
+    "Invalid participants"
+  ],
+  "LiveView/print-finals.php": [
+    "No competition selected",
+    "Invalid round"
+  ],
+  "Common/live-view-logic.php": [
+    "Arrowstring",
+    "Participant not found"
+  ],
+  "Common/live-view-data.php": [
+    "Arrowstring",
+    "Score",
+    "Finals"
   ]
 }

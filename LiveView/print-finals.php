@@ -6,6 +6,7 @@
  */
 
 require_once(dirname(__FILE__, 3) . '/config.php');
+require_once(dirname(__FILE__, 2) . '/Common/i18n.php');
 
 if (!CheckTourSession()) {
     header('HTTP/1.0 403 Forbidden');
@@ -49,8 +50,8 @@ foreach ($readiness['ready'] ? $printedSides : $round['sides'] as $side) {
     $scopes[$side['eventName'] . ' · ' . laneAssistPhaseLabel($side['phase'])] = true;
 }
 ?><!doctype html>
-<html><head><meta charset="utf-8">
-<title>Finals lanes - <?php echo fpH($slotTime); ?></title>
+<html lang="<?php echo fpH(laLang() === 'dk' ? 'da' : laLang()); ?>"><head><meta charset="utf-8">
+<title><?php echo la_h('print.finalsTitle', ['slot' => $slotTime]); ?></title>
 <style>
 @page { size: A4 portrait; margin: 10mm; }
 body { font-family: Arial, sans-serif; color: #000; background: #fff; margin: 0; font-size: 12px; }
@@ -72,15 +73,15 @@ td.lane { width: 14mm; font-size: 20px; font-weight: bold; text-align: center; v
 </style></head><body>
 <div class="print-header">
     <h1><?php echo fpH($tournament); ?></h1>
-    <div>Finals · <?php echo fpH($slotTime); ?> · <?php echo fpH(implode(', ', array_keys($scopes))); ?></div>
-    <div>Printed: <?php echo fpH($printedAt); ?></div>
+    <div><?php echo la_h('print.finals'); ?> · <?php echo fpH($slotTime); ?> · <?php echo fpH(implode(', ', array_keys($scopes))); ?></div>
+    <div><?php echo la_h('print.printed'); ?>: <?php echo fpH($printedAt); ?></div>
 </div>
 <?php if (!$readiness['ready']): ?>
     <div class="not-ready">
         <?php if ($readiness['waiting'] > 0): ?>
-            Not ready to print: waiting for <?php echo intval($readiness['waiting']); ?> match<?php echo $readiness['waiting'] === 1 ? '' : 'es'; ?> to finish.
+            <?php echo fpH(laPlural('print.notReadyWaiting', intval($readiness['waiting']))); ?>
         <?php else: ?>
-            Nothing is scheduled in this round.
+            <?php echo la_h('print.nothingScheduled'); ?>
         <?php endif; ?>
     </div>
 <?php else: ?>
@@ -107,7 +108,7 @@ td.lane { width: 14mm; font-size: 20px; font-weight: bold; text-align: center; v
     <?php endforeach; ?>
     </table>
     <?php if (!empty($lanes['unassigned'])): ?>
-        <div class="unassigned"><strong>Not on a lane:</strong>
+        <div class="unassigned"><strong><?php echo la_h('print.notOnLane'); ?></strong>
             <ul>
             <?php foreach ($lanes['unassigned'] as $side): ?>
                 <li><?php echo fpH($side['eventName'] . ' · ' . laneAssistPhaseLabel($side['phase'])); ?></li>

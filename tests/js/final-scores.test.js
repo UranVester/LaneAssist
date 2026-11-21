@@ -40,3 +40,13 @@ test('render escapes values and marks blank columns with a dash', () => {
     assert.match(html, /<small>Total<\/small><b>30<\/b>/);
     assert.match(html, /style="--final-columns: 2"/);
 });
+
+test('score column labels come from the translator and are escaped in the html', () => {
+    const { createTranslator } = require('../../Common/js/i18n.js');
+    const dk = createTranslator({ 'live.setShort': 'S', 'live.endShort': 'R', 'live.sets': 'Sæt', 'live.total': 'I <alt>' });
+    const cumulative = finalScores.build({ matchMode: 0, totalEnds: 2 }, { setPoints: [29], score: 29 }, dk);
+    assert.deepStrictEqual(cumulative.columns.map((c) => c.label), ['R1', 'R2']);
+    assert.strictEqual(cumulative.summary.label, 'I <alt>');
+    assert.strictEqual(finalScores.build({ matchMode: 1, totalEnds: 1 }, { setPoints: [2], setScore: 2 }, dk).summary.label, 'Sæt');
+    assert.match(finalScores.render({ matchMode: 0, totalEnds: 1 }, { setPoints: [1], score: 1 }, dk), /I &lt;alt&gt;/);
+});
