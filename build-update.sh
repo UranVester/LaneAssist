@@ -172,6 +172,7 @@ find "$STAGE_ROOT/$REL_MODULE_PATH" -type f -name '*.sh' -delete
     "*/laneassist-module*.zip" \
     "*/.env" \
     "*/docs/screenshots/*" \
+    "*/docs/superpowers/*" \
     ".gitignore" \
     "*/.env.*" \
        "*/node_modules/*" \
