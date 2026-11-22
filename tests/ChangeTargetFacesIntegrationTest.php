@@ -28,6 +28,7 @@ final class ChangeTargetFacesIntegrationTest extends LaneAssistDbTestCase
         parent::cleanupSentinel();
         safe_w_sql('DELETE FROM Countries WHERE CoTournament=' . StrSafe_DB(self::SENTINEL));
         safe_w_sql('DELETE FROM TargetFaces WHERE TfTournament=' . StrSafe_DB(self::SENTINEL));
+        safe_w_sql('DELETE FROM Qualifications WHERE QuId BETWEEN ' . self::EN_R . ' AND ' . self::EN_STAFF);
     }
 
     private static function clubOf(string $div): int
@@ -113,6 +114,17 @@ final class ChangeTargetFacesIntegrationTest extends LaneAssistDbTestCase
         $this->assertSame([self::EN_R, self::EN_C, self::EN_L, self::EN_T], array_column($rows, 'id'));
         $this->assertSame('TFCLUB', $rows[0]['coCode']);
         $this->assertTrue($rows[3]['noFace']);
+    }
+
+    public function testLoadArchersIncludesTarget(): void
+    {
+        // EN_R is on mat 12B of session 2; EN_C has no Qualifications row at all.
+        self::seedRow('Qualifications', ['QuId' => self::EN_R, 'QuSession' => 2, 'QuTarget' => 12, 'QuLetter' => 'B', 'QuTargetNo' => '2012B']);
+        $rows = array_column(tfLoadArchers(self::SENTINEL, [], tfLoadContext(self::SENTINEL)), null, 'id');
+        $r = $rows[self::EN_R];
+        $this->assertSame([2, 12, 'B', 'Anna', 'Test'], [$r['session'], $r['target'], $r['letter'], $r['lastName'], $r['firstName']]);
+        $c = $rows[self::EN_C];
+        $this->assertSame([0, 0, ''], [$c['session'], $c['target'], $c['letter']]);
     }
 
     public function testFaceFilterUsesCurrentFace(): void

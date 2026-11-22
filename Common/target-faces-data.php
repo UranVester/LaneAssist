@@ -100,9 +100,11 @@ function tfSqlIn(array $values): string
 function tfLoadArchers(int $tourId, array $filters, array $ctx, int $onlyEnId = 0): array
 {
     $tour = StrSafe_DB($tourId);
-    $sql = "SELECT EnId, EnCode, EnFirstName, EnName, EnDivision, EnClass, EnTargetFace, CoCode, CoName
+    $sql = "SELECT EnId, EnCode, EnFirstName, EnName, EnDivision, EnClass, EnTargetFace, CoCode, CoName,
+            QuSession, QuTarget, QuLetter
         FROM Entries
         LEFT JOIN Countries ON EnCountry=CoId AND EnTournament=CoTournament
+        LEFT JOIN Qualifications ON QuId=EnId
         WHERE EnTournament=$tour AND EnAthlete=1";
     if (($v = tfFilterValue($filters, 'name')) !== '') {
         $sql .= ' AND ' . assembleWhereCondition(['EnFirstName', 'EnName'], [$v]);
@@ -138,6 +140,13 @@ function tfLoadArchers(int $tourId, array $filters, array $ctx, int $onlyEnId = 
             'id' => intval($r->EnId),
             'code' => (string)$r->EnCode,
             'name' => trim($r->EnFirstName . ' ' . $r->EnName),
+            // EnFirstName is IANSEO's family name; the page sorts on these.
+            'lastName' => (string)$r->EnFirstName,
+            'firstName' => (string)$r->EnName,
+            // 0 / '' when the archer has no target (no row, or session/target 0).
+            'session' => intval($r->QuSession),
+            'target' => intval($r->QuTarget),
+            'letter' => (string)$r->QuLetter,
             'coCode' => (string)$r->CoCode,
             'coName' => (string)$r->CoName,
             'div' => (string)$r->EnDivision,
