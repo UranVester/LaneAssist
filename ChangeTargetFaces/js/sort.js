@@ -55,17 +55,6 @@
         return (multiSession ? a.session + '-' : '') + a.target + (a.letter || '');
     }
 
-    function hasMultipleSessions(archers) {
-        let first = 0;
-        return archers.some(function(a) {
-            if (!assigned(a)) {
-                return false;
-            }
-            first = first || a.session;
-            return a.session !== first;
-        });
-    }
-
     /** The sort saved in localStorage, or the default if it is missing or not one we know. */
     function parseSort(stored) {
         try {
@@ -82,7 +71,6 @@
     return {
         sortArchers: sortArchers,
         formatTarget: formatTarget,
-        hasMultipleSessions: hasMultipleSessions,
         parseSort: parseSort
     };
 }));

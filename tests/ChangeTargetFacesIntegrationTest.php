@@ -25,10 +25,11 @@ final class ChangeTargetFacesIntegrationTest extends LaneAssistDbTestCase
 
     protected static function cleanupSentinel(): void
     {
+        // Qualifications has no tournament column: delete only rows of the sentinel's own entries.
+        safe_w_sql('DELETE FROM Qualifications WHERE QuId IN (SELECT EnId FROM Entries WHERE EnTournament=' . StrSafe_DB(self::SENTINEL) . ')');
         parent::cleanupSentinel();
         safe_w_sql('DELETE FROM Countries WHERE CoTournament=' . StrSafe_DB(self::SENTINEL));
         safe_w_sql('DELETE FROM TargetFaces WHERE TfTournament=' . StrSafe_DB(self::SENTINEL));
-        safe_w_sql('DELETE FROM Qualifications WHERE QuId BETWEEN ' . self::EN_R . ' AND ' . self::EN_STAFF);
     }
 
     private static function clubOf(string $div): int
@@ -121,10 +122,23 @@ final class ChangeTargetFacesIntegrationTest extends LaneAssistDbTestCase
         // EN_R is on mat 12B of session 2; EN_C has no Qualifications row at all.
         self::seedRow('Qualifications', ['QuId' => self::EN_R, 'QuSession' => 2, 'QuTarget' => 12, 'QuLetter' => 'B', 'QuTargetNo' => '2012B']);
         $rows = array_column(tfLoadArchers(self::SENTINEL, [], tfLoadContext(self::SENTINEL)), null, 'id');
-        $r = $rows[self::EN_R];
+        $r = $rows[self::EN_R]; // EnFirstName ('Anna' here) is IANSEO's family name
         $this->assertSame([2, 12, 'B', 'Anna', 'Test'], [$r['session'], $r['target'], $r['letter'], $r['lastName'], $r['firstName']]);
         $c = $rows[self::EN_C];
         $this->assertSame([0, 0, ''], [$c['session'], $c['target'], $c['letter']]);
+    }
+
+    public function testMultipleSessionsIsTournamentWideNotFiltered(): void
+    {
+        self::seedRow('Qualifications', ['QuId' => self::EN_R, 'QuSession' => 1, 'QuTarget' => 3, 'QuLetter' => 'A', 'QuTargetNo' => '1003A']);
+        $this->assertFalse(tfHasMultipleSessions(self::SENTINEL));
+        // Unassigned (target 0) and non-athletes don't make a second session.
+        self::seedRow('Qualifications', ['QuId' => self::EN_C, 'QuSession' => 2, 'QuTarget' => 0, 'QuLetter' => '', 'QuTargetNo' => '']);
+        self::seedRow('Qualifications', ['QuId' => self::EN_STAFF, 'QuSession' => 2, 'QuTarget' => 5, 'QuLetter' => 'A', 'QuTargetNo' => '2005A']);
+        $this->assertFalse(tfHasMultipleSessions(self::SENTINEL));
+        // A second session counts even when the name filter would hide that archer.
+        self::seedRow('Qualifications', ['QuId' => self::EN_L, 'QuSession' => 2, 'QuTarget' => 7, 'QuLetter' => 'B', 'QuTargetNo' => '2007B']);
+        $this->assertTrue(tfHasMultipleSessions(self::SENTINEL));
     }
 
     public function testFaceFilterUsesCurrentFace(): void

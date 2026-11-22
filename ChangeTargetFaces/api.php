@@ -77,6 +77,7 @@ function changeTargetFacesLoad(int $tourId): void
         'error' => 0,
         'groups' => array_map(fn($g) => ['key' => $g['key'], 'label' => $g['label']], $ctx['groups']),
         'archers' => tfLoadArchers($tourId, changeTargetFacesFilters(), $ctx),
+        'multiSession' => tfHasMultipleSessions($tourId),
         'canWrite' => $reason === '',
         'readOnlyReason' => $reason,
     ]);

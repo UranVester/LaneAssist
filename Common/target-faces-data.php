@@ -158,6 +158,18 @@ function tfLoadArchers(int $tourId, array $filters, array $ctx, int $onlyEnId = 
 }
 
 /**
+ * Whether athletes sit on targets in more than one session, tournament-wide
+ * (not just the filtered rows), so the Target column knows to show "2-12A".
+ */
+function tfHasMultipleSessions(int $tourId): bool
+{
+    $r = safe_fetch(safe_r_sql('SELECT COUNT(DISTINCT QuSession) n FROM Qualifications
+        INNER JOIN Entries ON QuId=EnId
+        WHERE EnTournament=' . StrSafe_DB($tourId) . ' AND EnAthlete=1 AND QuSession>0 AND QuTarget>0'));
+    return $r && intval($r->n) > 1;
+}
+
+/**
  * Choices for the multiselect filters, as [['value'=>string,'label'=>string], ...]:
  * clubs that have athletes (by code), athlete divisions and classes (view
  * order), and individual events (by code).

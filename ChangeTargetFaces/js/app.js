@@ -116,6 +116,7 @@
                 state.groups = response.groups;
                 state.archers = Sort.sortArchers(response.archers, state.sort.key, state.sort.dir);
                 state.canWrite = !!response.canWrite;
+                state.multiSession = !!response.multiSession;
                 $('#readonly-note').toggleClass('hidden', state.canWrite).text(response.readOnlyReason || '');
                 renderFaceFilter();
                 render();
@@ -142,7 +143,6 @@
         const n = state.archers.length;
         $('#tf-count').text(laT('faces.shown', { count: n }));
 
-        state.multiSession = Sort.hasMultipleSessions(state.archers);
         let head = '<tr><th>' + escapeHtml(laT('faces.colCode')) + '</th>' + sortableHead('target', laT('faces.colTarget'))
             + sortableHead('archer', laT('faces.archer')) + '<th>'
             + escapeHtml(laT('faces.club')) + '</th><th>' + escapeHtml(laT('faces.colDiv')) + '</th><th>' + escapeHtml(laT('faces.colClass')) + '</th>';

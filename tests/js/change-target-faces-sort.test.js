@@ -3,7 +3,7 @@
 const test = require('node:test');
 const assert = require('node:assert');
 
-const { sortArchers, formatTarget, hasMultipleSessions, parseSort } = require('../../ChangeTargetFaces/js/sort.js');
+const { sortArchers, formatTarget, parseSort } = require('../../ChangeTargetFaces/js/sort.js');
 
 let nextId = 1;
 function archer(session, target, letter, lastName, firstName) {
@@ -57,12 +57,6 @@ test('formatTarget shows mat and letter, with session only when there are severa
     assert.strictEqual(formatTarget(a, true), '1-12A');
     assert.strictEqual(formatTarget(archer(0, 0, ''), true), '');
     assert.strictEqual(formatTarget(archer(2, 0, ''), true), '');
-});
-
-test('hasMultipleSessions ignores unassigned archers', () => {
-    assert.strictEqual(hasMultipleSessions([archer(1, 1, 'A'), archer(1, 2, 'A'), archer(0, 0, '')]), false);
-    assert.strictEqual(hasMultipleSessions([archer(1, 1, 'A'), archer(2, 1, 'A')]), true);
-    assert.strictEqual(hasMultipleSessions([]), false);
 });
 
 test('parseSort falls back to archer ascending on anything unknown', () => {
