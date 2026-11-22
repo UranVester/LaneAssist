@@ -304,6 +304,13 @@
         renderFinals(state.finals);
     }
 
+    function medalIcon(match, side) {
+        var medal = window.LaneAssist.finalScores.medal(match, side);
+        if (!medal) return '';
+        var label = { gold: laT('live.medalGold'), silver: laT('live.medalSilver'), bronze: laT('live.medalBronze') }[medal];
+        return '<i class="fa fa-medal medal-icon medal-' + medal + '" title="' + escapeHtml(label) + '" aria-label="' + escapeHtml(label) + '"></i> ';
+    }
+
     function renderFinals(matches) {
         var byeCount = matches.filter(function(match) { return match.status === 'bye' && match.canMarkBye; }).length;
         $('#final-count').text(matches.length);
@@ -314,7 +321,7 @@
                 var winner = side.winLose || side.tie === 2;
                 var scores = window.LaneAssist.finalScores.render(match, side, TRANSLATOR);
                 var colorAttrs = colorByAttrs(side, match);
-                return '<div class="final-side' + (winner ? ' winner' : '') + '"><div class="final-side-name' + colorAttrs.classAttr + '"' + colorAttrs.styleAttr + colorAttrs.titleAttr + '><strong>' + escapeHtml(side.name || laT('live.awaitingOpponent')) + '</strong><small>' + escapeHtml(laTn('live.endsReported', side.completedEnds)) + '</small></div>' + scores + '</div>';
+                return '<div class="final-side' + (winner ? ' winner' : '') + '"><div class="final-side-name' + colorAttrs.classAttr + '"' + colorAttrs.styleAttr + colorAttrs.titleAttr + '><strong>' + medalIcon(match, side) + escapeHtml(side.name || laT('live.awaitingOpponent')) + '</strong><small>' + escapeHtml(laTn('live.endsReported', side.completedEnds)) + '</small></div>' + scores + '</div>';
             }).join('');
             var canAct = match.canAdvance || match.canMarkBye;
             var actionLabel = match.status === 'bye' ? (match.canAdvance ? laT('live.markByeAdvance') : laT('live.markBye')) : laT('live.advanceWinner');

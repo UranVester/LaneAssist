@@ -50,3 +50,29 @@ test('score column labels come from the translator and are escaped in the html',
     assert.strictEqual(finalScores.build({ matchMode: 1, totalEnds: 1 }, { setPoints: [2], setScore: 2 }, dk).summary.label, 'Sæt');
     assert.match(finalScores.render({ matchMode: 0, totalEnds: 1 }, { setPoints: [1], score: 1 }, dk), /I &lt;alt&gt;/);
 });
+
+test('medal: gold final gives gold to the winner and silver to the loser', () => {
+    const match = {phase: 0, sides: [{participantId: 1, winLose: 1}, {participantId: 2, winLose: 0}]};
+    assert.strictEqual(finalScores.medal(match, match.sides[0]), 'gold');
+    assert.strictEqual(finalScores.medal(match, match.sides[1]), 'silver');
+});
+
+test('medal: bronze final gives bronze to the winner only, shoot-off tie counts as a win', () => {
+    const match = {phase: 1, sides: [{participantId: 1, winLose: 0, tie: 0}, {participantId: 2, winLose: 0, tie: 2}]};
+    assert.strictEqual(finalScores.medal(match, match.sides[0]), null);
+    assert.strictEqual(finalScores.medal(match, match.sides[1]), 'bronze');
+});
+
+test('medal: nothing until the match is decided, and never outside medal matches', () => {
+    const undecided = {phase: 0, sides: [{participantId: 1, winLose: 0}, {participantId: 2, winLose: 0}]};
+    assert.strictEqual(finalScores.medal(undecided, undecided.sides[0]), null);
+    assert.strictEqual(finalScores.medal(undecided, undecided.sides[1]), null);
+    const semi = {phase: 2, sides: [{participantId: 1, winLose: 1}, {participantId: 2, winLose: 0}]};
+    assert.strictEqual(finalScores.medal(semi, semi.sides[0]), null);
+});
+
+test('medal: an empty side of a decided gold bye gets no silver', () => {
+    const bye = {phase: 0, sides: [{participantId: 1, winLose: 1}, {participantId: 0, winLose: 0}]};
+    assert.strictEqual(finalScores.medal(bye, bye.sides[0]), 'gold');
+    assert.strictEqual(finalScores.medal(bye, bye.sides[1]), null);
+});

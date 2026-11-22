@@ -48,5 +48,20 @@
             '<span class="set-score"><small>' + escapeHtml(view.summary.label) + '</small><b>' + escapeHtml(view.summary.value) + '</b></span></div>';
     }
 
-    return {build: build, render: render};
+    function isWinner(side) {
+        return !!side && (!!side.winLose || parseInt(side.tie, 10) === 2);
+    }
+
+    // Medal a side has earned on a decided medal match (phase 0 = gold final,
+    // phase 1 = bronze final): 'gold' / 'silver' / 'bronze', or null.
+    function medal(match, side) {
+        var phase = parseInt(match && match.phase, 10);
+        if ((phase !== 0 && phase !== 1) || !side || !side.participantId) return null;
+        if (isWinner(side)) return phase === 0 ? 'gold' : 'bronze';
+        if (phase !== 0) return null;
+        var decided = (match.sides || []).some(function(other) { return other !== side && isWinner(other); });
+        return decided ? 'silver' : null;
+    }
+
+    return {build: build, render: render, medal: medal};
 }));

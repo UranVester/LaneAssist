@@ -90,8 +90,11 @@
 .status-unreported, .status-uneven, .status-partial { border-top: 4px solid var(--live-red); }
 .status-bye { border-top: 4px solid var(--live-yellow); }
 .status-live { border-top: 4px solid var(--live-green); }
-.status-complete { border-top: 4px solid #286fa0; }
-.status-advanced { border-top: 4px solid #286fa0; opacity: .78; }
+.status-advanced { opacity: .78; }
+.medal-icon { margin-right: 2px; }
+.medal-gold { color: #d4a017; }
+.medal-silver { color: #8a949c; }
+.medal-bronze { color: #a8662b; }
 .final-side { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 58px; padding: 8px 12px; border-bottom: 1px solid #edf0f2; }
 .final-side.winner { background: #edf8f2; }
 .final-card footer { min-height: 12px; padding: 8px 12px; text-align: right; }
