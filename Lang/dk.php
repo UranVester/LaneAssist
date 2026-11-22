@@ -524,6 +524,8 @@ return [
     'faces.loadFailed' => 'Skytterne kunne ikke hentes',
     'faces.shown' => '{count} vist',
     'faces.colCode' => 'Kode',
+    'faces.colTarget' => 'Mål',
+    'faces.sortBy' => 'Sortér efter denne kolonne',
     'faces.colDiv' => 'Div',
     'faces.colClass' => 'Kl',
     'faces.setAll' => 'Sæt alle {count}',

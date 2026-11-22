@@ -107,3 +107,18 @@
     color: #666;
     font-style: italic;
 }
+
+.tf-sortable {
+    cursor: pointer;
+    user-select: none;
+    white-space: nowrap;
+}
+
+.tf-sortable:hover {
+    text-decoration: underline;
+}
+
+.tf-sort-arrow {
+    font-size: 10px;
+    margin-left: 3px;
+}
