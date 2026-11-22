@@ -227,4 +227,45 @@ final class FinalsPrintLogicTest extends TestCase
         $this->assertSame(['id' => 98, 'size' => 40],
             fpSideFace(['id' => 2, 'size' => 40], ['id' => 98, 'size' => 0]));
     }
+
+    private static function rendered(array $sides): string
+    {
+        $result = fpBuildLanes($sides, ['0|RM' => array_fill_keys(range(0, 15), true)]);
+        return fpRenderLanesHtml($result['lanes'], function ($phase) { return 'P' . $phase; });
+    }
+
+    public function testLanesRenderAsWrappingCards(): void
+    {
+        $html = self::rendered([self::side(8, '003'), self::side(9, '001'), self::side(10, '002'), self::side(11, '004')]);
+        $this->assertSame(1, substr_count($html, 'class="lanes"'));
+        $this->assertSame(4, substr_count($html, 'class="lane-card"'));
+        $this->assertStringNotContainsString('<table', $html);
+        $this->assertStringNotContainsString('<tr', $html);
+        preg_match_all('/class="lane-no">(\d+)</', $html, $m);
+        $this->assertSame(['1', '2', '3', '4'], $m[1]);
+    }
+
+    public function testLaneCardHoldsAllItsFaces(): void
+    {
+        $html = self::rendered([self::side(8, '002'), self::side(9, '002'), self::side(10, '001'), self::side(11, '003')]);
+        $cards = explode('class="lane-card"', $html);
+        $this->assertCount(4, $cards);
+        $this->assertSame(2, substr_count($cards[2], 'class="target"'));
+        $this->assertStringContainsString('Recurve Men · P8', $cards[2]);
+        $this->assertStringContainsString('70 m', $cards[2]);
+    }
+
+    public function testLaneCardEscapesAndSkipsMissingBits(): void
+    {
+        $side = self::side(8, '001');
+        $side['eventName'] = 'A<b>&';
+        $side['faceUrl'] = '';
+        $side['distance'] = '';
+        $html = self::rendered([$side, self::side(9, '002')]);
+        $first = explode('class="lane-card"', $html)[1];
+        $this->assertStringContainsString('A&lt;b&gt;&amp;', $first);
+        $this->assertStringNotContainsString('<b>', $html);
+        $this->assertStringNotContainsString('<img', $first);
+        $this->assertStringNotContainsString(' m<', $first);
+    }
 }

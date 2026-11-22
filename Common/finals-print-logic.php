@@ -181,3 +181,33 @@ function fpSideFace(array $eventFace, ?array $archerFace): array
         'size' => $size > 0 ? $size : intval($eventFace['size'] ?? 0),
     ];
 }
+
+/**
+ * Lane sheet body: one card per lane (number on top, faces side by side), all in
+ * one wrapping container so short lanes share a line instead of a row each.
+ *
+ * @param array $lanes fpBuildLanes()['lanes']
+ * @param callable $phaseLabel phase id => display label
+ */
+function fpRenderLanesHtml(array $lanes, callable $phaseLabel): string
+{
+    $h = function ($value) { return htmlspecialchars((string)$value, ENT_QUOTES, 'UTF-8'); };
+    $html = '<div class="lanes">';
+    foreach ($lanes as $lane) {
+        $html .= '<div class="lane-card"><div class="lane-no">' . intval($lane['lane']) . '</div><div class="targets">';
+        foreach ($lane['targets'] as $target) {
+            $html .= '<div class="target"><div class="letter">' . $h($target['letterLabel']) . '</div>';
+            if ((string)($target['faceUrl'] ?? '') !== '') {
+                $html .= '<img src="' . $h($target['faceUrl']) . '" alt="">';
+            }
+            $html .= '<div class="face">' . $h($target['faceLabel']) . '</div>'
+                . '<div class="meta">' . $h($target['eventName'] . ' · ' . $phaseLabel($target['phase'])) . '</div>';
+            if ((string)($target['distance'] ?? '') !== '') {
+                $html .= '<div class="meta">' . $h($target['distance']) . ' m</div>';
+            }
+            $html .= '</div>';
+        }
+        $html .= '</div></div>';
+    }
+    return $html . '</div>';
+}

@@ -58,12 +58,11 @@ body { font-family: Arial, sans-serif; color: #000; background: #fff; margin: 0;
 .print-header { border-bottom: 1px solid #999; padding-bottom: 6px; margin-bottom: 8px; }
 .print-header h1 { font-size: 16px; margin: 0 0 4px; }
 .not-ready { margin-top: 20px; font-size: 14px; font-weight: bold; color: #b00; }
-table { width: 100%; border-collapse: collapse; }
-tr { break-inside: avoid; page-break-inside: avoid; }
-td { border: 1px solid #999; padding: 4px; vertical-align: top; }
-td.lane { width: 14mm; font-size: 20px; font-weight: bold; text-align: center; vertical-align: middle; }
-.targets { display: flex; flex-wrap: wrap; gap: 6px; }
-.target { width: 42mm; text-align: center; }
+.lanes { display: flex; flex-wrap: wrap; gap: 3mm; align-items: flex-start; }
+.lane-card { border: 1px solid #999; break-inside: avoid; page-break-inside: avoid; }
+.lane-no { font-size: 16px; font-weight: bold; text-align: center; background: #eee; border-bottom: 1px solid #999; padding: 1px 0; }
+.targets { display: flex; gap: 2mm; padding: 2mm; }
+.target { width: 38mm; text-align: center; }
 .target .letter { font-weight: bold; font-size: 14px; }
 .target img { width: 28mm; height: 28mm; object-fit: contain; display: block; margin: 2px auto; }
 .target .face { font-weight: bold; }
@@ -85,28 +84,7 @@ td.lane { width: 14mm; font-size: 20px; font-weight: bold; text-align: center; v
         <?php endif; ?>
     </div>
 <?php else: ?>
-    <table>
-    <?php foreach ($lanes['lanes'] as $lane): ?>
-        <tr>
-            <td class="lane"><?php echo intval($lane['lane']); ?></td>
-            <td><div class="targets">
-            <?php foreach ($lane['targets'] as $target): ?>
-                <div class="target">
-                    <div class="letter"><?php echo fpH($target['letterLabel']); ?></div>
-                    <?php if ($target['faceUrl'] !== ''): ?>
-                        <img src="<?php echo fpH($target['faceUrl']); ?>" alt="">
-                    <?php endif; ?>
-                    <div class="face"><?php echo fpH($target['faceLabel']); ?></div>
-                    <div class="meta"><?php echo fpH($target['eventName'] . ' · ' . laneAssistPhaseLabel($target['phase'])); ?></div>
-                    <?php if ($target['distance'] !== ''): ?>
-                        <div class="meta"><?php echo fpH($target['distance']); ?> m</div>
-                    <?php endif; ?>
-                </div>
-            <?php endforeach; ?>
-            </div></td>
-        </tr>
-    <?php endforeach; ?>
-    </table>
+    <?php echo fpRenderLanesHtml($lanes['lanes'], 'laneAssistPhaseLabel'); ?>
     <?php if (!empty($lanes['unassigned'])): ?>
         <div class="unassigned"><strong><?php echo la_h('print.notOnLane'); ?></strong>
             <ul>
