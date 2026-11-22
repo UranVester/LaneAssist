@@ -524,6 +524,8 @@ return [
     'faces.loadFailed' => 'Loading archers failed',
     'faces.shown' => '{count} shown',
     'faces.colCode' => 'Code',
+    'faces.colTarget' => 'Target',
+    'faces.sortBy' => 'Sort by this column',
     'faces.colDiv' => 'Div',
     'faces.colClass' => 'Cl',
     'faces.setAll' => 'Set all {count}',

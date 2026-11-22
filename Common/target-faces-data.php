@@ -100,9 +100,11 @@ function tfSqlIn(array $values): string
 function tfLoadArchers(int $tourId, array $filters, array $ctx, int $onlyEnId = 0): array
 {
     $tour = StrSafe_DB($tourId);
-    $sql = "SELECT EnId, EnCode, EnFirstName, EnName, EnDivision, EnClass, EnTargetFace, CoCode, CoName
+    $sql = "SELECT EnId, EnCode, EnFirstName, EnName, EnDivision, EnClass, EnTargetFace, CoCode, CoName,
+            QuSession, QuTarget, QuLetter
         FROM Entries
         LEFT JOIN Countries ON EnCountry=CoId AND EnTournament=CoTournament
+        LEFT JOIN Qualifications ON QuId=EnId
         WHERE EnTournament=$tour AND EnAthlete=1";
     if (($v = tfFilterValue($filters, 'name')) !== '') {
         $sql .= ' AND ' . assembleWhereCondition(['EnFirstName', 'EnName'], [$v]);
@@ -138,6 +140,13 @@ function tfLoadArchers(int $tourId, array $filters, array $ctx, int $onlyEnId = 
             'id' => intval($r->EnId),
             'code' => (string)$r->EnCode,
             'name' => trim($r->EnFirstName . ' ' . $r->EnName),
+            // EnFirstName is IANSEO's family name; the page sorts on these.
+            'lastName' => (string)$r->EnFirstName,
+            'firstName' => (string)$r->EnName,
+            // 0 / '' when the archer has no target (no row, or session/target 0).
+            'session' => intval($r->QuSession),
+            'target' => intval($r->QuTarget),
+            'letter' => (string)$r->QuLetter,
             'coCode' => (string)$r->CoCode,
             'coName' => (string)$r->CoName,
             'div' => (string)$r->EnDivision,
@@ -146,6 +155,18 @@ function tfLoadArchers(int $tourId, array $filters, array $ctx, int $onlyEnId = 
         ] + tfDescribeArcher($legal, $ctx['groups'], $face);
     }
     return $rows;
+}
+
+/**
+ * Whether athletes sit on targets in more than one session, tournament-wide
+ * (not just the filtered rows), so the Target column knows to show "2-12A".
+ */
+function tfHasMultipleSessions(int $tourId): bool
+{
+    $r = safe_fetch(safe_r_sql('SELECT COUNT(DISTINCT QuSession) n FROM Qualifications
+        INNER JOIN Entries ON QuId=EnId
+        WHERE EnTournament=' . StrSafe_DB($tourId) . ' AND EnAthlete=1 AND QuSession>0 AND QuTarget>0'));
+    return $r && intval($r->n) > 1;
 }
 
 /**

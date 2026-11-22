@@ -5,8 +5,12 @@
     const laT = window.laT;
     const laTn = window.laTn;
 
+    // Code, Target, Archer, Club, Div, Class: the columns before the face groups.
+    const FIXED_COLS = 6;
     const API_URL = ROOT_DIR + 'Modules/Custom/LaneAssist/ChangeTargetFaces/api.php';
     const FILTER_DELAY_MS = 300;
+    const SORT_STORAGE_KEY = 'laneassist.changeTargetFaces.sort';
+    const Sort = window.ChangeTargetFacesSort;
 
     const state = {
         groups: [],
@@ -14,8 +18,25 @@
         canWrite: false,
         busy: false,
         gate: ChangeTargetFacesGate.createRequestGate(),
-        filterTimer: null
+        filterTimer: null,
+        sort: readSort()
     };
+
+    function readSort() {
+        try {
+            return Sort.parseSort(window.localStorage.getItem(SORT_STORAGE_KEY));
+        } catch (e) {
+            return Sort.parseSort(null); // storage blocked: default order
+        }
+    }
+
+    function saveSort() {
+        try {
+            window.localStorage.setItem(SORT_STORAGE_KEY, JSON.stringify(state.sort));
+        } catch (e) {
+            // not remembered, still sorted
+        }
+    }
 
     function escapeHtml(text) {
         return String(text == null ? '' : text)
@@ -34,6 +55,16 @@
         });
         $('#tf-body').on('click', 'button.tf-cell', function() {
             setOne(parseInt($(this).data('en'), 10), String($(this).data('group')));
+        });
+        $('#tf-head').on('click', 'th.tf-sortable', function() {
+            const key = String($(this).data('sort'));
+            state.sort = {
+                key: key,
+                dir: state.sort.key === key && state.sort.dir === 'asc' ? 'desc' : 'asc'
+            };
+            saveSort();
+            state.archers = Sort.sortArchers(state.archers, state.sort.key, state.sort.dir);
+            render();
         });
         $('#tf-head').on('click', 'button.tf-set-all', function() {
             setAll(String($(this).data('group')));
@@ -83,8 +114,9 @@
                     return;
                 }
                 state.groups = response.groups;
-                state.archers = response.archers;
+                state.archers = Sort.sortArchers(response.archers, state.sort.key, state.sort.dir);
                 state.canWrite = !!response.canWrite;
+                state.multiSession = !!response.multiSession;
                 $('#readonly-note').toggleClass('hidden', state.canWrite).text(response.readOnlyReason || '');
                 renderFaceFilter();
                 render();
@@ -111,12 +143,13 @@
         const n = state.archers.length;
         $('#tf-count').text(laT('faces.shown', { count: n }));
 
-        let head = '<tr><th>' + escapeHtml(laT('faces.colCode')) + '</th><th>' + escapeHtml(laT('faces.archer')) + '</th><th>'
+        let head = '<tr><th>' + escapeHtml(laT('faces.colCode')) + '</th>' + sortableHead('target', laT('faces.colTarget'))
+            + sortableHead('archer', laT('faces.archer')) + '<th>'
             + escapeHtml(laT('faces.club')) + '</th><th>' + escapeHtml(laT('faces.colDiv')) + '</th><th>' + escapeHtml(laT('faces.colClass')) + '</th>';
         state.groups.forEach(function(g) {
             head += '<th class="tf-group-head">' + escapeHtml(g.label) + '</th>';
         });
-        head += '</tr><tr class="tf-set-all-row"><th colspan="5"></th>';
+        head += '</tr><tr class="tf-set-all-row"><th colspan="' + FIXED_COLS + '"></th>';
         state.groups.forEach(function(g) {
             head += '<th><button type="button" class="btn btn-secondary tf-set-all" data-group="' + escapeHtml(g.key) + '"'
                 + (n ? '' : ' disabled') + '>' + escapeHtml(laT('faces.setAll', { count: n })) + '</button></th>';
@@ -124,13 +157,22 @@
         $('#tf-head').html(head + '</tr>');
 
         if (!state.groups.length) {
-            $('#tf-body').html('<tr><td colspan="5" class="tf-empty">' + escapeHtml(laT('faces.noFacesDefined')) + '</td></tr>');
+            $('#tf-body').html('<tr><td colspan="' + FIXED_COLS + '" class="tf-empty">' + escapeHtml(laT('faces.noFacesDefined')) + '</td></tr>');
         } else if (!n) {
-            $('#tf-body').html('<tr><td colspan="' + (5 + state.groups.length) + '" class="tf-empty">' + escapeHtml(laT('faces.noArchersMatch')) + '</td></tr>');
+            $('#tf-body').html('<tr><td colspan="' + (FIXED_COLS + state.groups.length) + '" class="tf-empty">' + escapeHtml(laT('faces.noArchersMatch')) + '</td></tr>');
         } else {
             $('#tf-body').html(state.archers.map(rowHtml).join(''));
         }
         setBusy(state.busy);
+    }
+
+    /** A header that sorts the list; the active one shows its direction. */
+    function sortableHead(key, label) {
+        const active = state.sort.key === key;
+        const arrow = active ? '<span class="tf-sort-arrow">' + (state.sort.dir === 'asc' ? '&#9650;' : '&#9660;') + '</span>' : '';
+        return '<th class="tf-sortable" data-sort="' + key + '" title="' + escapeHtml(laT('faces.sortBy')) + '"'
+            + (active ? ' aria-sort="' + (state.sort.dir === 'asc' ? 'ascending' : 'descending') + '"' : '') + '>'
+            + escapeHtml(label) + arrow + '</th>';
     }
 
     function rowHtml(a) {
@@ -142,6 +184,7 @@
             marker = ' <span class="tf-marker" title="' + escapeHtml(laT('faces.illegalHelp')) + '">' + escapeHtml(laT('faces.illegalMarker')) + '</span>';
         }
         let html = '<tr data-en="' + a.id + '"><td>' + escapeHtml(a.code) + '</td>'
+            + '<td class="tf-center">' + escapeHtml(Sort.formatTarget(a, state.multiSession)) + '</td>'
             + '<td>' + escapeHtml(a.name) + marker + '</td>'
             + '<td title="' + escapeHtml(a.coName) + '">' + escapeHtml(a.coCode) + '</td>'
             + '<td class="tf-center">' + escapeHtml(a.div) + '</td>'
