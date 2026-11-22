@@ -268,4 +268,24 @@ final class FinalsPrintLogicTest extends TestCase
         $this->assertStringNotContainsString('<img', $first);
         $this->assertStringNotContainsString(' m<', $first);
     }
+
+    public function testCrowdedLaneKeepsEveryFaceInOneCard(): void
+    {
+        $sides = [];
+        foreach ([8, 9, 10, 11, 12] as $matchNo) {
+            $sides[] = self::side($matchNo, '001');
+        }
+        $html = self::rendered($sides);
+        $this->assertSame(1, substr_count($html, 'class="lane-card"'));
+        preg_match_all('/class="letter">([A-Z])</', $html, $m);
+        $this->assertSame(['A', 'B', 'C', 'D', 'E'], $m[1]);
+    }
+
+    /** A lane with more faces than fit across A4 must wrap inside its card, not run off the page. */
+    public function testPrintCssWrapsFacesInsideAPageWideCard(): void
+    {
+        $page = file_get_contents(dirname(__DIR__) . '/LiveView/print-finals.php');
+        $this->assertMatchesRegularExpression('/\.targets \{[^}]*flex-wrap: wrap/', $page);
+        $this->assertMatchesRegularExpression('/\.lane-card \{[^}]*max-width: 100%/', $page);
+    }
 }

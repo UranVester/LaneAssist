@@ -59,9 +59,9 @@ body { font-family: Arial, sans-serif; color: #000; background: #fff; margin: 0;
 .print-header h1 { font-size: 16px; margin: 0 0 4px; }
 .not-ready { margin-top: 20px; font-size: 14px; font-weight: bold; color: #b00; }
 .lanes { display: flex; flex-wrap: wrap; gap: 3mm; align-items: flex-start; }
-.lane-card { border: 1px solid #999; break-inside: avoid; page-break-inside: avoid; }
+.lane-card { box-sizing: border-box; max-width: 100%; border: 1px solid #999; break-inside: avoid; page-break-inside: avoid; }
 .lane-no { font-size: 16px; font-weight: bold; text-align: center; background: #eee; border-bottom: 1px solid #999; padding: 1px 0; }
-.targets { display: flex; gap: 2mm; padding: 2mm; }
+.targets { display: flex; flex-wrap: wrap; gap: 2mm; padding: 2mm; }
 .target { width: 38mm; text-align: center; }
 .target .letter { font-weight: bold; font-size: 14px; }
 .target img { width: 28mm; height: 28mm; object-fit: contain; display: block; margin: 2px auto; }
