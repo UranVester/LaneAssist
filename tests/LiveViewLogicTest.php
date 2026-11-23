@@ -342,6 +342,33 @@ final class LiveViewLogicTest extends TestCase
         $this->assertSame(['40B', '60R'], array_column($result['matches'], 'event'));
     }
 
+    // arhE26V: a small event's gold final (phase 0) shared the first slot with
+    // other events' 1/8 finals. A medal match has no next match, so it never
+    // becomes "advanced"; once decided it must still count as done, or it pins
+    // the current round to that first slot forever.
+    public function testFinishedMedalMatchDoesNotPinTheCurrentRound(): void
+    {
+        $matches = [
+            ['event' => 'RJ', 'teamEvent' => 0, 'phase' => 0, 'matchNo' => 0, 'scheduledSlot' => '2026-11-22 14:45:00', 'status' => 'complete', 'advanced' => false],
+            ['event' => 'BS', 'teamEvent' => 0, 'phase' => 8, 'matchNo' => 18, 'scheduledSlot' => '2026-11-22 14:45:00', 'status' => 'advanced', 'advanced' => true],
+            ['event' => 'BS', 'teamEvent' => 0, 'phase' => 4, 'matchNo' => 8, 'scheduledSlot' => '2026-11-22 15:15:00', 'status' => 'live', 'advanced' => false],
+        ];
+
+        $result = laneAssistSelectCurrentFinalMatches($matches);
+
+        $this->assertSame('2026-11-22 15:15:00', $result['slot']);
+    }
+
+    public function testUndecidedMedalMatchStillHoldsTheCurrentRound(): void
+    {
+        $matches = [
+            ['event' => 'RJ', 'teamEvent' => 0, 'phase' => 0, 'matchNo' => 0, 'scheduledSlot' => '2026-11-22 14:45:00', 'status' => 'live', 'advanced' => false],
+            ['event' => 'BS', 'teamEvent' => 0, 'phase' => 4, 'matchNo' => 8, 'scheduledSlot' => '2026-11-22 15:15:00', 'status' => 'unreported', 'advanced' => false],
+        ];
+
+        $this->assertSame('2026-11-22 14:45:00', laneAssistSelectCurrentFinalMatches($matches)['slot']);
+    }
+
     public function testAdvancedByeIsHiddenWhilePendingByeRemains(): void
     {
         $matches = [

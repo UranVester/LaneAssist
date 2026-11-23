@@ -311,6 +311,20 @@ function laneAssistLiveMatchActionPlan(array $match) {
     return ['markBye' => $markBye, 'runPhaseUpdate' => true, 'expectAdvance' => $advance];
 }
 
+/**
+ * Whether a match no longer holds its round as current: its winner has moved
+ * on, or it is a decided medal match (gold/bronze), which has no next match
+ * and so can never become "advanced". A medal-match bye is not done until it
+ * is marked, since that is what runs core's final rank calculation.
+ */
+function laneAssistFinalMatchIsDone(array $match) {
+    if (!empty($match['advanced'])) {
+        return true;
+    }
+    return ($match['status'] ?? '') === 'complete'
+        && laneAssistFinalWinnerDestination($match['phase'] ?? 0, $match['matchNo'] ?? 0) === null;
+}
+
 function laneAssistSelectCurrentFinalMatches(array $matches) {
     $scheduledSlots = [];
     foreach ($matches as $match) {
@@ -341,7 +355,7 @@ function laneAssistSelectCurrentFinalMatches(array $matches) {
         }));
 
         foreach ($slotWork as $match) {
-            if (empty($match['advanced'])) {
+            if (!laneAssistFinalMatchIsDone($match)) {
                 $visibleBlock = array_values(array_filter($matches, function($blockMatch) use ($slot) {
                     return ($blockMatch['scheduledSlot'] ?? '') === $slot
                         || (($blockMatch['scheduledSlot'] ?? '') === ''
