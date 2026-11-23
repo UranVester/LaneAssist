@@ -76,48 +76,92 @@ function laneAssistFinalSetPoints($arrowString, $arrowsPerEnd, callable $decodeA
     return $points;
 }
 
+/**
+ * Where a qualification session's scoring stands, read from cumulative end
+ * counts (completedTotalEnds, so a distance change isn't mistaken for a
+ * 9-end lag; completedEnds is the fallback when no total is given).
+ *
+ * An end opens when the first archer is entered for it and stays open until
+ * everyone in the field has been entered. Archers one end short of the open
+ * end are just not entered yet, not late. Archers without any arrows are
+ * left out of the pace entirely (they'd otherwise hold end 1 open, or drag
+ * the pace back to 0) and are reported as no-shows once anyone has shot.
+ *
+ * - settled: most common end count (ties go to the higher count)
+ * - current: highest count in the field, capped at settled + 1, so a single
+ *   archer entered two ends early can't open an end for everyone else
+ * - finished: nobody in the field is still one end short of current
+ */
+function laneAssistQualificationPace(array $archers) {
+    $field = [];
+    $started = false;
+    foreach ($archers as $key => $archer) {
+        if (!empty($archer['retired'])) {
+            continue;
+        }
+        $ends = laneAssistArcherTotalEnds($archer);
+        $shot = array_key_exists('arrowsShot', $archer) ? intval($archer['arrowsShot']) : $ends;
+        if ($shot > 0) {
+            $started = true;
+            $field[$key] = $ends;
+        }
+    }
+    if (!$field) {
+        return ['started' => $started, 'settled' => 0, 'current' => 0, 'finished' => true, 'field' => []];
+    }
+
+    $settled = laneAssistMostCommonProgress(array_values($field));
+    $current = $settled;
+    foreach ($field as $ends) {
+        if ($ends === $settled + 1) {
+            $current = $ends;
+        }
+    }
+    return [
+        'started' => $started,
+        'settled' => $settled,
+        'current' => $current,
+        'finished' => !in_array($current - 1, $field, true),
+        'field' => $field,
+    ];
+}
+
+function laneAssistArcherTotalEnds(array $archer) {
+    return intval($archer['completedTotalEnds'] ?? ($archer['completedEnds'] ?? 0));
+}
+
 function laneAssistMarkQualificationLag(array $archers) {
-    $counts = [];
-    $distanceCounts = [];
-    foreach ($archers as $archer) {
+    $pace = laneAssistQualificationPace($archers);
+    $current = $pace['current'];
+
+    // The cards show distance and end within the distance, taken from the
+    // archers who are at the current end so they name the end in progress.
+    $atCurrent = array_filter($archers, function($archer, $key) use ($pace, $current) {
+        return isset($pace['field'][$key]) && $pace['field'][$key] === $current;
+    }, ARRAY_FILTER_USE_BOTH);
+    $expectedDistance = $atCurrent
+        ? laneAssistMostCommonProgress(array_map(function($archer) {
+            return max(1, intval($archer['distance'] ?? 1));
+        }, $atCurrent))
+        : 1;
+    $expectedEnds = $atCurrent
+        ? laneAssistMostCommonProgress(array_map(function($archer) {
+            return intval($archer['completedEnds'] ?? 0);
+        }, $atCurrent))
+        : 0;
+
+    foreach ($archers as $key => &$archer) {
+        $archer['isBehind'] = false;
+        $archer['isAhead'] = false;
         if (!empty($archer['retired'])) {
             continue;
         }
-        $ends = intval($archer['completedEnds'] ?? 0);
-        $counts[$ends] = ($counts[$ends] ?? 0) + 1;
-
-        $distance = max(1, intval($archer['distance'] ?? 1));
-        $distanceCounts[$distance] = ($distanceCounts[$distance] ?? 0) + 1;
-    }
-
-    $expectedEnds = 0;
-    $largestGroup = 0;
-    foreach ($counts as $ends => $count) {
-        if ($count > $largestGroup || ($count === $largestGroup && intval($ends) > $expectedEnds)) {
-            $expectedEnds = intval($ends);
-            $largestGroup = $count;
-        }
-    }
-
-    // Same most-common-wins rule as $expectedEnds, so the header's "distance"
-    // and "end" agree on which archers they were read from.
-    $expectedDistance = 1;
-    $largestDistanceGroup = 0;
-    foreach ($distanceCounts as $distance => $count) {
-        if ($count > $largestDistanceGroup || ($count === $largestDistanceGroup && intval($distance) > $expectedDistance)) {
-            $expectedDistance = intval($distance);
-            $largestDistanceGroup = $count;
-        }
-    }
-
-    foreach ($archers as &$archer) {
-        if (!empty($archer['retired'])) {
-            $archer['isBehind'] = false;
-            $archer['isAhead'] = false;
+        if (!isset($pace['field'][$key])) {
+            $archer['isBehind'] = $pace['started'];
             continue;
         }
-        $archer['isBehind'] = intval($archer['completedEnds'] ?? 0) < $expectedEnds;
-        $archer['isAhead'] = intval($archer['completedEnds'] ?? 0) > $expectedEnds;
+        $archer['isBehind'] = $pace['field'][$key] < $current - 1;
+        $archer['isAhead'] = $pace['field'][$key] > $current;
     }
     unset($archer);
 
@@ -155,11 +199,13 @@ function laneAssistQualificationProgress(array $mats) {
 
     $arrowsShot = laneAssistMostCommonProgress(array_column($archers, 'arrowsShot'));
     $totalArrows = max(array_map('intval', array_column($archers, 'totalArrows')));
-    $endsCompleted = laneAssistMostCommonProgress(array_column($archers, 'completedTotalEnds'));
     $totalEnds = max(array_map('intval', array_column($archers, 'totalEnds')));
+    // The open end until everyone is entered for it, then the next one.
+    $pace = laneAssistQualificationPace($archers);
+    $end = $pace['finished'] ? $pace['current'] + 1 : $pace['current'];
 
     return [
-        'end' => min($totalEnds, $endsCompleted + 1),
+        'end' => min($totalEnds, $end),
         'arrowsShot' => $arrowsShot,
         'totalArrows' => $totalArrows,
         'complete' => $totalArrows > 0 && !array_filter($archers, function($archer) {

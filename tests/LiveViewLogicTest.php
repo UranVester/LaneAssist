@@ -80,8 +80,23 @@ final class LiveViewLogicTest extends TestCase
         $this->assertSame([60, 54, null, null], laneAssistFinalSetPoints('XXXXXX999999', 6, $decode, 4));
     }
 
-    public function testQualificationLagUsesMostCommonEndCount(): void
+    public function testQualificationLagFlagsAnArcherMoreThanOneEndBehind(): void
     {
+        $result = laneAssistMarkQualificationLag([
+            ['id' => 1, 'completedEnds' => 4],
+            ['id' => 2, 'completedEnds' => 4],
+            ['id' => 3, 'completedEnds' => 2],
+        ]);
+
+        $this->assertSame(4, $result['expectedEnds']);
+        $this->assertFalse($result['archers'][0]['isBehind']);
+        $this->assertTrue($result['archers'][2]['isBehind']);
+    }
+
+    public function testQualificationLagLeavesAnEndOpenUntilEveryArcherHasEnteredIt(): void
+    {
+        // The one archer not yet entered for end 4 is not late: end 4 is
+        // still being entered, nobody has started end 5.
         $result = laneAssistMarkQualificationLag([
             ['id' => 1, 'completedEnds' => 4],
             ['id' => 2, 'completedEnds' => 4],
@@ -89,8 +104,100 @@ final class LiveViewLogicTest extends TestCase
         ]);
 
         $this->assertSame(4, $result['expectedEnds']);
-        $this->assertFalse($result['archers'][0]['isBehind']);
+        $this->assertFalse($result['archers'][2]['isBehind']);
+        $this->assertFalse($result['archers'][2]['isAhead']);
+    }
+
+    public function testQualificationLagNeverColoursArchersWhileAnEndIsBeingEntered(): void
+    {
+        // Entering end 5 one archer at a time: neither the first ones in
+        // (formerly yellow) nor, after the majority flips, the rest
+        // (formerly red) are flagged.
+        foreach ([1, 2, 3, 4] as $entered) {
+            $archers = [];
+            for ($i = 0; $i < 5; $i++) {
+                $archers[] = ['id' => $i, 'completedEnds' => $i < $entered ? 5 : 4, 'arrowsShot' => $i < $entered ? 15 : 12];
+            }
+            $result = laneAssistMarkQualificationLag($archers);
+
+            $this->assertSame(5, $result['expectedEnds'], "$entered entered");
+            foreach ($result['archers'] as $archer) {
+                $this->assertFalse($archer['isBehind'], "$entered entered, archer {$archer['id']}");
+                $this->assertFalse($archer['isAhead'], "$entered entered, archer {$archer['id']}");
+            }
+        }
+    }
+
+    public function testQualificationLagFlagsTheUnenteredArcherOnceTheNextEndStarts(): void
+    {
+        $result = laneAssistMarkQualificationLag([
+            ['id' => 1, 'completedEnds' => 5],
+            ['id' => 2, 'completedEnds' => 4],
+            ['id' => 3, 'completedEnds' => 3],
+        ]);
+
+        $this->assertSame(5, $result['expectedEnds']);
+        $this->assertFalse($result['archers'][1]['isBehind']);
         $this->assertTrue($result['archers'][2]['isBehind']);
+    }
+
+    public function testQualificationLagKeepsArchersWithoutArrowsRedAndOutOfThePace(): void
+    {
+        // Two no-shows must not drag the current end back to 0 or keep
+        // end 1 open; they stay red throughout.
+        $result = laneAssistMarkQualificationLag([
+            ['id' => 1, 'completedEnds' => 1, 'arrowsShot' => 3],
+            ['id' => 2, 'completedEnds' => 0, 'arrowsShot' => 0],
+            ['id' => 3, 'completedEnds' => 0, 'arrowsShot' => 0],
+        ]);
+
+        $this->assertSame(1, $result['expectedEnds']);
+        $this->assertFalse($result['archers'][0]['isBehind']);
+        $this->assertTrue($result['archers'][1]['isBehind']);
+        $this->assertTrue($result['archers'][2]['isBehind']);
+    }
+
+    public function testQualificationLagFlagsNobodyBeforeTheSessionStarts(): void
+    {
+        $result = laneAssistMarkQualificationLag([
+            ['id' => 1, 'completedEnds' => 0, 'arrowsShot' => 0],
+            ['id' => 2, 'completedEnds' => 0, 'arrowsShot' => 0],
+        ]);
+
+        $this->assertFalse($result['archers'][0]['isBehind']);
+        $this->assertFalse($result['archers'][1]['isBehind']);
+    }
+
+    public function testQualificationLagStillFlagsAnArcherWellAheadOfTheField(): void
+    {
+        $result = laneAssistMarkQualificationLag([
+            ['id' => 1, 'completedEnds' => 4],
+            ['id' => 2, 'completedEnds' => 4],
+            ['id' => 3, 'completedEnds' => 6],
+        ]);
+
+        $this->assertSame(4, $result['expectedEnds']);
+        $this->assertTrue($result['archers'][2]['isAhead']);
+        $this->assertFalse($result['archers'][0]['isBehind']);
+    }
+
+    public function testQualificationLagComparesCumulativeEndsAcrossADistanceChange(): void
+    {
+        // Archer 1 has entered the first end of distance 2 (end 1 there);
+        // the others are still entering distance 1's last end. Comparing
+        // per-distance counts would call archer 1 nine ends behind.
+        $result = laneAssistMarkQualificationLag([
+            ['id' => 1, 'distance' => 2, 'completedEnds' => 1, 'completedTotalEnds' => 11],
+            ['id' => 2, 'distance' => 1, 'completedEnds' => 10, 'completedTotalEnds' => 10],
+            ['id' => 3, 'distance' => 1, 'completedEnds' => 10, 'completedTotalEnds' => 10],
+        ]);
+
+        $this->assertSame(2, $result['expectedDistance']);
+        $this->assertSame(1, $result['expectedEnds']);
+        foreach ($result['archers'] as $archer) {
+            $this->assertFalse($archer['isBehind']);
+            $this->assertFalse($archer['isAhead']);
+        }
     }
 
     public function testQualificationLagIgnoresRetiredArchersAndNeverFlagsThemAsBehind(): void
@@ -158,7 +265,21 @@ final class LiveViewLogicTest extends TestCase
             ['arrowsShot' => 15, 'totalArrows' => 72, 'completedTotalEnds' => 5, 'totalEnds' => 24],
         ]] ]);
 
-        $this->assertSame(['end' => 7, 'arrowsShot' => 18, 'totalArrows' => 72, 'complete' => false], $result);
+        // End 6 is still open (one archer not entered yet), so it is the current end.
+        $this->assertSame(['end' => 6, 'arrowsShot' => 18, 'totalArrows' => 72, 'complete' => false], $result);
+    }
+
+    public function testQualificationProgressMovesToTheNextEndOnceEveryoneHasEnteredTheCurrentOne(): void
+    {
+        $result = laneAssistQualificationProgress([['archers' => [
+            ['arrowsShot' => 18, 'totalArrows' => 72, 'completedTotalEnds' => 6, 'totalEnds' => 24],
+            ['arrowsShot' => 18, 'totalArrows' => 72, 'completedTotalEnds' => 6, 'totalEnds' => 24],
+            ['arrowsShot' => 12, 'totalArrows' => 72, 'completedTotalEnds' => 4, 'totalEnds' => 24],
+            ['arrowsShot' => 0, 'totalArrows' => 72, 'completedTotalEnds' => 0, 'totalEnds' => 24],
+        ]] ]);
+
+        // The archer two ends behind and the no-show don't hold end 6 open.
+        $this->assertSame(7, $result['end']);
     }
 
     public function testQualificationProgressIsCompleteOnlyWhenEveryArcherFinishes(): void
