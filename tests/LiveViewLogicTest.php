@@ -139,7 +139,7 @@ final class LiveViewLogicTest extends TestCase
         $this->assertSame([true, false, false], array_column($result['archers'], 'isEntered'));
     }
 
-    public function testQualificationLagKeepsEveryoneMarkedEnteredUntilTheNextEndStarts(): void
+    public function testQualificationLagClearsEnteredOnceTheLastArcherIsIn(): void
     {
         $allIn = laneAssistMarkQualificationLag([
             ['id' => 1, 'completedEnds' => 5],
@@ -150,7 +150,8 @@ final class LiveViewLogicTest extends TestCase
             ['id' => 2, 'completedEnds' => 5],
         ]);
 
-        $this->assertSame([true, true], array_column($allIn['archers'], 'isEntered'));
+        // Last archer in: the end is over, nobody stays green.
+        $this->assertSame([false, false], array_column($allIn['archers'], 'isEntered'));
         $this->assertSame([true, false], array_column($nextStarted['archers'], 'isEntered'));
     }
 
@@ -163,12 +164,13 @@ final class LiveViewLogicTest extends TestCase
             ['id' => 4, 'completedEnds' => 6],
             ['id' => 5, 'completedEnds' => 4, 'retired' => true],
             ['id' => 6, 'completedEnds' => 0, 'arrowsShot' => 0],
+            ['id' => 7, 'completedEnds' => 3],
         ]);
         $notStarted = laneAssistMarkQualificationLag([
             ['id' => 1, 'completedEnds' => 0, 'arrowsShot' => 0],
         ]);
 
-        $this->assertSame([true, true, false, false, false, false], array_column($result['archers'], 'isEntered'));
+        $this->assertSame([true, true, false, false, false, false, false], array_column($result['archers'], 'isEntered'));
         $this->assertFalse($notStarted['archers'][0]['isEntered']);
     }
 
