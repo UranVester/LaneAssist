@@ -155,7 +155,7 @@
 
         var html = mats.map(function(mat) {
             var archers = mat.archers.map(function(archer) {
-                var problemClass = archer.isBehind ? ' danger' : (archer.isAhead ? ' warning' : '');
+                var problemClass = archer.isBehind ? ' danger' : (archer.isAhead ? ' warning' : (archer.isEntered ? ' entered' : ''));
                 var retiredClass = archer.retired ? ' retired' : '';
                 var endPoints = archer.lastEndPoints === null ? '-' : archer.lastEndPoints;
                 var byDistance = state.totalMode === 'distance';
@@ -451,7 +451,7 @@
 
     function applyArcherRetiredState(participantId, retired) {
         var $competitor = $('.competitor[data-participant-id="' + participantId + '"]');
-        $competitor.toggleClass('retired', retired).removeClass('danger warning');
+        $competitor.toggleClass('retired', retired).removeClass('danger warning entered');
         $competitor.find('.retire-toggle')
             .data('retired', retired ? 1 : 0)
             .prop('disabled', false)

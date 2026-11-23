@@ -128,6 +128,50 @@ final class LiveViewLogicTest extends TestCase
         }
     }
 
+    public function testQualificationLagMarksArchersEnteredForTheOpenEnd(): void
+    {
+        $result = laneAssistMarkQualificationLag([
+            ['id' => 1, 'completedEnds' => 5],
+            ['id' => 2, 'completedEnds' => 4],
+            ['id' => 3, 'completedEnds' => 4],
+        ]);
+
+        $this->assertSame([true, false, false], array_column($result['archers'], 'isEntered'));
+    }
+
+    public function testQualificationLagKeepsEveryoneMarkedEnteredUntilTheNextEndStarts(): void
+    {
+        $allIn = laneAssistMarkQualificationLag([
+            ['id' => 1, 'completedEnds' => 5],
+            ['id' => 2, 'completedEnds' => 5],
+        ]);
+        $nextStarted = laneAssistMarkQualificationLag([
+            ['id' => 1, 'completedEnds' => 6],
+            ['id' => 2, 'completedEnds' => 5],
+        ]);
+
+        $this->assertSame([true, true], array_column($allIn['archers'], 'isEntered'));
+        $this->assertSame([true, false], array_column($nextStarted['archers'], 'isEntered'));
+    }
+
+    public function testQualificationLagNeverMarksLateAheadRetiredOrUnstartedArchersEntered(): void
+    {
+        $result = laneAssistMarkQualificationLag([
+            ['id' => 1, 'completedEnds' => 4],
+            ['id' => 2, 'completedEnds' => 4],
+            ['id' => 3, 'completedEnds' => 2],
+            ['id' => 4, 'completedEnds' => 6],
+            ['id' => 5, 'completedEnds' => 4, 'retired' => true],
+            ['id' => 6, 'completedEnds' => 0, 'arrowsShot' => 0],
+        ]);
+        $notStarted = laneAssistMarkQualificationLag([
+            ['id' => 1, 'completedEnds' => 0, 'arrowsShot' => 0],
+        ]);
+
+        $this->assertSame([true, true, false, false, false, false], array_column($result['archers'], 'isEntered'));
+        $this->assertFalse($notStarted['archers'][0]['isEntered']);
+    }
+
     public function testQualificationLagFlagsTheUnenteredArcherOnceTheNextEndStarts(): void
     {
         $result = laneAssistMarkQualificationLag([

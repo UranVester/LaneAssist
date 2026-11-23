@@ -58,8 +58,9 @@
 .target-illustration { position: relative; flex: 0 0 54px; width: 54px; height: 54px; border-radius: 50%; background: radial-gradient(circle, #f5d04c 0 17%, #e44d3a 18% 34%, #3284b8 35% 51%, #161b20 52% 68%, #f7f7f2 69% 100%); box-shadow: inset 0 0 0 1px #53616c, 0 2px 4px rgba(0,0,0,.14); }
 .target-illustration span { position: absolute; inset: 17px; display: grid; place-items: center; border-radius: 50%; background: rgba(255,255,255,.9); font-weight: bold; }
 
-.competitor { display: grid; grid-template-columns: 40px minmax(0,1fr) auto; align-items: center; gap: 8px; min-height: 54px; padding: 7px 12px; border-bottom: 1px solid #edf0f2; border-left: 4px solid var(--live-green); }
+.competitor { display: grid; grid-template-columns: 40px minmax(0,1fr) auto; align-items: center; gap: 8px; min-height: 54px; padding: 7px 12px; border-bottom: 1px solid #edf0f2; border-left: 4px solid var(--live-line); }
 .competitor:last-child { border-bottom: 0; }
+.competitor.entered { border-left-color: var(--live-green); background: #edf8f2; }
 .competitor.danger { border-left-color: var(--live-red); background: #fff0ee; color: #7a1710; }
 .competitor.warning { border-left-color: #e6a700; background: #fff9e8; }
 .competitor.retired { border-left-color: #aab6c0; background: #f2f4f5; color: var(--live-muted); }

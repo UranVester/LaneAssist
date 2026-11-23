@@ -91,6 +91,10 @@ function laneAssistFinalSetPoints($arrowString, $arrowsPerEnd, callable $decodeA
  * - current: highest count in the field, capped at settled + 1, so a single
  *   archer entered two ends early can't open an end for everyone else
  * - finished: nobody in the field is still one end short of current
+ *
+ * Flags set by laneAssistMarkQualificationLag(): isEntered (at the current
+ * end, shown green), isBehind (more than one end short, or no arrows once
+ * the session is started; red), isAhead (past the current end; yellow).
  */
 function laneAssistQualificationPace(array $archers) {
     $field = [];
@@ -153,6 +157,7 @@ function laneAssistMarkQualificationLag(array $archers) {
     foreach ($archers as $key => &$archer) {
         $archer['isBehind'] = false;
         $archer['isAhead'] = false;
+        $archer['isEntered'] = false;
         if (!empty($archer['retired'])) {
             continue;
         }
@@ -162,6 +167,9 @@ function laneAssistMarkQualificationLag(array $archers) {
         }
         $archer['isBehind'] = $pace['field'][$key] < $current - 1;
         $archer['isAhead'] = $pace['field'][$key] > $current;
+        // Entered for the open end. Stays set once the whole field is in,
+        // and clears the moment someone is entered for the next end.
+        $archer['isEntered'] = $current > 0 && $pace['field'][$key] === $current;
     }
     unset($archer);
 
